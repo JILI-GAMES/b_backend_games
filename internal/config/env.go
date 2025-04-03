@@ -24,7 +24,7 @@ func Load() Config {
 	return Config{
 		RNGServiceURL:      getEnv("RNG_SERVICE_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
 		SettingsServiceURL: getEnv("SETTINGS_SERVICE_URL", "https://t2.ibibe.africa/get-game-settings"),
-		ServerPort:         getEnv("SERVER_PORT", "8080"),
+		ServerPort:         getEnv("SERVER_PORT", "11400"),
 	}
 }
 

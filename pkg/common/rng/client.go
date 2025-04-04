@@ -1,11 +1,9 @@
-// internal/platform/rng/client.go
 package rng
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -56,7 +54,7 @@ func (c *Client) GetOutcome(clientID, gameID, playerID string, rtp, payoutMultip
         return Response{}, err
     }
 
-    fmt.Printf("RNG request: %s\n", string(reqBody))
+    log.Printf("RNG request: %s", string(reqBody))
 
     resp, err := http.Post(c.ServiceURL, "application/json", bytes.NewBuffer(reqBody))
     if err != nil {

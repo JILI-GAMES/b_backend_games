@@ -1,0 +1,34 @@
+2025/04/04 11:48:40 Starting server on port 11400
+2025/04/04 11:49:45 Bet multiplier: 1
+2025/04/04 11:49:45 Settings request: {"client_id":"1","game_id":"44","player_id":"22"}
+2025/04/04 11:49:47 Retrieved RTP: 0.990000
+2025/04/04 11:49:47 Win for Q (count=4, ways=2): 0.240000
+2025/04/04 11:49:47 Win for J (count=3, ways=1): 0.050000
+2025/04/04 11:49:47 Win for Compass (count=4, ways=2): 1.200000
+2025/04/04 11:49:47 Worker 7 found a winning reel set after 1 attempts: [[J Compass Q] [Q Scatter Wild] [Treasure Chest Treasure Chest Wild] [Q Compass Compass] [Explorer Explorer Scatter]], winAmount: 1.490000
+2025/04/04 11:49:47 Worker 0 stopping after 1 attempts
+2025/04/04 11:49:47 Worker 1 stopping after 1 attempts
+2025/04/04 11:49:47 Worker 2 stopping after 1 attempts
+2025/04/04 11:49:47 Worker 3 stopping after 1 attempts
+2025/04/04 11:49:47 Worker 4 stopping after 1 attempts
+2025/04/04 11:49:47 Worker 5 stopping after 1 attempts
+2025/04/04 11:49:47 Worker 6 stopping after 1 attempts
+2025/04/04 11:49:47 Win for Q (count=4, ways=2): 0.240000
+2025/04/04 11:49:47 Win for J (count=3, ways=1): 0.050000
+2025/04/04 11:49:47 Win for Compass (count=4, ways=2): 1.200000
+2025/04/04 11:49:47 Generated reels: [[J Compass Q] [Q Scatter Wild] [Treasure Chest Treasure Chest Wild] [Q Compass Compass] [Explorer Explorer Scatter]]
+2025/04/04 11:49:47 Win for Compass (count=4, ways=2): 1.200000
+2025/04/04 11:49:47 Win for Q (count=4, ways=2): 0.240000
+2025/04/04 11:49:47 Win for J (count=3, ways=1): 0.050000
+2025/04/04 11:49:47 Potential win: 1.490000
+2025/04/04 11:49:47 Payout multiplier: 4.966667
+2025/04/04 11:49:47 RNG request: {"client_id":"1","game_id":"44","player_id":"22","rtp":0.99,"payout_multiplier":4.966666666666667,"request_salt":"0379d577-742e-40f7-804d-55b907c651dc","bet_amount":0.3}
+2025/04/04 11:49:48 RNG outcome: win
+[2025-04-04 11:49:44] 200 - POST /spin/kong
+2025/04/04 11:52:21 Starting server on port 11400
+2025/04/04 11:52:45 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/04 11:52:46 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":0,"request_salt":"379ff4d2-af63-4f0e-8b4c-6b0f8b35cdf0","bet_amount":20}
+[2025-04-04 11:52:45] 200 - POST /spin/superace/deluxe
+2025/04/04 11:54:42 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/04 11:54:43 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":5,"request_salt":"73f297d5-ae1a-4e07-be66-1b64de6f801d","bet_amount":20}
+[2025-04-04 11:54:41] 200 - POST /spin/superace/deluxe

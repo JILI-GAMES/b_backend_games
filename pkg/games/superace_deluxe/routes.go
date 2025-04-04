@@ -1,8 +1,8 @@
 package superace_deluxe
 
 import (
-	"github.com/JILI-GAMES/b_backend_games/internal/platform/rng"
-	"github.com/JILI-GAMES/b_backend_games/internal/platform/settings"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 
 	"github.com/gofiber/fiber/v2"
 )

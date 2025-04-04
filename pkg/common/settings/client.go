@@ -1,11 +1,9 @@
-// internal/platform/settings/client.go
 package settings
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -49,7 +47,7 @@ func (c *Client) GetRTP(clientID, gameID, playerID string) (float64, error) {
         return 0, err
     }
 
-    fmt.Printf("Settings request: %s\n", string(reqBody))
+    log.Printf("Settings request: %s", string(reqBody))
 
     resp, err := http.Post(c.ServiceURL, "application/json", bytes.NewBuffer(reqBody))
     if err != nil {

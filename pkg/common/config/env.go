@@ -1,4 +1,3 @@
-// internal/config/env.go
 package config
 
 import (
@@ -14,20 +13,25 @@ type Config struct {
 	RNGServiceURL      string
 	SettingsServiceURL string
 	ServerPort         string
+	LogFile            string
 }
 
+// Load loads configuration from environment variables
 func Load() Config {
+	// Try to load .env file, but don't fail if it doesn't exist
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found or error loading it")
 	}
 
 	return Config{
-		RNGServiceURL:      getEnv("RNG_SERVICE_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
-		SettingsServiceURL: getEnv("SETTINGS_SERVICE_URL", "https://t2.ibibe.africa/get-game-settings"),
-		ServerPort:         getEnv("SERVER_PORT", "11400"),
+		RNGServiceURL:      getEnv("RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
+		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t2.ibibe.africa/get-game-settings"),
+		ServerPort:         getEnv("PORT", "11400"),
+		LogFile:            getEnv("LOG_FILE", "app.log"),
 	}
 }
 
+// Function to get an environment variable or a default value
 func getEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
@@ -36,6 +40,7 @@ func getEnv(key, defaultValue string) string {
 	return value
 }
 
+// Function to get an environment variable as an integer or a default value
 func getEnvAsInt(key string, defaultValue int) int {
 	valueStr := getEnv(key, "")
 	if value, err := strconv.Atoi(valueStr); err == nil {

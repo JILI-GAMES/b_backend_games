@@ -79,9 +79,9 @@ Each game can be run as a standalone server with only its specific endpoints:
 Create a `.env` file in the root directory with the following variables:
 
 ```
-RNG_API_URL=http://159.89.235.166:17003/api/proxy/rng/1
-SETTINGS_API_URL=https://t2.ibibe.africa/get-game-settings
-PORT=11400
+RNG_API_URL=http://xxxxxxxxxx/xxxxxxxx
+SETTINGS_API_URL=https://xxxxxxxxxxxxxxx/xxxxxxxxxx
+PORT=8080
 LOG_FILE=app.log
 ```
 

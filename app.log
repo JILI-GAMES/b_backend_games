@@ -32,3 +32,39 @@
 2025/04/04 11:54:42 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
 2025/04/04 11:54:43 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":5,"request_salt":"73f297d5-ae1a-4e07-be66-1b64de6f801d","bet_amount":20}
 [2025-04-04 11:54:41] 200 - POST /spin/superace/deluxe
+2025/04/04 12:52:42 Starting server on port 11400
+2025/04/07 10:15:07 Starting server on port 11400
+2025/04/07 10:15:22 Error: Cannot GET /
+[2025-04-07 10:15:21] 404 - GET /
+2025/04/07 10:15:22 Error: Cannot GET /favicon.ico
+[2025-04-07 10:15:21] 404 - GET /favicon.ico
+2025/04/07 10:15:36 Bet multiplier: 1
+2025/04/07 10:15:36 Settings request: {"client_id":"1","game_id":"44","player_id":"22"}
+2025/04/07 10:15:38 Retrieved RTP: 0.990000
+2025/04/07 10:15:38 Win for Binoculars (count=3, ways=2): 0.400000
+2025/04/07 10:15:38 Worker 7 found a winning reel set after 1 attempts: [[J K Binoculars] [Binoculars Explorer A] [Binoculars A Binoculars] [K J K] [K Scatter Binoculars]], winAmount: 0.400000
+2025/04/07 10:15:38 Win for Q (count=5, ways=4): 3.200000
+2025/04/07 10:15:38 Worker 6 stopping after 1 attempts
+2025/04/07 10:15:38 Win for Treasure Chest (count=3, ways=4): 1.600000
+2025/04/07 10:15:38 Worker 4 stopping after 1 attempts
+2025/04/07 10:15:38 Win for J (count=3, ways=2): 0.100000
+2025/04/07 10:15:38 Win for Binoculars (count=3, ways=2): 0.400000
+2025/04/07 10:15:38 Win for Compass (count=3, ways=2): 0.500000
+2025/04/07 10:15:38 Worker 2 found a winning reel set after 2 attempts: [[J Binoculars Compass] [Wild Wild Treasure Chest] [Wild Q Treasure Chest] [Scatter Treasure Chest Explorer] [Treasure Chest Binoculars Q]], winAmount: 1.000000
+2025/04/07 10:15:38 Worker 3 found a winning reel set after 1 attempts: [[Treasure Chest Treasure Chest Q] [Compass Wild Scatter] [Wild A Wild] [Q Binoculars Compass] [Wild A Wild]], winAmount: 4.800000
+2025/04/07 10:15:38 Worker 3 stopping after 1 attempts (stopChan received)
+2025/04/07 10:15:38 Win for Treasure Chest (count=4, ways=1): 1.000000
+2025/04/07 10:15:38 Worker 1 found a winning reel set after 5 attempts: [[Compass Treasure Chest Scatter] [Treasure Chest Q Scatter] [Treasure Chest Binoculars K] [A Wild Scatter] [A Compass Scatter]], winAmount: 1.000000
+2025/04/07 10:15:38 Worker 1 stopping after 5 attempts (stopChan received)
+2025/04/07 10:15:38 Worker 0 stopping after 1 attempts
+2025/04/07 10:15:38 Worker 5 stopping after 1 attempts
+2025/04/07 10:15:38 Win for Binoculars (count=3, ways=2): 0.400000
+2025/04/07 10:15:38 Generated reels: [[J K Binoculars] [Binoculars Explorer A] [Binoculars A Binoculars] [K J K] [K Scatter Binoculars]]
+2025/04/07 10:15:38 Win for Binoculars (count=3, ways=2): 0.400000
+2025/04/07 10:15:38 Potential win: 0.400000
+2025/04/07 10:15:38 Payout multiplier: 1.333333
+2025/04/07 10:15:38 RNG request: {"client_id":"1","game_id":"44","player_id":"22","rtp":0.99,"payout_multiplier":1.3333333333333335,"request_salt":"b1ec0c3a-694e-4452-b3be-025ab8f18420","bet_amount":0.3}
+2025/04/07 10:15:39 RNG outcome: win
+[2025-04-07 10:15:36] 200 - POST /spin/kong
+2025/04/07 10:23:40 Starting server on port 11400
+[2025-04-07 10:24:37] 200 - GET /status

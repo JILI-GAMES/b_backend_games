@@ -451,6 +451,47 @@ func (gs *GameState) fillEmptyPositions() {
     }
 }
 
+// func (gs *GameState) fillEmptyPositions() {
+//     // Identify common symbols already on the grid
+//     symbolCounts := make(map[string]int)
+//     for i := 0; i < 5; i++ {
+//         for j := 0; j < 4; j++ {
+//             if gs.Cards[i][j].Name != "" && gs.Cards[i][j].Name != "SCATTER" {
+//                 symbolCounts[gs.Cards[i][j].Name]++
+//             }
+//         }
+//     }
+    
+//     // Find the most common symbol
+//     var mostCommonSymbol string
+//     maxCount := 0
+//     for symbol, count := range symbolCounts {
+//         if count > maxCount {
+//             maxCount = count
+//             mostCommonSymbol = symbol
+//         }
+//     }
+    
+//     // Default to a high value symbol if no common one found
+//     if mostCommonSymbol == "" {
+//         mostCommonSymbol = "ACE"
+//     }
+    
+//     // Fill empty positions with high chance of matching common symbol
+//     for i := 0; i < 5; i++ {
+//         for j := 0; j < 4; j++ {
+//             if gs.Cards[i][j].Name == "" && gs.Cards[i][j].Substitute == "" {
+//                 // 70% chance to place the most common symbol
+//                 if rand.Float32() < 0.7 {
+//                     gs.Cards[i][j] = Card{Name: mostCommonSymbol}
+//                 } else {
+//                     gs.Cards[i][j] = Card{Name: getRandomSymbol()}
+//                 }
+//             }
+//         }
+//     }
+// }
+
 func (gs *GameState) applyStarCard() {
     cascadeCount := gs.ComboMultiplier - 1
     if (cascadeCount >= 1 && cascadeCount <= 3 && rand.Float32() < 0.3) || cascadeCount >= 4 {

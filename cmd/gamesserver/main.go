@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
@@ -38,6 +39,17 @@ func main() {
 
 	// Add middleware
 	app.Use(recover.New())
+
+	// Add CORS middleware
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "*", 
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		ExposeHeaders:    "Content-Length",
+		AllowCredentials: true,
+		MaxAge:           86400, 
+	}))
+
 	app.Use(logger.New(logger.Config{
 		Format:     "[${time}] ${status} - ${method} ${path}\n",
 		TimeFormat: "2006-01-02 15:04:05",

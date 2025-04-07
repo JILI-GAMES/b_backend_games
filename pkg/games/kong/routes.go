@@ -20,7 +20,7 @@ func NewRouteGroup(rngClient *rng.Client, settingsClient *settings.Client) *Rout
 	}
 }
 
-// Register registers all treasure hunt game routes
+// Register registers the kong game routes
 func (rg *RouteGroup) Register(app *fiber.App) {
 	app.Post("/spin/kong", rg.SpinHandler)
 }

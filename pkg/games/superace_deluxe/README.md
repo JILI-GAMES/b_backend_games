@@ -161,11 +161,6 @@ The game integrates with two external services:
 
 ## Running as Standalone Service
 
-The SuperAce Deluxe game can run as a standalone service:
-
-```bash
-go run cmd/superace_deluxe/main.go
-```
 
 ## Environmental Configuration
 

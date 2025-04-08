@@ -6,14 +6,7 @@ This repository contains a modular, scalable backend for multiple casino games. 
 
 ```
 b_backend_games/
-├── cmd/                           # Command-line applications
-│   ├── gamesserver/               # Main server application
-│   │   └── main.go                # Entry point that aggregates games
-│   ├── superace_deluxe/           # Standalone superace deluxe game
-│   │   └── main.go                # Entry point for standalone game
-│   └── kong/              # Standalone treasure hunt game
-│       └── main.go                # Entry point for standalone game
-│
+├── main.go
 ├── pkg/                           # Shared packages
 │   ├── common/                    # Common functionality
 │   │   ├── rng/                   # RNG client code
@@ -55,19 +48,7 @@ b_backend_games/
 - `POST /spin/kong` - Treasure Hunt game spin endpoint
 - `GET /status` - Server status showing available games
 
-### Standalone Game Servers
-
-Each game can be run as a standalone server with only its specific endpoints:
-
-- SuperAce Deluxe:
-  - `POST /spin/superace/deluxe`
-  - `GET /status`
-
-- Treasure Hunt (Kong):
-  - `POST /spin/kong`
-  - `GET /status`
-
-## Getting Started
+### Getting Started
 
 ### Prerequisites
 
@@ -90,27 +71,14 @@ LOG_FILE=app.log
 #### Combined Server (All Games)
 
 ```bash
-go run cmd/gamesserver/main.go
-```
-
-#### Individual Game Servers
-
-SuperAce Deluxe:
-```bash
-go run cmd/superace_deluxe/main.go
-```
-
-Treasure Hunt:
-```bash
-go run cmd/treasurehunt/main.go
+go run main.go
 ```
 
 ## Adding a New Game
 
 1. Create a new package in `pkg/games/` with your game's name
 2. Implement the game logic, handlers, routes, and types
-3. Create a standalone main file in `cmd/` (optional)
-4. Register the game's routes in the main server (`cmd/gamesserver/main.go`)
+3. Register the game's routes in the main server (`main.go`)
 
 ## External Services
 

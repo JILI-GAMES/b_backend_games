@@ -127,13 +127,6 @@ The game uses Goroutines to parallelize reel generation, optimizing performance 
 - Trying different combinations in parallel
 - Ensuring at least one potential win in every spin
 
-## Running as Standalone Service
-
-The Treasure Hunt game can run as a standalone service:
-
-```bash
-go run cmd/kong/main.go
-```
 
 ## Integration
 

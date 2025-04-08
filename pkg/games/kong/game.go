@@ -67,6 +67,15 @@ var NonWinningSymbols = []Symbol{
 	SymbolJ,
 }
 
+// WinData represents the data for a winning combination
+type WinData struct {
+	Symbol    Symbol
+	Count     int
+	Ways      int
+	WinAmount float64
+	Positions [][]int
+}
+
 // Denomination for normal spins
 const Denomination = 0.01
 
@@ -122,7 +131,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 				default:
 					// Generate a reel set
 					reels := generateSingleReelSet()
-					winAmount := CalculateRegularWin(reels, false, 1, 0) // Use default values for checking win
+					winAmount, _ := CalculateRegularWin(reels, false, 1, 0) // Use default values for checking win
 
 					if guaranteeWin {
 						// We need a win
@@ -151,7 +160,8 @@ func GenerateReels(guaranteeWin bool) [][]string {
 								}
 							}
 							// Recheck the win amount after adding Scatters
-							if CalculateRegularWin(reels, false, 1, 0) == 0 {
+							winAmount2, _ := CalculateRegularWin(reels, false, 1, 0)
+							if winAmount2 == 0 {
 								log.Printf("Worker %d found a losing reel set after %d attempts: %v", workerID, attempts, reels)
 								select {
 								case resultChan <- reels:
@@ -180,7 +190,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 
 	// Verify the win condition
 	if guaranteeWin {
-		winAmount := CalculateRegularWin(reels, false, 1, 0)
+		winAmount, _ := CalculateRegularWin(reels, false, 1, 0)
 		if winAmount <= 0 {
 			log.Printf("Error: Generated reels do not have a win despite guaranteeWin=true: %v", reels)
 			// Force a simple win as a fallback, starting from Reel 0
@@ -191,122 +201,196 @@ func GenerateReels(guaranteeWin bool) [][]string {
 			reels[0][row] = string(winningSymbol)
 			reels[1][row] = string(winningSymbol)
 			reels[2][row] = string(winningSymbol)
-			log.Printf("Forced a win in row %d: %v, winAmount: %f", row, reels, CalculateRegularWin(reels, false, 1, 0))
+			winAmount, _ = CalculateRegularWin(reels, false, 1, 0)
+			log.Printf("Forced a win in row %d: %v, winAmount: %f", row, reels, winAmount)
 		}
 	}
 
 	return reels
 }
 
-func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, bonusMultiplier int) float64 {
+// func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, bonusMultiplier int) float64 {
+// 	totalWin := 0.0
+
+// 	// Map to store the longest count for each symbol
+// 	winCounts := make(map[Symbol]int) // Symbol -> Longest Count
+// 	// Map to store the number of matches on each reel for each symbol
+// 	matchesPerReel := make(map[Symbol][]int) // Symbol -> [Reel] -> Number of Matches
+
+// 	// Initialize the maps for each symbol
+// 	for symbol := range Paytable {
+// 		winCounts[symbol] = 0
+// 		matchesPerReel[symbol] = make([]int, 5)
+// 		// Count matches on each reel
+// 		for reel := 0; reel < 5; reel++ {
+// 			matches := 0
+// 			for row := 0; row < 3; row++ {
+// 				if reels[reel][row] == string(symbol) || reels[reel][row] == string(SymbolWild) {
+// 					matches++
+// 				}
+// 			}
+// 			matchesPerReel[symbol][reel] = matches
+// 		}
+// 	}
+
+// 	// Check all 243 ways to win to determine the longest consecutive match for each symbol
+// 	for row1 := 0; row1 < 3; row1++ {
+// 		for row2 := 0; row2 < 3; row2++ {
+// 			for row3 := 0; row3 < 3; row3++ {
+// 				for row4 := 0; row4 < 3; row4++ {
+// 					for row5 := 0; row5 < 3; row5++ {
+// 						path := []string{
+// 							reels[0][row1],
+// 							reels[1][row2],
+// 							reels[2][row3],
+// 							reels[3][row4],
+// 							reels[4][row5],
+// 						}
+// 						symbol, count := calculateLongestMatch(path)
+// 						if count >= 3 && symbol != SymbolScatter && symbol != SymbolWild {
+// 							if count > winCounts[symbol] {
+// 								winCounts[symbol] = count
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	// Calculate the total win for each symbol based on the longest count
+// 	for symbol, count := range winCounts {
+// 		if count >= 3 {
+// 			// Calculate the number of ways for this count
+// 			ways := 1
+// 			for reel := 0; reel < count; reel++ {
+// 				ways *= matchesPerReel[symbol][reel]
+// 			}
+// 			if ways > 0 {
+// 				if payout, exists := Paytable[symbol]; exists {
+// 					if baseWin, ok := payout[count]; ok {
+// 						win := baseWin
+// 						if isFreeSpin {
+// 							win *= Denomination
+// 							win *= float64(betMultiplier)
+// 							win *= float64(ways)
+// 							win *= float64(bonusMultiplier)
+// 						} else {
+// 							win *= Denomination
+// 							win *= float64(betMultiplier)
+// 							win *= float64(ways)
+// 						}
+// 						totalWin += win
+// 						log.Printf("Win for %s (count=%d, ways=%d): %f", symbol, count, ways, win)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	return totalWin
+// }
+
+// CalculateRegularWin calculates the win amount and returns winning positions
+func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, bonusMultiplier int) (float64, []WinningPosition) {
 	totalWin := 0.0
+	var winningPositions []WinningPosition
 
-	// Map to store the longest count for each symbol
-	winCounts := make(map[Symbol]int) // Symbol -> Longest Count
-	// Map to store the number of matches on each reel for each symbol
-	matchesPerReel := make(map[Symbol][]int) // Symbol -> [Reel] -> Number of Matches
-
-	// Initialize the maps for each symbol
-	for symbol := range Paytable {
-		winCounts[symbol] = 0
-		matchesPerReel[symbol] = make([]int, 5)
-		// Count matches on each reel
+	// For each symbol in the paytable, check for wins
+	for symbol, payouts := range Paytable {
+		// Find positions for this symbol or wild on each reel
+		positions := make([][]int, 5)
 		for reel := 0; reel < 5; reel++ {
-			matches := 0
 			for row := 0; row < 3; row++ {
 				if reels[reel][row] == string(symbol) || reels[reel][row] == string(SymbolWild) {
-					matches++
-				}
-			}
-			matchesPerReel[symbol][reel] = matches
-		}
-	}
-
-	// Check all 243 ways to win to determine the longest consecutive match for each symbol
-	for row1 := 0; row1 < 3; row1++ {
-		for row2 := 0; row2 < 3; row2++ {
-			for row3 := 0; row3 < 3; row3++ {
-				for row4 := 0; row4 < 3; row4++ {
-					for row5 := 0; row5 < 3; row5++ {
-						path := []string{
-							reels[0][row1],
-							reels[1][row2],
-							reels[2][row3],
-							reels[3][row4],
-							reels[4][row5],
-						}
-						symbol, count := calculateLongestMatch(path)
-						if count >= 3 && symbol != SymbolScatter && symbol != SymbolWild {
-							if count > winCounts[symbol] {
-								winCounts[symbol] = count
-							}
-						}
-					}
+					positions[reel] = append(positions[reel], row)
 				}
 			}
 		}
-	}
-
-	// Calculate the total win for each symbol based on the longest count
-	for symbol, count := range winCounts {
-		if count >= 3 {
-			// Calculate the number of ways for this count
+		
+		// Check for consecutive symbols from left to right
+		maxConsecutive := 0
+		for i := 0; i < 5; i++ {
+			if len(positions[i]) > 0 {
+				maxConsecutive = i + 1
+			} else {
+				break
+			}
+		}
+		
+		// If we have at least 3 consecutive symbols, it's a win
+		if maxConsecutive >= 3 {
+			// Calculate ways (multiply the number of symbols on each reel)
 			ways := 1
-			for reel := 0; reel < count; reel++ {
-				ways *= matchesPerReel[symbol][reel]
+			for i := 0; i < maxConsecutive; i++ {
+				ways *= len(positions[i])
 			}
-			if ways > 0 {
-				if payout, exists := Paytable[symbol]; exists {
-					if baseWin, ok := payout[count]; ok {
-						win := baseWin
-						if isFreeSpin {
-							win *= Denomination
-							win *= float64(betMultiplier)
-							win *= float64(ways)
-							win *= float64(bonusMultiplier)
-						} else {
-							win *= Denomination
-							win *= float64(betMultiplier)
-							win *= float64(ways)
-						}
-						totalWin += win
-						log.Printf("Win for %s (count=%d, ways=%d): %f", symbol, count, ways, win)
+			
+			// Look up the win amount in the paytable
+			if baseWin, ok := payouts[maxConsecutive]; ok {
+				// Calculate total win
+				win := baseWin
+				if isFreeSpin {
+					win *= Denomination
+					win *= float64(betMultiplier)
+					win *= float64(ways)
+					win *= float64(bonusMultiplier)
+				} else {
+					win *= Denomination
+					win *= float64(betMultiplier)
+					win *= float64(ways)
+				}
+				totalWin += win
+				
+				log.Printf("Win for %s (count=%d, ways=%d): %f", symbol, maxConsecutive, ways, win)
+				
+				// Add all contributing positions to winning positions
+				for reel := 0; reel < maxConsecutive; reel++ {
+					for _, row := range positions[reel] {
+						winningPositions = append(winningPositions, WinningPosition{
+							Symbol:   reels[reel][row], // Use actual symbol (could be wild)
+							Reel:     reel,
+							Row:      row,
+							Count:    maxConsecutive,
+							Ways:     ways,
+							WinValue: win, // Full win value
+						})
 					}
 				}
 			}
 		}
 	}
 
-	return totalWin
+	return totalWin, winningPositions
 }
 
-// calculateLongestMatch determines the longest consecutive match for a single path
-func calculateLongestMatch(symbols []string) (Symbol, int) {
-	// The winning symbol must start from Reel 0
-	currentSymbol := symbols[0]
-	if currentSymbol == string(SymbolScatter) || currentSymbol == string(SymbolWild) {
-		return SymbolScatter, 0 // No win if Reel 0 is Scatter or Wild
-	}
+// // calculateLongestMatch determines the longest consecutive match for a single path
+// func calculateLongestMatch(symbols []string) (Symbol, int) {
+// 	// The winning symbol must start from Reel 0
+// 	currentSymbol := symbols[0]
+// 	if currentSymbol == string(SymbolScatter) || currentSymbol == string(SymbolWild) {
+// 		return SymbolScatter, 0 // No win if Reel 0 is Scatter or Wild
+// 	}
 
-	// Count the longest consecutive matches starting from Reel 0
-	count := 1
-	for i := 1; i < len(symbols); i++ {
-		if symbols[i] == string(SymbolScatter) {
-			break // Scatter breaks the sequence
-		}
-		if symbols[i] == string(SymbolWild) || symbols[i] == currentSymbol {
-			count++
-		} else {
-			break // Non-matching symbol breaks the sequence
-		}
-	}
+// 	// Count the longest consecutive matches starting from Reel 0
+// 	count := 1
+// 	for i := 1; i < len(symbols); i++ {
+// 		if symbols[i] == string(SymbolScatter) {
+// 			break // Scatter breaks the sequence
+// 		}
+// 		if symbols[i] == string(SymbolWild) || symbols[i] == currentSymbol {
+// 			count++
+// 		} else {
+// 			break // Non-matching symbol breaks the sequence
+// 		}
+// 	}
 
-	if count < 3 {
-		return SymbolScatter, 0 // Need at least 3 symbols to win
-	}
+// 	if count < 3 {
+// 		return SymbolScatter, 0 // Need at least 3 symbols to win
+// 	}
 
-	return Symbol(currentSymbol), count
-}
+// 	return Symbol(currentSymbol), count
+// }
 
 // CountScatters counts the number of Scatters on the reels
 func CountScatters(reels [][]string) int {

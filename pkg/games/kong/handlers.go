@@ -88,9 +88,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	reels := GenerateReels(true)
 	log.Printf("Generated reels: %v", reels)
 
-	// Calculate potential win
-	potentialWin := CalculateRegularWin(reels, req.IsFreeSpin, betMultiplier, req.BonusMultiplier)
+	// Calculate potential win and winning positions
+	potentialWin, winningPositions := CalculateRegularWin(reels, req.IsFreeSpin, betMultiplier, req.BonusMultiplier)
 	log.Printf("Potential win: %f", potentialWin)
+	log.Printf("Winning positions: %v", winningPositions)
 
 	// Calculate payout multiplier
 	betAmountForPayout := req.BetAmount
@@ -118,6 +119,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		reels = GenerateReels(false)
 		log.Printf("Forced loss, new reels: %v", reels)
 		winAmount = 0
+		winningPositions = []WinningPosition{}
 	}
 
 	// Check for Free Spin Bonus trigger/retrigger
@@ -144,6 +146,22 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		log.Printf("Free spin triggered/retriggered: scatterCount=%d, newFreeSpinCount=%d, newBonusMultiplier=%d", scatterCount, newFreeSpinCount, newBonusMultiplier)
 	}
 
+	// // Add scatter positions to winning positions when free spins are triggered
+	// for reel := 0; reel < 5; reel++ {
+	// 	for row := 0; row < 3; row++ {
+	// 		if reels[reel][row] == string(SymbolScatter) {
+	// 			winningPositions = append(winningPositions, WinningPosition{
+	// 				Symbol:   string(SymbolScatter),
+	// 				Reel:     reel,
+	// 				Row:      row,
+	// 				Count:    scatterCount,
+	// 				Ways:     1,
+	// 				WinValue: 0, // Scatters don't have direct win value, but trigger free spins
+	// 			})
+	// 		}
+	// 	}
+	// }
+
 	// Update free spin state
 	if newIsFreeSpin {
 		newFreeSpinCount--
@@ -163,6 +181,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		FreeSpinCount:     newFreeSpinCount,
 		BonusMultiplier:   newBonusMultiplier,
 		FreeSpinTriggered: freeSpinTriggered,
+		WinningPositions:  winningPositions,
 	}
 
 	return c.JSON(response)

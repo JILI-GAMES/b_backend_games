@@ -1,0 +1,97 @@
+#name: Deploy Service
+#
+#on:
+#  push:
+#    branches: [ test, staging, prod ]
+#
+#jobs:
+#  deploy:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#    - uses: actions/checkout@v3
+#
+#    - name: Get branch name
+#      id: branch
+#      run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+#
+#    - name: Set repository info
+#      id: repo
+#      run: |
+#        echo "full_name=${{ github.repository }}" >> $GITHUB_OUTPUT
+#        echo "name=$(echo '${{ github.repository }}' | cut -d'/' -f2)" >> $GITHUB_OUTPUT
+#
+#    - name: Deploy via Bastion
+#      uses: appleboy/ssh-action@master
+#      with:
+#        host: ${{ secrets.BASTION_HOST }}
+#        username: ${{ secrets.SSH_USER }}
+#        key: ${{ secrets.DEPLOY_SSH_KEY }}
+#        script: |
+#          # Use the explicitly passed repository information
+#          FULL_REPO="${{ steps.repo.outputs.full_name }}"
+#          REPO_NAME="${{ steps.repo.outputs.name }}"
+#          BRANCH="${{ steps.branch.outputs.name }}"
+#
+#          echo "Deploying $FULL_REPO - $REPO_NAME on branch $BRANCH"
+#
+#          # Determine service name based on repository naming convention
+#          if [[ "$REPO_NAME" == game-server-* ]]; then
+#            SERVICE_NAME="$REPO_NAME"
+#          else
+#            SERVICE_NAME="$REPO_NAME"
+#          fi
+#
+#          # Connect to test server via SSH and run the deployment script
+#          ssh test-server "/opt/gaming/scripts/deploy.sh $FULL_REPO $SERVICE_NAME $BRANCH"
+
+name: Deploy Service
+
+on:
+  push:
+    branches: [ test, staging, prod ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get branch name
+        id: branch
+        run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Set repository info
+        id: repo
+        run: |
+          echo "full_name=${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "name=$(echo '${{ github.repository }}' | cut -d'/' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Deploy via Bastion
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.BASTION_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            # Use the explicitly passed repository information
+            FULL_REPO="${{ steps.repo.outputs.full_name }}"
+            REPO_NAME="${{ steps.repo.outputs.name }}"
+            BRANCH="${{ steps.branch.outputs.name }}"
+            
+            echo "Deploying $FULL_REPO - $REPO_NAME on branch $BRANCH"
+            
+            # Map repository names to service names
+            if [ "$REPO_NAME" = "b_backend_games" ]; then
+              SERVICE_NAME="game-server-mwema"
+            elif [[ "$REPO_NAME" == game-server-* ]]; then
+              SERVICE_NAME="$REPO_NAME"
+            else
+              SERVICE_NAME="$REPO_NAME"
+            fi
+            
+            echo "Using service name: $SERVICE_NAME"
+            
+            # Connect to test server via SSH and run the deployment script
+            ssh test-server "/opt/gaming/scripts/deploy.sh $FULL_REPO $SERVICE_NAME $BRANCH"

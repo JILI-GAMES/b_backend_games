@@ -1,9 +1,9 @@
 package superace_deluxe
 
 import (
-    "fmt"
-    "math/rand"
-    "time"
+	"fmt"
+	"math/rand"
+	"time"
 )
 
 type SymbolWeight struct {
@@ -349,34 +349,40 @@ func (gs *GameState) ApplyRNGOutcome(rngResp RNGResponse, action string) {
 }
 
 func (gs *GameState) generateGrid() {
-    // Step 1: Pick a random non-Scatter symbol for the guaranteed win
     nonScatterSymbols := []string{"ACE", "KING", "QUEEN", "JACK", "SPADE", "HEART", "DIAMOND", "CLUB"}
     winSymbol := nonScatterSymbols[rand.Intn(len(nonScatterSymbols))]
 
-    // Step 2: Randomly select a starting reel (0, 1, or 2) to ensure 3 adjacent reels
-    startReel := rand.Intn(3)
-
-    // Step 3: Place the symbol in 3 adjacent reels, randomizing the row for each
+    // Decide how many reels will have the winning symbol (3, 4, or 5)
+    winReelCount := rand.Intn(3) + 3 // Randomly choose 3, 4, or 5
     positions := make(map[[2]int]bool)
-    for reel := startReel; reel < startReel+3; reel++ {
+
+    // Place the symbol on consecutive reels starting from 0
+    lastRow := -1
+    for reel := 0; reel < winReelCount; reel++ {
         row := rand.Intn(4)
+        // Minimize chance of same row (50% chance to avoid)
+        if row == lastRow && rand.Float32() < 0.5 {
+            row = (row + rand.Intn(3) + 1) % 4
+        }
         gs.Cards[reel][row] = Card{Name: winSymbol}
         positions[[2]int{reel, row}] = true
+        lastRow = row
     }
 
-    // Step 4: Fill the remaining positions randomly
+    // Fill remaining positions randomly
     for i := 0; i < 5; i++ {
         for j := 0; j < 4; j++ {
-            if positions[[2]int{i, j}] {
-                continue
-            }
-            if gs.Cards[i][j].Name == "" {
-                gs.Cards[i][j] = Card{Name: getRandomSymbol()}
+            if !positions[[2]int{i, j}] && gs.Cards[i][j].Name == "" {
+                newSymbol := getRandomSymbol()
+                if newSymbol == winSymbol && rand.Float32() < 0.8 {
+                    newSymbol = getRandomNonScatterSymbol()
+                }
+                gs.Cards[i][j] = Card{Name: newSymbol}
             }
         }
     }
-    // Debug: Print the grid
-    fmt.Println("Generated grid:")
+
+    fmt.Println("Generated grid with guaranteed left-to-right win:")
     for j := 0; j < 4; j++ {
         row := ""
         for i := 0; i < 5; i++ {
@@ -385,6 +391,44 @@ func (gs *GameState) generateGrid() {
         fmt.Println(row)
     }
 }
+
+// func (gs *GameState) generateGrid() {
+//     // Step 1: Pick a random non-Scatter symbol for the guaranteed win
+//     nonScatterSymbols := []string{"ACE", "KING", "QUEEN", "JACK", "SPADE", "HEART", "DIAMOND", "CLUB"}
+//     winSymbol := nonScatterSymbols[rand.Intn(len(nonScatterSymbols))]
+
+//     // Step 2: Randomly select a starting reel (0, 1, or 2) to ensure 3 adjacent reels
+//     startReel := rand.Intn(3)
+
+//     // Step 3: Place the symbol in 3 adjacent reels, randomizing the row for each
+//     positions := make(map[[2]int]bool)
+//     for reel := startReel; reel < startReel+3; reel++ {
+//         row := rand.Intn(4)
+//         gs.Cards[reel][row] = Card{Name: winSymbol}
+//         positions[[2]int{reel, row}] = true
+//     }
+
+//     // Step 4: Fill the remaining positions randomly
+//     for i := 0; i < 5; i++ {
+//         for j := 0; j < 4; j++ {
+//             if positions[[2]int{i, j}] {
+//                 continue
+//             }
+//             if gs.Cards[i][j].Name == "" {
+//                 gs.Cards[i][j] = Card{Name: getRandomSymbol()}
+//             }
+//         }
+//     }
+//     // Debug: Print the grid
+//     fmt.Println("Generated grid:")
+//     for j := 0; j < 4; j++ {
+//         row := ""
+//         for i := 0; i < 5; i++ {
+//             row += gs.Cards[i][j].Name + "\t"
+//         }
+//         fmt.Println(row)
+//     }
+// }
 
 func (gs *GameState) removeTransformed() {
     for i := 0; i < 5; i++ {

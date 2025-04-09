@@ -41,22 +41,6 @@ type SpinResponse struct {
     Data    GameState `json:"data"`
 }
 
-// RTPRequest for external RTP API
-type RTPRequest struct {
-    ClientID string `json:"client_id"`
-    GameID   string `json:"game_id"`
-    PlayerID string `json:"player_id"`
-}
-
-// RTPResponse from external RTP API
-type RTPResponse struct {
-    Data struct {
-        GameBets string `json:"game_bets"`
-        GameRTP  string `json:"game_rtp"`
-        GameWins string `json:"game_wins"`
-    } `json:"data"`
-}
-
 // RNGRequest for external RNG API
 type RNGRequest struct {
     ClientID        string  `json:"client_id"`
@@ -73,4 +57,91 @@ type RNGResponse struct {
     PrefOutcome string  `json:"pref_outcome"`
     WinAmount   float64 `json:"win_amount"`
     WinProb     float64 `json:"win_prob"`
+}
+
+//-----------------------------------------------------------------------------------//
+
+// RowBasedCard represents the same card data but organized for row-based representation
+type RowBasedCard struct {
+    Name        string `json:"name"`
+    Substitute  string `json:"substitute"`
+    Golden      bool   `json:"golden"`
+    Transformed bool   `json:"transformed"`
+}
+
+// RowBasedGameState represents the game state with cards organized by rows instead of reels
+type RowBasedGameState struct {
+    FreeSpins       int              `json:"freeSpins"`
+    AmountWon       float64          `json:"amountWon"`
+    ComboMultiplier int              `json:"comboMultiplier"`
+    Cards           [4][5]RowBasedCard `json:"cards"` // 4x5 grid (row-based)
+    Mode            string           `json:"mode"`
+    BetAmount       float64          `json:"betAmount"`
+}
+
+// RowBasedSpinResponse represents the server response with row-based cards
+type RowBasedSpinResponse struct {
+    Status  int            `json:"status"`
+    Message string         `json:"message"`
+    Data    RowBasedGameState `json:"data"`
+}
+
+// RowBasedSpinRequest represents the client request with row-based cards
+type RowBasedSpinRequest struct {
+    Game struct {
+        ID     string `json:"id"`
+        Name   string `json:"name"`
+        Mode   string `json:"mode"`
+    } `json:"game"`
+    BetAmount       float64         `json:"betAmount"`
+    ClientID        string          `json:"clientId"`
+    PlayerID        string          `json:"playerId"`
+    Action          string          `json:"action"` // "SPIN" or "TRANSFORM"
+    Cards           [4][5]RowBasedCard `json:"cards,omitempty"`
+    ComboMultiplier int             `json:"comboMultiplier,omitempty"`
+    FreeSpins       int             `json:"freeSpins,omitempty"`    
+}
+
+// ConvertToRowBased converts a reel-based GameState to a row-based RowBasedGameState
+func (gs *GameState) ConvertToRowBased() RowBasedGameState {
+    rowBased := RowBasedGameState{
+        FreeSpins:       gs.FreeSpins,
+        AmountWon:       gs.AmountWon,
+        ComboMultiplier: gs.ComboMultiplier,
+        Mode:            gs.Mode,
+        BetAmount:       gs.BetAmount,
+    }
+    
+    // Transform the 5x4 reel-based grid to a 4x5 row-based grid
+    for row := 0; row < 4; row++ {
+        for reel := 0; reel < 5; reel++ {
+            rowBased.Cards[row][reel] = RowBasedCard{
+                Name:        gs.Cards[reel][row].Name,
+                Substitute:  gs.Cards[reel][row].Substitute,
+                Golden:      gs.Cards[reel][row].Golden,
+                Transformed: gs.Cards[reel][row].Transformed,
+            }
+        }
+    }
+    
+    return rowBased
+}
+
+// ConvertToReelBased converts row-based cards to reel-based cards
+func ConvertToReelBased(rowBasedCards [4][5]RowBasedCard) [5][4]Card {
+    var reelBased [5][4]Card
+    
+    // Transform the 4x5 row-based grid to a 5x4 reel-based grid
+    for row := 0; row < 4; row++ {
+        for reel := 0; reel < 5; reel++ {
+            reelBased[reel][row] = Card{
+                Name:        rowBasedCards[row][reel].Name,
+                Substitute:  rowBasedCards[row][reel].Substitute,
+                Golden:      rowBasedCards[row][reel].Golden,
+                Transformed: rowBasedCards[row][reel].Transformed,
+            }
+        }
+    }
+    
+    return reelBased
 }

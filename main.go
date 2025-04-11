@@ -9,6 +9,7 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/kong"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicace"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -62,6 +63,9 @@ func main() {
 
 	kongRoutes := kong.NewRouteGroup(rngClient, settingsClient)
 	kongRoutes.Register(app)
+
+	magicAceRoutes := magicace.NewRouteGroup(rngClient, settingsClient)
+	magicAceRoutes.Register(app)
 
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {

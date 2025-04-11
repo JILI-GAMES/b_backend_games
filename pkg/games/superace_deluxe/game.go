@@ -360,8 +360,8 @@ func (gs *GameState) generateGrid() {
     lastRow := -1
     for reel := 0; reel < winReelCount; reel++ {
         row := rand.Intn(4)
-        // Minimize chance of same row (50% chance to avoid)
-        if row == lastRow && rand.Float32() < 0.5 {
+        // Minimize chance of same row (10% chance to avoid)
+        if row == lastRow && rand.Float32() < 0.1 {
             row = (row + rand.Intn(3) + 1) % 4
         }
         gs.Cards[reel][row] = Card{Name: winSymbol}
@@ -434,7 +434,8 @@ func (gs *GameState) removeTransformed() {
     for i := 0; i < 5; i++ {
         for j := 0; j < 4; j++ {
             if gs.Cards[i][j].Transformed {
-                gs.Cards[i][j] = Card{}
+                gs.Cards[i][j].Name = ""
+                gs.Cards[i][j].Substitute = ""
             }
         }
     }
@@ -457,6 +458,7 @@ func (gs *GameState) applyGoldenTransformations() {
 
 func (gs *GameState) replicateBigJoker(row, col int) {
     replicates := rand.Intn(4) + 1
+    fmt.Printf("Replicating BIG_JOKER %d times\n", replicates)
     for r := 0; r < replicates; r++ {
         i := rand.Intn(4) + 1
         j := rand.Intn(4)
@@ -465,6 +467,7 @@ func (gs *GameState) replicateBigJoker(row, col int) {
         }
     }
 }
+
 func (gs *GameState) fillEmptyPositions() {
     // First, find existing symbols in the first reel to potentially match
     firstReelSymbols := []string{}

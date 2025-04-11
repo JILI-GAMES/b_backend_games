@@ -1,1 +1,21 @@
 2025/04/08 13:54:05 Starting server on port 11400
+2025/04/10 20:12:01 Starting SuperAce Deluxe server on port 11400
+2025/04/10 20:18:09 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/10 20:18:11 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":16.599999999999998,"request_salt":"81f489e4-86b6-42d0-9107-b0ee97b14f73","bet_amount":2}
+[2025-04-10 20:18:09] 200 - POST /spin/superace/deluxe
+2025/04/10 20:21:42 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/10 20:21:44 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":0,"request_salt":"9de5d803-0e67-4490-bd74-acc6ef204d44","bet_amount":2}
+[2025-04-10 20:21:42] 200 - POST /spin/superace/deluxe
+2025/04/10 20:29:55 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/10 20:29:56 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":0.6000000000000001,"request_salt":"357dc7d8-7d5e-403f-bd9f-404cef2f147f","bet_amount":2}
+[2025-04-10 20:29:55] 200 - POST /spin/superace/deluxe
+2025/04/10 20:32:22 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/10 20:32:23 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":4.800000000000001,"request_salt":"1e30bb58-26fd-435e-99c1-7fc10b5026d1","bet_amount":2}
+[2025-04-10 20:32:22] 200 - POST /spin/superace/deluxe
+2025/04/10 20:34:27 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/10 20:34:28 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":12,"request_salt":"05758967-d884-426a-931f-3d297160a9d4","bet_amount":2}
+[2025-04-10 20:34:26] 200 - POST /spin/superace/deluxe
+2025/04/10 20:41:07 Starting SuperAce Deluxe server on port 11400
+2025/04/10 20:41:54 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
+2025/04/10 20:41:55 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":20,"request_salt":"7ed46c46-912f-42f0-8fe3-9d321ff2883b","bet_amount":2}
+[2025-04-10 20:41:54] 200 - POST /spin/superace/deluxe

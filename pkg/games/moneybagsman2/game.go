@@ -3,8 +3,8 @@ package moneybagsman2
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
-	"strings"
 	"sync"
 	"time"
 )
@@ -189,8 +189,8 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
     totalPayout := 0.0
     var winDetails []WinDetail
 
-    // Map to store the MAXIMUM win for each unique payline path: map[pathKey]WinDetail
-    maxWinsByPath := make(map[string]WinDetail)
+    // Map to store the MAXIMUM win for each payline start and symbol: map[startKey+symbol]WinDetail
+    maxWinsByStartAndSymbol := make(map[string]WinDetail)
     var winsMu sync.Mutex // Mutex for thread-safe access to our maps
 
     // Worker pool configuration
@@ -280,30 +280,33 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
         close(results)
     }()
 
-    // Process wins, keeping all unique payline paths
+    // Process wins, keeping only the longest match for each starting positions and symbol
     for win := range results {
         if len(win.Positions) < 2 {
             continue
         }
         
-        // Create a key from the entire payline path to uniquely identify it
-        var pathKey strings.Builder
-        pathKey.WriteString(win.Symbol) // Include symbol in the key
-        for _, pos := range win.Positions {
-            pathKey.WriteString(fmt.Sprintf("|%d,%d", pos.Reel, pos.Row))
-        }
+        // Create a key from the first two positions and symbol to group related paths
+        startKey := fmt.Sprintf("%s|%d,%d|%d,%d", 
+            win.Symbol,
+            win.Positions[0].Reel, win.Positions[0].Row,
+            win.Positions[1].Reel, win.Positions[1].Row)
         
         winsMu.Lock()
         
-        // Store this unique payline win
-        maxWinsByPath[pathKey.String()] = win
+        // Only keep the win with the highest match count (longest path)
+        existingWin, exists := maxWinsByStartAndSymbol[startKey]
+        if !exists || win.Count > existingWin.Count || 
+           (win.Count == existingWin.Count && win.Payout > existingWin.Payout) {
+            maxWinsByStartAndSymbol[startKey] = win
+        }
         
         winsMu.Unlock()
     }
 
     // Collect all the maximum wins
     winsMu.Lock()
-    for _, win := range maxWinsByPath {
+    for _, win := range maxWinsByStartAndSymbol {
         log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v", 
             win.Symbol, win.Count, betMultiplier, 
             func() int {
@@ -314,12 +317,152 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
             }(), win.Payout)
         
         totalPayout += win.Payout
+        totalPayout = math.Round(totalPayout*100) / 100
         winDetails = append(winDetails, win)
     }
     winsMu.Unlock()
 
     return totalPayout, winDetails
 }
+
+// // CalculateWins calculates the total payout and win details using Go concurrency
+// func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, isFreeSpin bool) (float64, []WinDetail) {
+//     totalPayout := 0.0
+//     var winDetails []WinDetail
+
+//     // Map to store the MAXIMUM win for each unique payline path: map[pathKey]WinDetail
+//     maxWinsByPath := make(map[string]WinDetail)
+//     var winsMu sync.Mutex // Mutex for thread-safe access to our maps
+
+//     // Worker pool configuration
+//     const maxWorkers = 50
+//     jobs := make(chan struct {
+//         wayIndex int
+//         way      []int
+//     }, len(WaysToWin))
+//     results := make(chan WinDetail, len(WaysToWin))
+//     var wg sync.WaitGroup
+
+//     // Start workers to identify potential wins
+//     for w := 0; w < maxWorkers; w++ {
+//         wg.Add(1)
+//         go func() {
+//             defer wg.Done()
+//             for job := range jobs {
+//                 way := job.way
+
+//                 // Preallocate slices
+//                 symbols := make([]string, 0, 5)
+//                 payline := make([]Position, 0, 5)
+
+//                 for reel, row := range way {
+//                     symbol := reels[reel][row]
+//                     symbols = append(symbols, symbol)
+//                     pos := Position{Reel: reel, Row: row}
+//                     payline = append(payline, pos)
+//                 }
+
+//                 // Count matching symbols
+//                 firstSymbol := symbols[0]
+//                 if firstSymbol == string(SymbolScatter) {
+//                     continue
+//                 }
+
+//                 // If the first symbol is Wild, find the first non-Wild, non-Scatter symbol
+//                 if firstSymbol == string(SymbolWild) {
+//                     for i := 1; i < len(symbols); i++ {
+//                         if symbols[i] != string(SymbolWild) && symbols[i] != string(SymbolScatter) {
+//                             firstSymbol = symbols[i]
+//                             break
+//                         }
+//                     }
+//                 }
+//                 matchCount := 1
+//                 for i := 1; i < len(symbols); i++ {
+//                     currentSymbol := symbols[i]
+//                     if currentSymbol == firstSymbol || currentSymbol == string(SymbolWild) {
+//                         matchCount++
+//                     } else {
+//                         break
+//                     }
+//                 }
+
+//                 if matchCount >= 3 {
+//                     // Apply freeSpinMultiplier only during free spins; otherwise, use 1
+//                     effectiveMultiplier := 1
+//                     if isFreeSpin {
+//                         effectiveMultiplier = freeSpinMultiplier
+//                     }
+//                     payout := Paytable[Symbol(firstSymbol)][matchCount] * float64(betMultiplier) * float64(effectiveMultiplier) * Denomination
+//                     win := WinDetail{
+//                         Symbol:    firstSymbol,
+//                         Count:     matchCount,
+//                         Payout:    payout,
+//                         Positions: payline[:matchCount],
+//                     }
+//                     results <- win
+//                 }
+//             }
+//         }()
+//     }
+
+//     // Send jobs to workers
+//     for wayIndex, way := range WaysToWin {
+//         jobs <- struct {
+//             wayIndex int
+//             way      []int
+//         }{wayIndex: wayIndex, way: way}
+//     }
+//     close(jobs)
+
+//     // Close the results channel after all workers are done
+//     go func() {
+//         wg.Wait()
+//         close(results)
+//     }()
+
+//     // Process wins, keeping all unique payline paths
+//     for win := range results {
+//         if len(win.Positions) < 2 {
+//             continue
+//         }
+        
+//         // Create a key from the entire payline path to uniquely identify it
+//         var pathKey strings.Builder
+//         pathKey.WriteString(win.Symbol) // Include symbol in the key
+//         for _, pos := range win.Positions {
+//             pathKey.WriteString(fmt.Sprintf("|%d,%d", pos.Reel, pos.Row))
+//         }
+        
+//         winsMu.Lock()
+        
+//         // Store this unique payline win
+//         maxWinsByPath[pathKey.String()] = win
+        
+//         winsMu.Unlock()
+//     }
+
+//     // Collect all the maximum wins
+//     winsMu.Lock()
+//     for _, win := range maxWinsByPath {
+//         log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v", 
+//             win.Symbol, win.Count, betMultiplier, 
+//             func() int {
+//                 if isFreeSpin {
+//                     return freeSpinMultiplier
+//                 }
+//                 return 1
+//             }(), win.Payout)
+        
+//         totalPayout += win.Payout
+//         winDetails = append(winDetails, win)
+//     }
+//     winsMu.Unlock()
+
+//     return totalPayout, winDetails
+// }
+
+
 
 // CountScatters counts the number of Scatter symbols on the reels
 func CountScatters(reels [][]string) int {

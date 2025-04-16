@@ -7,9 +7,12 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/config"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
+
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/kong"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicace"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
+
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -67,6 +70,10 @@ func main() {
 	magicAceRoutes := magicace.NewRouteGroup(rngClient, settingsClient)
 	magicAceRoutes.Register(app)
 
+	moneyBagsMan2Routes := moneybagsman2.NewRouteGroup(rngClient, settingsClient)
+	moneyBagsMan2Routes.Register(app)
+
+
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -74,6 +81,8 @@ func main() {
 			"games": []string{
 				"superace_deluxe",
 				"kong",
+				"magicAce",
+				"moneyBagsMan2",
 			},
 		})
 	})

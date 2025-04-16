@@ -253,6 +253,7 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
                         effectiveMultiplier = freeSpinMultiplier
                     }
                     payout := Paytable[Symbol(firstSymbol)][matchCount] * float64(betMultiplier) * float64(effectiveMultiplier) * Denomination
+                    payout = math.Round(payout*100) / 100
                     win := WinDetail{
                         Symbol:    firstSymbol,
                         Count:     matchCount,

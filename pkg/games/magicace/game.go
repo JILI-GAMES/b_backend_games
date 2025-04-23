@@ -292,50 +292,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
     return newReels, specialSymbols
 }
 
-// GenerateReelsForCascade generates new symbols for a cascade with a potential win (Improvement #1: Removed RNG calls)
-// func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]bool, jokerCards []JokerCard) ([][]string, SpecialSymbols) {
-//     r := rand.New(rand.NewSource(time.Now().UnixNano()))
-//     newReels := make([][]string, Reels)
-//     for reel := 0; reel < Reels; reel++ {
-//         newReels[reel] = make([]string, Rows)
-//         copy(newReels[reel], reels[reel])
-//     }
-
-//     var specialSymbols SpecialSymbols
-//     specialSymbols.JokerCards = jokerCards
-
-//     // Keep generating until a potential win is found (Improvement #6 skipped, no deterministic construction)
-//     for {
-//         specialSymbols.GoldenCards = nil
-//         specialSymbols.TargetSymbols = nil
-
-//         // Replace only the winning positions
-//         for pos := range winningPositions {
-//             symbol := WeightedRandomSymbol(r)
-//             // Add Golden Cards on reels 2, 3, 4 with a 5% chance
-//             if pos.Reel >= 1 && pos.Reel <= 3 && symbol != SymbolScatter && r.Float64() < GoldenCardProbability {
-//                 specialSymbols.GoldenCards = append(specialSymbols.GoldenCards, pos)
-//                 newReels[pos.Reel][pos.Row] = fmt.Sprintf("golden_%s", string(symbol))
-//             } else {
-//                 newReels[pos.Reel][pos.Row] = string(symbol)
-//             }
-
-//             if symbol == SymbolScatter {
-//                 specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
-//             }
-//         }
-
-//         // Check for a potential win
-//         totalWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
-//         if totalWinnings > 0 {
-//             break
-//         }
-//     }
-
-//     return newReels, specialSymbols
-// }
-
-// GenerateLossForCascade generates new symbols for a cascade with no wins (Improvement #1: Removed RNG calls)
+// GenerateLossForCascade generates new symbols for a cascade with no wins
 func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool, jokerCards []JokerCard) ([][]string, SpecialSymbols) {
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
     newReels := make([][]string, Reels)
@@ -347,14 +304,23 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
     var specialSymbols SpecialSymbols
     specialSymbols.JokerCards = jokerCards
 
-    // Keep generating until no wins are found (Improvement #6 skipped, no deterministic construction)
+    // Preserve existing Scatters and Jokers
+    for reel := 0; reel < Reels; reel++ {
+        for row := 0; row < Rows; row++ {
+            pos := Position{Reel: reel, Row: row}
+            if newReels[reel][row] == string(SymbolScatter) {
+                specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
+            }
+        }
+    }
+
+    // Keep generating until no wins are found
     for {
         specialSymbols.GoldenCards = nil
-        specialSymbols.TargetSymbols = nil
+        specialSymbols.NewTargetSymbols = nil
 
-        // Replace only the winning positions
+        // Replace only the winning positions, skipping Jokers
         for pos := range winningPositions {
-            // Don't replace Joker Cards
             isJoker := false
             for _, joker := range jokerCards {
                 if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
@@ -366,15 +332,21 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
                 continue
             }
 
-            // Avoid Golden Cards and Scatters
+            // Avoid Golden Cards and Scatters to minimize wins
             availableSymbols := []Symbol{
                 SymbolA, SymbolK, SymbolQ, SymbolJ,
                 SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
             }
             symbol := availableSymbols[r.Intn(len(availableSymbols))]
-            // Avoid matching the previous symbol
+            // Ensure the new symbol breaks potential wins involving Jokers
             if pos.Reel > 0 {
                 previousSymbol := newReels[pos.Reel-1][pos.Row]
+                for _, joker := range jokerCards {
+                    if joker.Position.Reel == pos.Reel-1 && joker.Position.Row == pos.Row {
+                        previousSymbol = string(SymbolWild)
+                        break
+                    }
+                }
                 for {
                     symbol = availableSymbols[r.Intn(len(availableSymbols))]
                     if string(symbol) != previousSymbol {
@@ -394,6 +366,64 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 
     return newReels, specialSymbols
 }
+// func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool, jokerCards []JokerCard) ([][]string, SpecialSymbols) {
+//     r := rand.New(rand.NewSource(time.Now().UnixNano()))
+//     newReels := make([][]string, Reels)
+//     for reel := 0; reel < Reels; reel++ {
+//         newReels[reel] = make([]string, Rows)
+//         copy(newReels[reel], reels[reel])
+//     }
+
+//     var specialSymbols SpecialSymbols
+//     specialSymbols.JokerCards = jokerCards
+
+//     // Keep generating until no wins are found (Improvement #6 skipped, no deterministic construction)
+//     for {
+//         specialSymbols.GoldenCards = nil
+//         specialSymbols.TargetSymbols = nil
+
+//         // Replace only the winning positions
+//         for pos := range winningPositions {
+//             // Don't replace Joker Cards
+//             isJoker := false
+//             for _, joker := range jokerCards {
+//                 if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
+//                     isJoker = true
+//                     break
+//                 }
+//             }
+//             if isJoker {
+//                 continue
+//             }
+
+//             // Avoid Golden Cards and Scatters
+//             availableSymbols := []Symbol{
+//                 SymbolA, SymbolK, SymbolQ, SymbolJ,
+//                 SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
+//             }
+//             symbol := availableSymbols[r.Intn(len(availableSymbols))]
+//             // Avoid matching the previous symbol
+//             if pos.Reel > 0 {
+//                 previousSymbol := newReels[pos.Reel-1][pos.Row]
+//                 for {
+//                     symbol = availableSymbols[r.Intn(len(availableSymbols))]
+//                     if string(symbol) != previousSymbol {
+//                         break
+//                     }
+//                 }
+//             }
+//             newReels[pos.Reel][pos.Row] = string(symbol)
+//         }
+
+//         // Check for no wins
+//         totalWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
+//         if totalWinnings == 0 {
+//             break
+//         }
+//     }
+
+//     return newReels, specialSymbols
+// }
 
 // CalculateWins calculates the total payout and win details (Improvement #2: Track Golden Cards)
 func CalculateWins(reels [][]string, betMultiplier int, boomingMultiplier int, jokerCards []JokerCard) (float64, []WinDetail) {
@@ -662,13 +692,17 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail) []JokerC
     return newJokerCards
 }
 
-// getRandomPosition finds a random position on the reels, avoiding the given position and occupied positions (Improvement #3)
-func getRandomPosition(_ [][]string, r *rand.Rand, excludeReel, excludeRow int, occupiedPositions map[Position]bool) (int, int) {
+// getRandomPosition finds a random position on the reels, avoiding the given position and occupied positions
+func getRandomPosition(reels [][]string, r *rand.Rand, excludeReel, excludeRow int, occupiedPositions map[Position]bool) (int, int) {
     for {
         reel := r.Intn(Reels)
         row := r.Intn(Rows)
         pos := Position{Reel: reel, Row: row}
-        if (reel != excludeReel || row != excludeRow) && !occupiedPositions[pos] {
+        symbol := reels[reel][row]
+        if (reel != excludeReel || row != excludeRow) &&
+            !occupiedPositions[pos] &&
+            symbol != string(SymbolScatter) &&
+            !strings.HasPrefix(symbol, "golden_") {
             return reel, row
         }
     }

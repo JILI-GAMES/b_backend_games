@@ -1,5 +1,7 @@
 package magicace
 
+import "fmt"
+
 // Symbol type
 type Symbol string
 
@@ -16,6 +18,13 @@ const (
     SymbolWild    Symbol = "wild"
 )
 
+// Joker Card modes (Issue 7)
+const (
+    ModeSuperJoker = "superJoker"
+    ModeBigJoker   = "bigJoker"
+    ModeSmallJoker = "smallJoker"
+)
+
 // Position represents a position on the reel grid
 type Position struct {
     Reel int `json:"reel"`
@@ -27,6 +36,16 @@ type JokerCard struct {
     Position        Position `json:"position"`
     Mode            string   `json:"mode"` // "superJoker", "bigJoker", "smallJoker"
     RemainingRounds int      `json:"remainingRounds"`
+}
+
+// ValidateMode validates the JokerCard's mode (Issue 7)
+func (jc *JokerCard) ValidateMode() error {
+    switch jc.Mode {
+    case ModeSuperJoker, ModeBigJoker, ModeSmallJoker:
+        return nil
+    default:
+        return fmt.Errorf("invalid joker card mode: %s", jc.Mode)
+    }
 }
 
 // WinDetail represents a single winning combination

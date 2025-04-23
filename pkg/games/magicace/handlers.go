@@ -52,9 +52,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
         req.GameState.BoomingMultiplier = BoomingMultipliers[0] // Reset to 1
     }
 
+    // Create a single rand.Rand instance for this request (Issue 1)
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))    
+
     // Generate reels with a potential win
     req.GameState.Bet.Multiplier = BetAmountToMultiplier[req.GameState.Bet.Amount]
-    reels, specialSymbols := GenerateReelsWithWin(req.GameState.JokerCards)
+    reels, specialSymbols := GenerateReelsWithWin(req.GameState.JokerCards, r)
 
     // Calculate winnings
     totalWinnings, winDetails := CalculateWins(reels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, req.GameState.JokerCards)
@@ -92,7 +95,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
     // Adjust outcome based on RNG
     if rngResp.PrefOutcome == "loss" {
         log.Printf("RNG determined a loss outcome")
-        reels, specialSymbols = GenerateLossReels(req.GameState.JokerCards)
+        reels, specialSymbols = GenerateLossReels(req.GameState.JokerCards, r)
         totalWinnings = 0
         winDetails = nil
     }
@@ -265,8 +268,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
     }
     log.Printf("Updated Booming Multiplier: %d (Cascade %d)", req.GameState.BoomingMultiplier, req.GameState.CascadeCount)
 
+    // Create a single rand.Rand instance for this request (Issue 1)
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
     // Transform Golden Cards if present in the last win
-    newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails)
+    newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, r)
     req.GameState.JokerCards = append(req.GameState.JokerCards, newJokerCards...)
     req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
     log.Printf("Transformed Golden Cards into %d Joker Cards", len(newJokerCards))
@@ -278,13 +284,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
             symbol := win.Symbols[i]
             fmt.Println("Symbol to replace:", symbol)
             winningPositions[pos] = true
-            winningPositions[pos] = true
-            // req.GameState.Reels[pos.Reel][pos.Row] = ""
         }
     }
 
     // Generate new symbols for the cascade
-    newReels, specialSymbols := GenerateReelsForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards)
+    newReels, specialSymbols := GenerateReelsForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
 
     // Calculate new wins
     payout, winDetails := CalculateWins(newReels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, req.GameState.JokerCards)
@@ -314,7 +318,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
     // Adjust outcome based on RNG (unchanged as per your requirement)
     if rngResp.PrefOutcome == "loss" {
         log.Printf("RNG determined a loss outcome")
-        newReels, specialSymbols = GenerateLossForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards)
+        newReels, specialSymbols = GenerateLossForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
         payout = 0
         winDetails = nil
     }
@@ -401,6 +405,24 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
         })
     }
 
+    // Initialize fields to avoid null in JSON response
+    if req.GameState.JokerCards == nil {
+        req.GameState.JokerCards = []JokerCard{}
+    }
+    if req.GameState.SpecialSymbols.GoldenCards == nil {
+        req.GameState.SpecialSymbols.GoldenCards = []Position{}
+    }
+    if req.GameState.SpecialSymbols.JokerCards == nil {
+        req.GameState.SpecialSymbols.JokerCards = []JokerCard{}
+    }
+    if req.GameState.SpecialSymbols.TargetSymbols == nil {
+        req.GameState.SpecialSymbols.TargetSymbols = []Position{}
+    }
+    if req.GameState.SpecialSymbols.NewTargetSymbols == nil {
+        req.GameState.SpecialSymbols.NewTargetSymbols = []Position{}
+    }
+
+
     // Validate request
     if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.GameState.Bet.Amount); err != nil {
         log.Printf("Request validation failed: %v", err)
@@ -419,6 +441,9 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
         })
     }
 
+    // Create a single rand.Rand instance for this request (Issue 1)
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
     // Calculate cost
     totalBet := float64(MinBet) * float64(req.GameState.Bet.Multiplier) * Denomination
     costMultiplier := 50
@@ -431,7 +456,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
     scatterCount := 0
     var specialSymbols SpecialSymbols
     for {
-        req.GameState.Reels, specialSymbols = GenerateReelsWithWin(req.GameState.JokerCards)
+        req.GameState.Reels, specialSymbols = GenerateReelsWithWin(req.GameState.JokerCards, r)
         scatterCount, specialSymbols.TargetSymbols = CountScatters(req.GameState.Reels)
         if scatterCount >= 3 {
             break
@@ -440,7 +465,6 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 
     // If option 2, ensure a Super Joker
     if req.Option == 2 {
-        r := rand.New(rand.NewSource(time.Now().UnixNano()))
         occupiedPositions := make(map[Position]bool)
         for _, joker := range req.GameState.JokerCards {
             occupiedPositions[joker.Position] = true
@@ -455,14 +479,22 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
         }
         reel, row := getRandomPosition(req.GameState.Reels, r, -1, -1, occupiedPositions)
         if reel != -1 && row != -1 {
-            req.GameState.JokerCards = append(req.GameState.JokerCards, JokerCard{
+            newJoker := JokerCard{
                 Position: Position{
                     Reel: reel,
                     Row:  row,
                 },
-                Mode:            "superJoker",
+                Mode:            ModeSuperJoker,
                 RemainingRounds: 3,
-            })
+            }
+            if err := newJoker.ValidateMode(); err != nil {
+                log.Printf("Invalid Joker Card mode in FeatureBuy: %v", err)
+                return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+                    "status":  "error",
+                    "message": "Failed to create Super Joker",
+                })
+            }
+            req.GameState.JokerCards = append(req.GameState.JokerCards, newJoker)
             req.GameState.Reels[reel][row] = string(SymbolWild)
             specialSymbols.JokerCards = req.GameState.JokerCards
         }
@@ -488,6 +520,10 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
     } else {
         req.GameState.BoomingMultiplier = BoomingMultipliersFreeSpins[0]
     }
+
+    // Update scatterCount
+    req.GameState.ScatterCount = scatterCount
+    // req.GameState.CascadeCount = 1
 
     req.GameState.SpecialSymbols = specialSymbols
     req.GameState.TotalWin = 0

@@ -52,6 +52,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
         req.GameState.BoomingMultiplier = BoomingMultipliers[0] // Reset to 1
     }
 
+    // Reset Booming Multiplier if Extra Bet is disabled in Free Spins
+    if !req.GameState.Bet.ExtraBetEnabled && req.GameState.GameMode == "freeSpins" {
+        req.GameState.BoomingMultiplier = BoomingMultipliersFreeSpins[0] // Reset to 2
+    }
+
+    log.Printf("##_____________##Game Mode: %s, Booming Multiplier: %d", req.GameState.GameMode, req.GameState.BoomingMultiplier)
+
     // Create a single rand.Rand instance for this request (Issue 1)
     r := rand.New(rand.NewSource(time.Now().UnixNano()))    
 
@@ -190,9 +197,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
     log.Printf("Updated Joker Cards: %d", len(req.GameState.JokerCards))
 
     // Calculate total cost
-    totalCost := req.GameState.Bet.Amount
-    if req.GameState.Bet.ExtraBetEnabled {
-        totalCost *= 1.5 // Add 50% for Extra Bet
+    // total cost should be 0 if free game
+    var totalCost float64
+    if req.GameState.GameMode == "freeSpins" {
+        totalCost = 0
+    } else {
+        totalCost = req.GameState.Bet.Amount
+        if req.GameState.Bet.ExtraBetEnabled {
+            totalCost *= 1.5 // Add 50% for Extra Bet
+        }
     }
 
     log.Printf("Spin completed: totalWin=%v, cascading=%v, gameMode=%s, totalCost=%v", totalWinnings, req.GameState.Cascading, req.GameState.GameMode, totalCost)
@@ -268,7 +281,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
     }
     log.Printf("Updated Booming Multiplier: %d (Cascade %d)", req.GameState.BoomingMultiplier, req.GameState.CascadeCount)
 
-    // Create a single rand.Rand instance for this request (Issue 1)
+    // Create a single rand.Rand instance for this request.
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
     // Transform Golden Cards if present in the last win

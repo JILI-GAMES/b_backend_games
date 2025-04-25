@@ -415,7 +415,7 @@ func CalculateWins(reels [][]string, betMultiplier int, boomingMultiplier int, j
             // Calculate payout
             matchCount := len(path.Positions)
             payout := Paytable[Symbol(baseSymbol)][matchCount] * Denomination * float64(betMultiplier) * float64(boomingMultiplier)
-
+            
             // Add to win details
             winDetails = append(winDetails, WinDetail{
                 Symbols:     path.Symbols,

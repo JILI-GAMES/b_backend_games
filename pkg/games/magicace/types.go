@@ -111,6 +111,7 @@ type FeatureBuyRequest struct {
     ClientID  string    `json:"client_id"`
     GameID    string    `json:"game_id"`
     PlayerID  string    `json:"player_id"`
+    
 }
 
 // SpinResponse represents the response body for the /spin and /cascade endpoints
@@ -137,4 +138,5 @@ type FeatureBuyResponse struct {
     Message    string     `json:"message"`
     GameState  GameState  `json:"gameState"`
     WinDetails []WinDetail `json:"winDetails"`
+    TotalCost  float64    `json:"totalCost"`
 }

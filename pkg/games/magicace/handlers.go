@@ -454,7 +454,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
         })
     }
 
-    // Create a single rand.Rand instance for this request (Issue 1)
+    // Create a single rand.Rand instance for this request
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
     // Calculate cost
@@ -536,7 +536,6 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 
     // Update scatterCount
     req.GameState.ScatterCount = scatterCount
-    // req.GameState.CascadeCount = 1
 
     req.GameState.SpecialSymbols = specialSymbols
     req.GameState.TotalWin = 0
@@ -550,6 +549,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
         Message:    fmt.Sprintf("Feature Buy successful, cost: %.2f", cost),
         GameState:  req.GameState,
         WinDetails: req.GameState.LastWinDetails,
+        TotalCost:  cost,
     })
 }
 

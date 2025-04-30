@@ -190,8 +190,10 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
     totalPayout := 0.0
     var winDetails []WinDetail
 
-    // Map to store all unique winning paylines
-    allWins := make(map[string]WinDetail)
+    // Map to store all unique winning paths: map[pathKey]WinDetail
+    uniqueWins := make(map[string]WinDetail)
+    // Keep track of which symbol+start combinations we've seen with which counts
+    seenCombinations := make(map[string]map[int]bool)
     var winsMu sync.Mutex // Mutex for thread-safe access to our maps
 
     // Worker pool configuration
@@ -280,13 +282,18 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
         close(results)
     }()
 
-    // Process wins, keeping ALL unique payline paths
+    // Process all wins
     for win := range results {
         if len(win.Positions) < 3 {
             continue
         }
         
-        // Create a unique key for this exact payline
+        // Create a key for the starting position and symbol
+        startKey := fmt.Sprintf("%s|%d,%d", 
+            win.Symbol,
+            win.Positions[0].Reel, win.Positions[0].Row)
+            
+        // Create a key for the complete path
         var pathKey strings.Builder
         pathKey.WriteString(win.Symbol)
         for _, pos := range win.Positions {
@@ -294,14 +301,52 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
         }
         
         winsMu.Lock()
-        // Store each unique payline win
-        allWins[pathKey.String()] = win
+        
+        // Initialize the count map if it doesn't exist
+        if _, exists := seenCombinations[startKey]; !exists {
+            seenCombinations[startKey] = make(map[int]bool)
+        }
+        
+        // If we've seen a longer match for this start position, skip this one
+        longerMatchExists := false
+        for count := range seenCombinations[startKey] {
+            if count > win.Count {
+                longerMatchExists = true
+                break
+            }
+        }
+        
+        if !longerMatchExists {
+            // If we've seen a shorter match for this start position, remove it
+            for count := range seenCombinations[startKey] {
+                if count < win.Count {
+                    delete(seenCombinations[startKey], count)
+                    
+                    // Also remove any wins with this start position and shorter count
+                    for existingPathKey, existingWin := range uniqueWins {
+                        if existingWin.Symbol == win.Symbol && 
+                           existingWin.Positions[0].Reel == win.Positions[0].Reel &&
+                           existingWin.Positions[0].Row == win.Positions[0].Row &&
+                           existingWin.Count < win.Count {
+                            delete(uniqueWins, existingPathKey)
+                        }
+                    }
+                }
+            }
+            
+            // Add this count to the seen combinations
+            seenCombinations[startKey][win.Count] = true
+            
+            // Add this win to the unique wins
+            uniqueWins[pathKey.String()] = win
+        }
+        
         winsMu.Unlock()
     }
 
-    // Collect all wins
+    // Collect all the unique wins
     winsMu.Lock()
-    for _, win := range allWins {
+    for _, win := range uniqueWins {
         log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v", 
             win.Symbol, win.Count, betMultiplier, 
             func() int {
@@ -319,6 +364,140 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
 
     return totalPayout, winDetails
 }
+
+// func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, isFreeSpin bool) (float64, []WinDetail) {
+//     totalPayout := 0.0
+//     var winDetails []WinDetail
+
+//     // Map to store all unique winning paylines
+//     allWins := make(map[string]WinDetail)
+//     var winsMu sync.Mutex // Mutex for thread-safe access to our maps
+
+//     // Worker pool configuration
+//     const maxWorkers = 50
+//     jobs := make(chan struct {
+//         wayIndex int
+//         way      []int
+//     }, len(WaysToWin))
+//     results := make(chan WinDetail, len(WaysToWin))
+//     var wg sync.WaitGroup
+
+//     // Start workers to identify potential wins
+//     for w := 0; w < maxWorkers; w++ {
+//         wg.Add(1)
+//         go func() {
+//             defer wg.Done()
+//             for job := range jobs {
+//                 way := job.way
+
+//                 // Preallocate slices
+//                 symbols := make([]string, 0, 5)
+//                 payline := make([]Position, 0, 5)
+
+//                 for reel, row := range way {
+//                     symbol := reels[reel][row]
+//                     symbols = append(symbols, symbol)
+//                     pos := Position{Reel: reel, Row: row}
+//                     payline = append(payline, pos)
+//                 }
+
+//                 // Count matching symbols
+//                 firstSymbol := symbols[0]
+//                 if firstSymbol == string(SymbolScatter) {
+//                     continue
+//                 }
+                
+//                 matchCount := 1
+//                 for i := 1; i < len(symbols); i++ {
+//                     currentSymbol := symbols[i]
+//                     if currentSymbol == firstSymbol || currentSymbol == string(SymbolWild) {
+//                         matchCount++
+//                     } else {
+//                         break
+//                     }
+//                 }
+
+//                 if matchCount >= 3 {
+//                     // Apply freeSpinMultiplier only during free spins; otherwise, use 1
+//                     effectiveMultiplier := 1
+//                     if isFreeSpin {
+//                         effectiveMultiplier = freeSpinMultiplier
+//                     }
+                    
+//                     // Check if this symbol/count has a payout in the paytable
+//                     payoutValue, exists := Paytable[Symbol(firstSymbol)][matchCount]
+//                     if !exists {
+//                         continue // Skip if no payout for this combination
+//                     }
+                    
+//                     payout := payoutValue * float64(betMultiplier) * float64(effectiveMultiplier) * Denomination
+//                     payout = math.Round(payout*100) / 100
+//                     win := WinDetail{
+//                         Symbol:    firstSymbol,
+//                         Count:     matchCount,
+//                         Payout:    payout,
+//                         Positions: payline[:matchCount],
+//                     }
+//                     results <- win
+//                 }
+//             }
+//         }()
+//     }
+
+//     // Send jobs to workers
+//     for wayIndex, way := range WaysToWin {
+//         jobs <- struct {
+//             wayIndex int
+//             way      []int
+//         }{wayIndex: wayIndex, way: way}
+//     }
+//     close(jobs)
+
+//     // Close the results channel after all workers are done
+//     go func() {
+//         wg.Wait()
+//         close(results)
+//     }()
+
+//     // Process wins, keeping ALL unique payline paths
+//     for win := range results {
+//         if len(win.Positions) < 3 {
+//             continue
+//         }
+        
+//         // Create a unique key for this exact payline
+//         var pathKey strings.Builder
+//         pathKey.WriteString(win.Symbol)
+//         for _, pos := range win.Positions {
+//             pathKey.WriteString(fmt.Sprintf("|%d,%d", pos.Reel, pos.Row))
+//         }
+        
+//         winsMu.Lock()
+//         // Store each unique payline win
+//         allWins[pathKey.String()] = win
+//         winsMu.Unlock()
+//     }
+
+//     // Collect all wins
+//     winsMu.Lock()
+//     for _, win := range allWins {
+//         log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v", 
+//             win.Symbol, win.Count, betMultiplier, 
+//             func() int {
+//                 if isFreeSpin {
+//                     return freeSpinMultiplier
+//                 }
+//                 return 1
+//             }(), win.Payout)
+        
+//         totalPayout += win.Payout
+//         totalPayout = math.Round(totalPayout*100) / 100
+//         winDetails = append(winDetails, win)
+//     }
+//     winsMu.Unlock()
+
+//     return totalPayout, winDetails
+// }
 
 
 // CountScatters counts the number of Scatter symbols on the reels

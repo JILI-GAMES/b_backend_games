@@ -164,11 +164,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Update free spin state
 	if newIsFreeSpin {
-		newFreeSpinCount--
-		if newFreeSpinCount <= 0 {
-			newIsFreeSpin = false
-			newBonusMultiplier = 0
+		// Only decrement if the player was already in free spin mode
+		if req.IsFreeSpin {
+			newFreeSpinCount--
+			if newFreeSpinCount <= 0 {
+				newIsFreeSpin = false
+				newBonusMultiplier = 0
+			}
 		}
+
 	}
 
 	// Build the response

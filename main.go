@@ -9,30 +9,29 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/kong"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicace"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 
-
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Set up logging
-	logFile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatalf("Error opening log file: %v", err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
+	// Set up logging with lumberjack for daily rotation and 1 day retention
+	log.SetOutput(&lumberjack.Logger{
+		Filename:  cfg.LogFile,
+		MaxAge:    1,    // days to keep
+		LocalTime: true, // use local time for file names
+	})
 
 	// Create shared clients
 	rngClient := rng.NewClient(cfg.RNGServiceURL)
@@ -48,18 +47,18 @@ func main() {
 
 	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*", 
+		AllowOrigins:     "*",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:     "*",
 		ExposeHeaders:    "Content-Length",
 		AllowCredentials: false,
-		MaxAge:           86400, 
+		MaxAge:           86400,
 	}))
 
 	app.Use(logger.New(logger.Config{
 		Format:     "[${time}] ${status} - ${method} ${path}\n",
 		TimeFormat: "2006-01-02 15:04:05",
-		Output:     logFile,
+		Output:     os.Stdout,
 	}))
 
 	// Register routes for individual games
@@ -78,7 +77,6 @@ func main() {
 	moneyBagsManRoutes := moneybagsman.NewRouteGroup(rngClient, settingsClient)
 	moneyBagsManRoutes.Register(app)
 
-
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -89,7 +87,6 @@ func main() {
 				"magicAce",
 				"moneyBagsMan2",
 				"moneyBagsMan",
-
 			},
 		})
 	})

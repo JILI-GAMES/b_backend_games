@@ -65,6 +65,7 @@ var BetAmountToMultiplier = map[float64]int{
 }
 
 
+
 // WaysToWin generates all possible 1024 ways to win (4^5)
 var WaysToWin = generateWaysToWin()
 

@@ -87,6 +87,20 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
     // Count Scatters and check for Free Spin Bonus trigger/retrigger
     scatterCount := CountScatters(reels)
+
+    // Collect scatter positions
+    var scatterPositions []Position
+    for reel := 0; reel < Reels; reel++ {
+        for row := 0; row < Rows; row++ {
+            if reels[reel][row] == string(SymbolScatter) {
+                scatterPositions = append(scatterPositions, Position{
+                    Reel: reel,
+                    Row: row,
+                })
+            }
+        }
+    }
+
     freeSpinTriggered := false
     freeSpinRetriggered := false
     extraBonusMultiplier := 0
@@ -157,6 +171,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
         WinAmount:           totalWinnings,
         WinDetails:          winDetails,
         ScatterCount:        scatterCount,
+        ScatterPositions:    scatterPositions,
         FreeSpinTriggered:   freeSpinTriggered,
         FreeSpinRetriggered: freeSpinRetriggered,
         ExtraBonusMultiplier: extraBonusMultiplier,

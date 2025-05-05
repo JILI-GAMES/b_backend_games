@@ -19,3 +19,37 @@
 2025/04/10 20:41:54 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
 2025/04/10 20:41:55 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":20,"request_salt":"7ed46c46-912f-42f0-8fe3-9d321ff2883b","bet_amount":2}
 [2025-04-10 20:41:54] 200 - POST /spin/superace/deluxe
+2025/05/05 11:28:51 Starting server on port 11400
+2025/05/05 11:29:23 Calculating payout: symbol=Airplane, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.95
+2025/05/05 11:29:23 Generated reels with win: [[Airplane Motorcycle Scatter] [Scatter Scatter Airplane] [Scatter Airplane Scatter] [Scatter K Scatter] [Scatter A K]]
+2025/05/05 11:29:23 Calculating payout: symbol=Airplane, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.95
+2025/05/05 11:29:23 Initial calculation: totalWinnings=0.95, winDetails=[{Airplane 3 0.95 [{0 0} {1 2} {2 1}]}]
+2025/05/05 11:29:23 Settings request: {"client_id":"1","game_id":"52","player_id":"22"}
+2025/05/05 11:29:24 RTP retrieved: 0.5
+2025/05/05 11:29:24 Payout multiplier: 1.5833333333333333
+2025/05/05 11:29:24 RNG request: {"client_id":"1","game_id":"52","player_id":"22","rtp":0.5,"payout_multiplier":1.5833333333333333,"request_salt":"612f04ff-f167-4a78-a059-9d9914a94be8","bet_amount":0.6}
+2025/05/05 11:29:24 RNG response: {loss 0 0.001}
+2025/05/05 11:29:24 RNG determined a loss outcome
+2025/05/05 11:29:24 Generated reels with no wins: [[Yacht Yacht Motorcycle] [Motorcycle Airplane J] [Scatter Car Scatter] [Scatter Scatter Motorcycle] [Car Yacht A]]
+2025/05/05 11:29:24 Free Spin state updated: remainingFreeSpins=0, totalFreeSpinsAwarded=0, currentFreeSpinIndex=0, freeSpinMultiplier=0
+2025/05/05 11:29:24 Spin completed: totalWin=0, freeSpinTriggered=false, freeSpinRetriggered=false, isFreeSpin=false
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Generated reels with win: [[Scatter Scatter Motorcycle] [Motorcycle Wild Scatter] [A Wild Wild] [J Scatter Yacht] [Scatter Airplane Scatter]]
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
+2025/05/05 11:29:46 Initial calculation: totalWinnings=1.4, winDetails=[{Motorcycle 3 0.35 [{0 2} {1 0} {2 1}]} {Motorcycle 3 0.35 [{0 2} {1 0} {2 2}]} {Motorcycle 3 0.35 [{0 2} {1 1} {2 1}]} {Motorcycle 3 0.35 [{0 2} {1 1} {2 2}]}]
+2025/05/05 11:29:46 Settings request: {"client_id":"1","game_id":"52","player_id":"22"}
+2025/05/05 11:29:46 RTP retrieved: 0.5
+2025/05/05 11:29:46 Payout multiplier: 2.3333333333333335
+2025/05/05 11:29:46 RNG request: {"client_id":"1","game_id":"52","player_id":"22","rtp":0.5,"payout_multiplier":2.3333333333333335,"request_salt":"f76c19e6-115e-441a-9d3f-aff16b0ee7f4","bet_amount":0.6}
+2025/05/05 11:29:47 RNG response: {loss 0 0.001}
+2025/05/05 11:29:47 RNG determined a loss outcome
+2025/05/05 11:29:47 Generated reels with no wins: [[Scatter Scatter Scatter] [A J Scatter] [K Scatter Scatter] [Car Wild Scatter] [Scatter Yacht Yacht]]
+2025/05/05 11:29:47 Free Spin Bonus triggered: 8 scatters
+2025/05/05 11:29:47 Free Spin state updated: remainingFreeSpins=0, totalFreeSpinsAwarded=0, currentFreeSpinIndex=0, freeSpinMultiplier=0
+2025/05/05 11:29:47 Spin completed: totalWin=0, freeSpinTriggered=true, freeSpinRetriggered=false, isFreeSpin=false

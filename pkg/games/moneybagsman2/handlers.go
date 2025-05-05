@@ -128,6 +128,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		totalFreeSpinsAwarded += option.TotalSpins
 		if remainingFreeSpins > option.MaxSpins {
 			remainingFreeSpins = option.MaxSpins
+            totalFreeSpinsAwarded= option.MaxSpins
 		}
 	}
 

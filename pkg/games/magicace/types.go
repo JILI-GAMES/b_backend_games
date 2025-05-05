@@ -6,10 +6,10 @@ import "fmt"
 type Symbol string
 
 const (
-    SymbolA       Symbol = "A"
-    SymbolK       Symbol = "K"
-    SymbolQ       Symbol = "Q"
-    SymbolJ       Symbol = "J"
+    SymbolACE       Symbol = "Ace"
+    SymbolKING       Symbol = "King"
+    SymbolQUEEN       Symbol = "Queen"
+    SymbolJACK       Symbol = "Jack"
     SymbolHeart   Symbol = "Heart"
     SymbolSpade   Symbol = "Spade"
     SymbolClub    Symbol = "Club"

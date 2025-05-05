@@ -22,10 +22,10 @@ const (
 
 // Symbol weights for random generation
 var SymbolWeights = map[Symbol]float64{
-    SymbolA:       0.1,
-    SymbolK:       0.1,
-    SymbolQ:       0.1,
-    SymbolJ:       0.1,
+    SymbolACE:       0.1,
+    SymbolKING:       0.1,
+    SymbolQUEEN:       0.1,
+    SymbolJACK:       0.1,
     SymbolHeart:   0.1,
     SymbolSpade:   0.1,
     SymbolClub:    0.1,
@@ -37,10 +37,10 @@ var globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Paytable (payouts for Bet Multiplier = 1)
 var Paytable = map[Symbol]map[int]float64{
-    SymbolA:       {3: 10, 4: 20, 5: 50},
-    SymbolK:       {3: 8, 4: 16, 5: 40},
-    SymbolQ:       {3: 6, 4: 12, 5: 30},
-    SymbolJ:       {3: 4, 4: 8, 5: 20},
+    SymbolACE:       {3: 10, 4: 20, 5: 50},
+    SymbolKING:       {3: 8, 4: 16, 5: 40},
+    SymbolQUEEN:       {3: 6, 4: 12, 5: 30},
+    SymbolJACK:       {3: 4, 4: 8, 5: 20},
     SymbolHeart:   {3: 2, 4: 4, 5: 10},
     SymbolSpade:   {3: 2, 4: 4, 5: 10},
     SymbolClub:    {3: 1, 4: 2, 5: 5},
@@ -99,7 +99,7 @@ func WeightedRandomSymbol(r *rand.Rand) Symbol {
             return symbol
         }
     }
-    return SymbolA // Fallback
+    return SymbolACE // Fallback
 }
 
 // GenerateReelsWithWin generates a 5x4 grid with a potential win
@@ -192,7 +192,7 @@ func GenerateLossReels(jokerCards []JokerCard, r *rand.Rand) ([][]string, Specia
 
                 // Avoid Golden Cards and Scatters to minimize wins
                 availableSymbols := []Symbol{
-                    SymbolA, SymbolK, SymbolQ, SymbolJ,
+                    SymbolACE, SymbolKING, SymbolQUEEN, SymbolJACK,
                     SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
                 }
                 symbol := availableSymbols[r.Intn(len(availableSymbols))]
@@ -334,7 +334,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 
             // Avoid Golden Cards and Scatters
             availableSymbols := []Symbol{
-                SymbolA, SymbolK, SymbolQ, SymbolJ,
+                SymbolACE, SymbolKING, SymbolQUEEN, SymbolJACK,
                 SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
             }
             symbol := availableSymbols[r.Intn(len(availableSymbols))]

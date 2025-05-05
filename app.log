@@ -1,55 +1,56 @@
-2025/04/08 13:54:05 Starting server on port 11400
-2025/04/10 20:12:01 Starting SuperAce Deluxe server on port 11400
-2025/04/10 20:18:09 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
-2025/04/10 20:18:11 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":16.599999999999998,"request_salt":"81f489e4-86b6-42d0-9107-b0ee97b14f73","bet_amount":2}
-[2025-04-10 20:18:09] 200 - POST /spin/superace/deluxe
-2025/04/10 20:21:42 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
-2025/04/10 20:21:44 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":0,"request_salt":"9de5d803-0e67-4490-bd74-acc6ef204d44","bet_amount":2}
-[2025-04-10 20:21:42] 200 - POST /spin/superace/deluxe
-2025/04/10 20:29:55 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
-2025/04/10 20:29:56 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":0.6000000000000001,"request_salt":"357dc7d8-7d5e-403f-bd9f-404cef2f147f","bet_amount":2}
-[2025-04-10 20:29:55] 200 - POST /spin/superace/deluxe
-2025/04/10 20:32:22 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
-2025/04/10 20:32:23 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":4.800000000000001,"request_salt":"1e30bb58-26fd-435e-99c1-7fc10b5026d1","bet_amount":2}
-[2025-04-10 20:32:22] 200 - POST /spin/superace/deluxe
-2025/04/10 20:34:27 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
-2025/04/10 20:34:28 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":12,"request_salt":"05758967-d884-426a-931f-3d297160a9d4","bet_amount":2}
-[2025-04-10 20:34:26] 200 - POST /spin/superace/deluxe
-2025/04/10 20:41:07 Starting SuperAce Deluxe server on port 11400
-2025/04/10 20:41:54 Settings request: {"client_id":"1","game_id":"31","player_id":"22"}
-2025/04/10 20:41:55 RNG request: {"client_id":"1","game_id":"31","player_id":"22","rtp":0.99,"payout_multiplier":20,"request_salt":"7ed46c46-912f-42f0-8fe3-9d321ff2883b","bet_amount":2}
-[2025-04-10 20:41:54] 200 - POST /spin/superace/deluxe
-2025/05/05 11:28:51 Starting server on port 11400
-2025/05/05 11:29:23 Calculating payout: symbol=Airplane, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.95
-2025/05/05 11:29:23 Generated reels with win: [[Airplane Motorcycle Scatter] [Scatter Scatter Airplane] [Scatter Airplane Scatter] [Scatter K Scatter] [Scatter A K]]
-2025/05/05 11:29:23 Calculating payout: symbol=Airplane, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.95
-2025/05/05 11:29:23 Initial calculation: totalWinnings=0.95, winDetails=[{Airplane 3 0.95 [{0 0} {1 2} {2 1}]}]
-2025/05/05 11:29:23 Settings request: {"client_id":"1","game_id":"52","player_id":"22"}
-2025/05/05 11:29:24 RTP retrieved: 0.5
-2025/05/05 11:29:24 Payout multiplier: 1.5833333333333333
-2025/05/05 11:29:24 RNG request: {"client_id":"1","game_id":"52","player_id":"22","rtp":0.5,"payout_multiplier":1.5833333333333333,"request_salt":"612f04ff-f167-4a78-a059-9d9914a94be8","bet_amount":0.6}
-2025/05/05 11:29:24 RNG response: {loss 0 0.001}
-2025/05/05 11:29:24 RNG determined a loss outcome
-2025/05/05 11:29:24 Generated reels with no wins: [[Yacht Yacht Motorcycle] [Motorcycle Airplane J] [Scatter Car Scatter] [Scatter Scatter Motorcycle] [Car Yacht A]]
-2025/05/05 11:29:24 Free Spin state updated: remainingFreeSpins=0, totalFreeSpinsAwarded=0, currentFreeSpinIndex=0, freeSpinMultiplier=0
-2025/05/05 11:29:24 Spin completed: totalWin=0, freeSpinTriggered=false, freeSpinRetriggered=false, isFreeSpin=false
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Generated reels with win: [[Scatter Scatter Motorcycle] [Motorcycle Wild Scatter] [A Wild Wild] [J Scatter Yacht] [Scatter Airplane Scatter]]
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Calculating payout: symbol=Motorcycle, matchCount=3, betMultiplier=1, effectiveMultiplier=1, payout=0.35
-2025/05/05 11:29:46 Initial calculation: totalWinnings=1.4, winDetails=[{Motorcycle 3 0.35 [{0 2} {1 0} {2 1}]} {Motorcycle 3 0.35 [{0 2} {1 0} {2 2}]} {Motorcycle 3 0.35 [{0 2} {1 1} {2 1}]} {Motorcycle 3 0.35 [{0 2} {1 1} {2 2}]}]
-2025/05/05 11:29:46 Settings request: {"client_id":"1","game_id":"52","player_id":"22"}
-2025/05/05 11:29:46 RTP retrieved: 0.5
-2025/05/05 11:29:46 Payout multiplier: 2.3333333333333335
-2025/05/05 11:29:46 RNG request: {"client_id":"1","game_id":"52","player_id":"22","rtp":0.5,"payout_multiplier":2.3333333333333335,"request_salt":"f76c19e6-115e-441a-9d3f-aff16b0ee7f4","bet_amount":0.6}
-2025/05/05 11:29:47 RNG response: {loss 0 0.001}
-2025/05/05 11:29:47 RNG determined a loss outcome
-2025/05/05 11:29:47 Generated reels with no wins: [[Scatter Scatter Scatter] [A J Scatter] [K Scatter Scatter] [Car Wild Scatter] [Scatter Yacht Yacht]]
-2025/05/05 11:29:47 Free Spin Bonus triggered: 8 scatters
-2025/05/05 11:29:47 Free Spin state updated: remainingFreeSpins=0, totalFreeSpinsAwarded=0, currentFreeSpinIndex=0, freeSpinMultiplier=0
-2025/05/05 11:29:47 Spin completed: totalWin=0, freeSpinTriggered=true, freeSpinRetriggered=false, isFreeSpin=false
+2025/05/05 11:44:33 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:44:33 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:44:35 RTP retrieved: 0.99
+2025/05/05 11:44:35 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":0.049999999999999996,"request_salt":"ca409bc0-a567-44a4-b699-2424d9d8e2c6","bet_amount":0.2}
+2025/05/05 11:44:37 RNG response: {loss 0 0.001}
+2025/05/05 11:44:37 RNG determined a loss outcome
+2025/05/05 11:44:37 Updated Joker Cards: 0
+2025/05/05 11:44:37 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2
+2025/05/05 11:44:51 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:44:51 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:44:52 RTP retrieved: 0.99
+2025/05/05 11:44:52 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":0.09999999999999999,"request_salt":"9ae20b86-4772-4fe3-83ff-0e1d591f4732","bet_amount":0.2}
+2025/05/05 11:44:52 RNG response: {loss 0 0.001}
+2025/05/05 11:44:52 RNG determined a loss outcome
+2025/05/05 11:44:52 Updated Joker Cards: 0
+2025/05/05 11:44:52 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2
+2025/05/05 11:44:58 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:44:58 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:44:58 RTP retrieved: 0.99
+2025/05/05 11:44:58 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":0.19999999999999998,"request_salt":"fb1f33f5-e75a-4ba1-bed4-217b4124faac","bet_amount":0.2}
+2025/05/05 11:44:58 RNG response: {loss 0 0.001}
+2025/05/05 11:44:58 RNG determined a loss outcome
+2025/05/05 11:44:58 Updated Joker Cards: 0
+2025/05/05 11:44:58 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2
+2025/05/05 11:45:00 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:45:00 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:45:00 RTP retrieved: 0.99
+2025/05/05 11:45:00 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":0.19999999999999998,"request_salt":"5fb743c0-5aab-4986-8fff-8605c2508320","bet_amount":0.2}
+2025/05/05 11:45:01 RNG response: {loss 0 0.001}
+2025/05/05 11:45:01 RNG determined a loss outcome
+2025/05/05 11:45:01 Updated Joker Cards: 0
+2025/05/05 11:45:01 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2
+2025/05/05 11:45:02 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:45:02 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:45:03 RTP retrieved: 0.99
+2025/05/05 11:45:03 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":0.5,"request_salt":"e744c404-7205-4c76-9d96-02b47c1c3a17","bet_amount":0.2}
+2025/05/05 11:45:03 RNG response: {loss 0 0.001}
+2025/05/05 11:45:03 RNG determined a loss outcome
+2025/05/05 11:45:03 Updated Joker Cards: 0
+2025/05/05 11:45:03 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2
+2025/05/05 11:45:04 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:45:04 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:45:05 RTP retrieved: 0.99
+2025/05/05 11:45:05 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":4.4,"request_salt":"61acf25d-db78-41f4-87b8-05dd482e13c8","bet_amount":0.2}
+2025/05/05 11:45:05 RNG response: {loss 0 0.001}
+2025/05/05 11:45:05 RNG determined a loss outcome
+2025/05/05 11:45:05 Updated Joker Cards: 0
+2025/05/05 11:45:05 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2
+2025/05/05 11:45:07 ##_____________##Game Mode: base, Booming Multiplier: 1
+2025/05/05 11:45:07 Settings request: {"client_id":"1","game_id":"48","player_id":"22"}
+2025/05/05 11:45:07 RTP retrieved: 0.99
+2025/05/05 11:45:07 RNG request: {"client_id":"1","game_id":"48","player_id":"22","rtp":0.99,"payout_multiplier":0.19999999999999998,"request_salt":"cc3f8333-5d21-443e-8cef-7afc0f15f3c6","bet_amount":0.2}
+2025/05/05 11:45:07 RNG response: {loss 0 0.001}
+2025/05/05 11:45:07 RNG determined a loss outcome
+2025/05/05 11:45:07 Updated Joker Cards: 0
+2025/05/05 11:45:07 Spin completed: totalWin=0, cascading=false, gameMode=base, totalCost=0.2

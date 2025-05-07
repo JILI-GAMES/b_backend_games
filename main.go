@@ -13,6 +13,9 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame1"
+
+	
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -77,6 +80,9 @@ func main() {
 	moneyBagsManRoutes := moneybagsman.NewRouteGroup(rngClient, settingsClient)
 	moneyBagsManRoutes.Register(app)
 
+	openSesame1Routes:= opensesame1.NewRouteGroup(rngClient, settingsClient)
+	openSesame1Routes.Register(app)
+
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -87,6 +93,7 @@ func main() {
 				"magicAce",
 				"moneyBagsMan2",
 				"moneyBagsMan",
+				"openSesame1",
 			},
 		})
 	})

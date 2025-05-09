@@ -328,7 +328,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	// Adjust outcome based on RNG (unchanged as per your requirement)
 	if rngResp.PrefOutcome == "loss" {
 		log.Printf("RNG determined a loss outcome")
-		newReels, specialSymbols = GenerateLossForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
+		// Instead of calling GenerateLossForCascade, call a modified version that preserves jokers
+		newReels, specialSymbols = GenerateLossForCascadePreservingJokers(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
 		payout = 0
 		winDetails = nil
 	}
@@ -340,10 +341,23 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	req.GameState.LastWinDetails = winDetails
 	req.GameState.Cascading = len(winDetails) > 0
 
-	// Update ScatterCount (includes all Scatters)
-	req.GameState.ScatterCount = len(specialSymbols.TargetSymbols)
+	// Count scatters properly by scanning the final reels
+	scatterPositions := make([]Position, 0)
+	for reel := 0; reel < Reels; reel++ {
+		for row := 0; row < Rows; row++ {
+			if req.GameState.Reels[reel][row] == string(SymbolScatter) {
+				scatterPositions = append(scatterPositions, Position{Reel: reel, Row: row})
+			}
+		}
+	}
 
-    // Checks for free spins triggering from base game during a cascade loss
+	// Update the special symbols and scatter count
+	req.GameState.SpecialSymbols.TargetSymbols = scatterPositions
+	req.GameState.ScatterCount = len(scatterPositions)
+
+	log.Printf("Final scatter count: %d", req.GameState.ScatterCount)
+
+	// Checks for free spins triggering from base game during a cascade loss
 	if req.GameState.GameMode == "base" && req.GameState.ScatterCount >= 3 {
 		log.Printf("Free Spins triggered during cascade loss: %d scatter(s)", req.GameState.ScatterCount)
 		req.GameState.GameMode = "freeSpins"

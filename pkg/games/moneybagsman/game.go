@@ -433,3 +433,19 @@ func GetFreeSpinMultiplierInfo(scatterCount int) (initialMultiplier, multiplierI
     
     return info.InitialMultiplier, info.MultiplierIncrease, info.MaxMultiplier
 }
+
+// FindScatterPositions finds all positions of Scatter symbols on the reels
+func FindScatterPositions(reels [][]string) []Position {
+    positions := make([]Position, 0)
+    for reel := 0; reel < Reels; reel++ {
+        for row := 0; row < Rows; row++ {
+            if reels[reel][row] == string(SymbolScatter) {
+                positions = append(positions, Position{
+                    Reel: reel,
+                    Row: row,
+                })
+            }
+        }
+    }
+    return positions
+}

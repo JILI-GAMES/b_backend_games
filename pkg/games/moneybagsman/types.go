@@ -50,6 +50,7 @@ type SpinResponse struct {
     WinAmount             float64     `json:"win_amount"`
     WinDetails            []WinDetail `json:"win_details"`
     ScatterCount          int         `json:"scatter_count"`
+    ScatterPositions      []Position  `json:"scatter_positions"` 
     FreeSpinTriggered     bool        `json:"free_spin_triggered"`
     FreeSpinRetriggered   bool        `json:"free_spin_retriggered"`
     IsFreeSpin            bool        `json:"is_free_spin"`

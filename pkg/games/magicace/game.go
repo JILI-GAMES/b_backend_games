@@ -33,7 +33,7 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolSpade:   0.1,
 	SymbolClub:    0.1,
 	SymbolDiamond: 0.1,
-	SymbolScatter: 0.08,
+	SymbolScatter: 0.04,
 }
 
 // global constant

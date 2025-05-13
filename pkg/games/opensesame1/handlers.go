@@ -197,7 +197,7 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 	}
 
 	// Validate request
-	if err := validateSelectOptionRequest(req.ClientID, req.GameID, req.PlayerID, req.ChestIndex, req.LampIndex); err != nil {
+	if err := validateSelectOptionRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.ChestIndex, req.LampIndex); err != nil {
 		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -253,7 +253,7 @@ func validateRequest(clientID, gameID, playerID, betID string, betAmount float64
 }
 
 // validateSelectOptionRequest validates the /select-free-spin-option request fields
-func validateSelectOptionRequest(clientID, gameID, playerID string, chestIndex, lampIndex int) error {
+func validateSelectOptionRequest(clientID, gameID, playerID, betID string, chestIndex, lampIndex int) error {
 	if clientID == "" {
 		return fmt.Errorf("client_id is required")
 	}
@@ -262,6 +262,9 @@ func validateSelectOptionRequest(clientID, gameID, playerID string, chestIndex, 
 	}
 	if playerID == "" {
 		return fmt.Errorf("player_id is required")
+	}
+	if betID == "" {
+		return fmt.Errorf("bet_id is required")
 	}
 	if chestIndex < 0 || chestIndex >= len(ChestOptions) {
 		return fmt.Errorf("invalid chest index, must be between 0 and %d", len(ChestOptions)-1)

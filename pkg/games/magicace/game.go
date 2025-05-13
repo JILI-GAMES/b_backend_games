@@ -390,22 +390,22 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 		newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
 	}
 
-    // Clear out the target symbols before collecting them
-    specialSymbols.TargetSymbols = nil
-    specialSymbols.NewTargetSymbols = nil
+	// Clear out the target symbols before collecting them
+	specialSymbols.TargetSymbols = nil
+	specialSymbols.NewTargetSymbols = nil
 
 	// Preserve existing Scatters
 	for reel := 0; reel < Reels; reel++ {
 		for row := 0; row < Rows; row++ {
 			if newReels[reel][row] == string(SymbolScatter) {
-                pos := Position{Reel: reel, Row: row}
-                
-                // If this position was a winning position, it's a new scatter
-                if winningPositions[pos] {
-                    specialSymbols.NewTargetSymbols = append(specialSymbols.NewTargetSymbols, pos)
-                }
-                
-                // Add to the overall target symbols
+				pos := Position{Reel: reel, Row: row}
+
+				// If this position was a winning position, it's a new scatter
+				if winningPositions[pos] {
+					specialSymbols.NewTargetSymbols = append(specialSymbols.NewTargetSymbols, pos)
+				}
+
+				// Add to the overall target symbols
 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
 			}
 		}
@@ -547,8 +547,8 @@ func CalculateWins(reels [][]string, betMultiplier int, boomingMultiplier int, j
 			// Calculate payout
 			matchCount := len(path.Positions)
 			payout := Paytable[Symbol(baseSymbol)][matchCount] * Denomination * float64(betMultiplier) * float64(boomingMultiplier)
-            // payout to be rounded to 2 decimal places
-            payout = math.Round(payout * 100) / 100
+			// payout to be rounded to 2 decimal places
+			payout = math.Round(payout*100) / 100
 
 			// Add to win details
 			winDetails = append(winDetails, WinDetail{

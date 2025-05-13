@@ -20,7 +20,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	// Validate request
-	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetAmount, req.IsFreeSpin, req.FreeSpinOption, req.CurrentFreeSpinIndex, req.RemainingFreeSpins, req.FreeSpinMultiplier, req.ExtraBonusMultiplier); err != nil {
+	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.BetAmount, req.IsFreeSpin, req.FreeSpinOption, req.CurrentFreeSpinIndex, req.RemainingFreeSpins, req.FreeSpinMultiplier, req.ExtraBonusMultiplier); err != nil {
 		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -67,7 +67,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
 	// Call RNG
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, rtp, payoutMultiplier, req.BetAmount)
+	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -128,7 +128,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		totalFreeSpinsAwarded += option.TotalSpins
 		if remainingFreeSpins > option.MaxSpins {
 			remainingFreeSpins = option.MaxSpins
-            totalFreeSpinsAwarded= option.MaxSpins
+			totalFreeSpinsAwarded = option.MaxSpins
 		}
 	}
 
@@ -238,7 +238,7 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 }
 
 // validateRequest validates the /spin request fields
-func validateRequest(clientID, gameID, playerID string, betAmount float64, isFreeSpin bool, freeSpinOption, currentFreeSpinIndex, remainingFreeSpins, freeSpinMultiplier, extraBonusMultiplier int) error {
+func validateRequest(clientID, gameID, playerID, betID string, betAmount float64, isFreeSpin bool, freeSpinOption, currentFreeSpinIndex, remainingFreeSpins, freeSpinMultiplier, extraBonusMultiplier int) error {
 	if clientID == "" {
 		return fmt.Errorf("client_id is required")
 	}
@@ -247,6 +247,9 @@ func validateRequest(clientID, gameID, playerID string, betAmount float64, isFre
 	}
 	if playerID == "" {
 		return fmt.Errorf("player_id is required")
+	}
+	if betID == "" {
+		return fmt.Errorf("bet_id is required")
 	}
 	if !isFreeSpin && !isValidBetAmount(betAmount) {
 		return fmt.Errorf("invalid bet amount, allowed values are 0.6, 1.2, 1.8, 3.0, 6.0")

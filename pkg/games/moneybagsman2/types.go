@@ -43,6 +43,7 @@ type SpinRequest struct {
 	ClientID              string  `json:"client_id"`
 	GameID                string  `json:"game_id"`
 	PlayerID              string  `json:"player_id"`
+	BetID                 string  `json:"bet_id"`
 }
 
 // SpinResponse represents the response body for the /spin endpoint
@@ -70,6 +71,7 @@ type SelectFreeSpinOptionRequest struct {
 	ClientID             string `json:"client_id"`
 	GameID               string `json:"game_id"`
 	PlayerID             string `json:"player_id"`
+	BetID                string `json:"bet_id"`
 }
 
 // SelectFreeSpinOptionResponse represents the response body for the /select-free-spin-option endpoint

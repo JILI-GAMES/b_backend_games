@@ -15,6 +15,7 @@ type SpinRequest struct {
 	ClientID          string  `json:"client_id"`
 	GameID            string  `json:"game_id"`
 	PlayerID          string  `json:"player_id"`
+	BetID             string  `json:"bet_id"`
 	BetAmount         float64 `json:"bet_amount"`
 	IsFreeSpin        bool    `json:"is_free_spin"`
 	FreeSpinCount     int     `json:"free_spin_count"`

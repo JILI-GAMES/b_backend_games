@@ -22,7 +22,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	// Validate request
-	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.GameState.Bet.Amount); err != nil {
+	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
 		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -86,7 +86,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Call RNG
 	payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
+	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -228,7 +228,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	}
 
 	// Validate request
-	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.GameState.Bet.Amount); err != nil {
+	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
 		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -315,7 +315,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	log.Printf("RTP retrieved: %v", rtp)
 
 	payoutMultiplier := payout / req.GameState.Bet.Amount
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
+	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -469,7 +469,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 	}
 
 	// Validate request
-	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.GameState.Bet.Amount); err != nil {
+	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
 		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -586,7 +586,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 }
 
 // validateRequest validates the request fields
-func validateRequest(clientID, gameID, playerID string, betAmount float64) error {
+func validateRequest(clientID, gameID, playerID, betID string, betAmount float64) error {
 	if clientID == "" {
 		return fmt.Errorf("client_id is required")
 	}
@@ -595,6 +595,9 @@ func validateRequest(clientID, gameID, playerID string, betAmount float64) error
 	}
 	if playerID == "" {
 		return fmt.Errorf("player_id is required")
+	}
+	if betID == "" {
+		return fmt.Errorf("bet_id is required")
 	}
 	if !isValidBetAmount(betAmount) {
 		return fmt.Errorf("invalid bet amount, allowed values are 0.2, 0.4, 0.6, 1.0, 2.0")

@@ -34,6 +34,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			Message: "Bet amount must be positive",
 		})
 	}
+	// validate clientid, playerid, betid, gameid
+	if req.ClientID == "" || req.PlayerID == "" || req.BetID == "" || req.GameID == "" {
+		log.Printf("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
+		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
+			Status:  "error",
+			Message: "ClientID, PlayerID, BetID, GameID must not be empty",
+		})
+	}
+	
 	if req.IsFreeSpin && req.FreeSpinCount <= 0 {
 		log.Printf("Validation error: Free spin count must be positive")
 		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
@@ -102,7 +111,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("Payout multiplier: %f", payoutMultiplier)
 
 	// Call the RNG API
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, rtp, payoutMultiplier, betAmountForPayout)
+	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, betAmountForPayout)
 	if err != nil {
 		log.Printf("Error retrieving RNG outcome: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(SpinResponse{

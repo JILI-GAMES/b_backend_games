@@ -26,6 +26,7 @@ type Request struct {
 	ClientID        string  `json:"client_id"`
 	GameID          string  `json:"game_id"`
 	PlayerID        string  `json:"player_id"`
+	BetID           string  `json:"bet_id"`
 	RTP             float64 `json:"rtp"`
 	PayoutMultiplier float64 `json:"payout_multiplier"`
 	RequestSalt     string  `json:"request_salt"`
@@ -39,10 +40,11 @@ type Response struct {
 }
 
 // GetOutcome calls the RNG service and returns the outcome
-func (c *Client) GetOutcome(clientID, gameID, playerID string, rtp, payoutMultiplier, betAmount float64) (Response, error) {
+func (c *Client) GetOutcome(clientID, gameID, playerID, betID string, rtp, payoutMultiplier, betAmount float64) (Response, error) {
     reqBody, err := json.Marshal(Request{
         ClientID:        clientID,
         GameID:          gameID,
+        BetID:           betID,
         PlayerID:        playerID,
         RTP:             rtp,
         PayoutMultiplier: payoutMultiplier,

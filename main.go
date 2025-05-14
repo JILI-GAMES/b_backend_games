@@ -14,6 +14,7 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame1"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/blossomsofwealth"
 
 	
 
@@ -83,6 +84,11 @@ func main() {
 	openSesame1Routes:= opensesame1.NewRouteGroup(rngClient, settingsClient)
 	openSesame1Routes.Register(app)
 
+	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClient, settingsClient)
+	blossomsofwealthRoutes.Register(app)
+
+	
+
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -94,6 +100,7 @@ func main() {
 				"moneyBagsMan2",
 				"moneyBagsMan",
 				"openSesame1",
+				"blossomsofwealth",
 			},
 		})
 	})

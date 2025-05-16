@@ -33,7 +33,7 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolSpade:   0.1,
 	SymbolClub:    0.1,
 	SymbolDiamond: 0.1,
-	SymbolScatter: 0.04,
+	SymbolScatter: 0.08,
 }
 
 // global constant
@@ -585,10 +585,10 @@ func CountScatters(reels [][]string) (int, []Position) {
 }
 
 // TransformGoldenCards transforms Golden Cards that are part of a win into Joker Cards
-func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, r *rand.Rand) []JokerCard {
+func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existingJokerCards []JokerCard, r *rand.Rand) []JokerCard {
 	var newJokerCards []JokerCard
 	occupiedPositions := make(map[Position]bool)
-	for _, joker := range newJokerCards {
+	for _, joker := range existingJokerCards {
 		occupiedPositions[joker.Position] = true
 	}
 	for reel := 0; reel < Reels; reel++ {

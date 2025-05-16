@@ -282,7 +282,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Transform Golden Cards if present in the last win
-	newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, r)
+	newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
 	req.GameState.JokerCards = append(req.GameState.JokerCards, newJokerCards...)
 	req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
 	log.Printf("Transformed Golden Cards into %d Joker Cards", len(newJokerCards))

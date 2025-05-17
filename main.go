@@ -15,6 +15,7 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame1"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/blossomsofwealth"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame2"
 
 	
 
@@ -87,6 +88,9 @@ func main() {
 	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClient, settingsClient)
 	blossomsofwealthRoutes.Register(app)
 
+	openSesame2Routes := opensesame2.NewRouteGroup(rngClient, settingsClient)
+	openSesame2Routes.Register(app)
+
 	
 
 	// Add a simple status endpoint
@@ -101,6 +105,7 @@ func main() {
 				"moneyBagsMan",
 				"openSesame1",
 				"blossomsofwealth",
+				"openSesame2",
 			},
 		})
 	})

@@ -17,7 +17,7 @@ import (
 // Constants
 const (
 	Denomination          = 0.01
-	GoldenCardProbability = 0.05
+	GoldenCardProbability = 0.10
 	Reels                 = 5
 	Rows                  = 4
 	MinBet                = 20
@@ -399,12 +399,10 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 		for row := 0; row < Rows; row++ {
 			if newReels[reel][row] == string(SymbolScatter) {
 				pos := Position{Reel: reel, Row: row}
-
 				// If this position was a winning position, it's a new scatter
 				if winningPositions[pos] {
 					specialSymbols.NewTargetSymbols = append(specialSymbols.NewTargetSymbols, pos)
 				}
-
 				// Add to the overall target symbols
 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
 			}
@@ -415,7 +413,10 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 	maxAttempts := 500
 	attempts := 0
 
-	// Keep generating until no wins are found
+	var lastWinnings float64
+	var lastGrid [][]string
+	var lastSpecialSymbols SpecialSymbols
+
 	for attempts < maxAttempts {
 		attempts++
 		specialSymbols.GoldenCards = nil
@@ -435,7 +436,6 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 				SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
 			}
 
-			// For positions next to jokers, be extra careful with symbol selection
 			hasNearbyJoker := false
 			for _, joker := range jokerCards {
 				if (joker.Position.Reel == pos.Reel-1 || joker.Position.Reel == pos.Reel+1) &&
@@ -445,7 +445,6 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 				}
 			}
 
-			// If position has a nearby joker, try more variations to avoid wins
 			if hasNearbyJoker {
 				// Try multiple symbols until we find one unlikely to form a win
 				symbolsToTry := make([]Symbol, len(availableSymbols))
@@ -454,10 +453,7 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 
 				foundNonMatchingSymbol := false
 				for _, trySymbol := range symbolsToTry {
-					// Temporarily place this symbol
 					newReels[pos.Reel][pos.Row] = string(trySymbol)
-
-					// Check if this specific pattern would form a win
 					tempWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
 					if tempWinnings == 0 {
 						foundNonMatchingSymbol = true
@@ -466,11 +462,9 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 				}
 
 				if !foundNonMatchingSymbol {
-					// If we couldn't find a non-winning symbol, just use a random one
 					newReels[pos.Reel][pos.Row] = string(availableSymbols[r.Intn(len(availableSymbols))])
 				}
 			} else {
-				// For positions not near jokers, just use any random symbol
 				newReels[pos.Reel][pos.Row] = string(availableSymbols[r.Intn(len(availableSymbols))])
 			}
 		}
@@ -478,25 +472,24 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 		// Check if we have a valid loss pattern
 		totalWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
 		if totalWinnings == 0 {
-			break
+			return newReels, specialSymbols
 		}
-
-		// If reached max attempts, give up and just use loss reels without jokers
-		if attempts >= maxAttempts-1 {
-			log.Printf("Warning: Could not find a loss pattern preserving jokers after %d attempts", attempts)
-			reelsWithoutJokers, specialSymbolsWithoutJokers := GenerateLossForCascade(reels, winningPositions, []JokerCard{}, r)
-
-			// Re-add the jokers to the loss reels
-			for _, joker := range jokerCards {
-				reelsWithoutJokers[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
-			}
-
-			specialSymbolsWithoutJokers.JokerCards = jokerCards
-			return reelsWithoutJokers, specialSymbolsWithoutJokers
+		// Save the last attempted grid and win details
+		lastWinnings = totalWinnings
+		// Deep copy the grid and specialSymbols for override return
+		lastGrid = make([][]string, Reels)
+		for i := range newReels {
+			lastGrid[i] = make([]string, Rows)
+			copy(lastGrid[i], newReels[i])
 		}
+		lastSpecialSymbols = specialSymbols
 	}
 
-	return newReels, specialSymbols
+	// If we reach here, it's impossible to avoid a win with Jokers present
+	log.Printf("HYBRID OVERRIDE: Could not generate a loss grid with Jokers after %d attempts. Allowing unavoidable win (payout=%.2f)", maxAttempts, lastWinnings)
+	// Optionally, annotate specialSymbols for auditing (add a field if needed)
+	// lastSpecialSymbols.HybridOverride = true
+	return lastGrid, lastSpecialSymbols
 }
 
 // CalculateWins calculates the total payout and win details, counting only the longest paths

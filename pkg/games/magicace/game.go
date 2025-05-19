@@ -5,12 +5,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
-
-	// "runtime"
-	// "strconv"
 	"strings"
-	// "sync"
-	// "sync/atomic"
 	"time"
 )
 
@@ -121,9 +116,11 @@ func GenerateReelsWithWin(jokerCards []JokerCard, r *rand.Rand) ([][]string, Spe
 
 		// Place Joker Cards as Wilds
 		reelMap := make(map[Position]string)
-		for _, joker := range jokerCards {
-			pos := Position{Reel: joker.Position.Reel, Row: joker.Position.Row}
-			reelMap[pos] = string(SymbolWild)
+		if jokerCards != nil {
+			for _, joker := range jokerCards {
+				pos := Position{Reel: joker.Position.Reel, Row: joker.Position.Row}
+				reelMap[pos] = string(SymbolWild)
+			}
 		}
 
 		// Generate reels
@@ -137,7 +134,7 @@ func GenerateReelsWithWin(jokerCards []JokerCard, r *rand.Rand) ([][]string, Spe
 				}
 
 				symbol := WeightedRandomSymbol(r)
-				// Add Golden Cards on reels 2, 3, 4 (indices 1, 2, 3) with a 5% chance
+				// Add Golden Cards on reels 2, 3, 4 (indices 1, 2, 3) with probability defined in constants
 				if reel >= 1 && reel <= 3 && symbol != SymbolScatter && r.Float64() < GoldenCardProbability {
 					specialSymbols.GoldenCards = append(specialSymbols.GoldenCards, pos)
 					reels[reel][row] = fmt.Sprintf("golden_%s", string(symbol))
@@ -178,9 +175,11 @@ func GenerateLossReels(jokerCards []JokerCard, r *rand.Rand) ([][]string, Specia
 
 		// Place Joker Cards as Wilds
 		reelMap := make(map[Position]string)
-		for _, joker := range jokerCards {
-			pos := Position{Reel: joker.Position.Reel, Row: joker.Position.Row}
-			reelMap[pos] = string(SymbolWild)
+		if jokerCards != nil {
+			for _, joker := range jokerCards {
+				pos := Position{Reel: joker.Position.Reel, Row: joker.Position.Row}
+				reelMap[pos] = string(SymbolWild)
+			}
 		}
 
 		// Generate reels to avoid wins
@@ -259,10 +258,12 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 		for pos := range winningPositions {
 			// Skip if the position contains a Joker Card
 			isJoker := false
-			for _, joker := range jokerCards {
-				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
-					isJoker = true
-					break
+			if jokerCards != nil {
+				for _, joker := range jokerCards {
+					if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
+						isJoker = true
+						break
+					}
 				}
 			}
 			if isJoker {
@@ -271,7 +272,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 
 			// Generate a new symbol
 			symbol := WeightedRandomSymbol(r)
-			// Add Golden Cards on reels 2, 3, 4 with a 5% chance
+			// Add Golden Cards on reels 2, 3, 4 with defined probability
 			if pos.Reel >= 1 && pos.Reel <= 3 && symbol != SymbolScatter && r.Float64() < GoldenCardProbability {
 				specialSymbols.GoldenCards = append(specialSymbols.GoldenCards, pos)
 				newReels[pos.Reel][pos.Row] = fmt.Sprintf("golden_%s", string(symbol))
@@ -326,10 +327,12 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 		for pos := range winningPositions {
 			// Don't replace Joker Cards
 			isJoker := false
-			for _, joker := range jokerCards {
-				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
-					isJoker = true
-					break
+			if jokerCards != nil {
+				for _, joker := range jokerCards {
+					if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
+						isJoker = true
+						break
+					}
 				}
 			}
 			if isJoker {
@@ -384,10 +387,12 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 
 	// Track positions of jokers for fast lookup
 	jokerPositions := make(map[Position]bool)
-	for _, joker := range jokerCards {
-		jokerPositions[joker.Position] = true
-		// Make sure jokers are represented as Wild in the reels
-		newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
+	if jokerCards != nil {
+		for _, joker := range jokerCards {
+			jokerPositions[joker.Position] = true
+			// Make sure jokers are represented as Wild in the reels
+			newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
+		}
 	}
 
 	// Clear out the target symbols before collecting them
@@ -437,11 +442,13 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 			}
 
 			hasNearbyJoker := false
-			for _, joker := range jokerCards {
-				if (joker.Position.Reel == pos.Reel-1 || joker.Position.Reel == pos.Reel+1) &&
-					(joker.Position.Row == pos.Row) {
-					hasNearbyJoker = true
-					break
+			if jokerCards != nil {
+				for _, joker := range jokerCards {
+					if (joker.Position.Reel == pos.Reel-1 || joker.Position.Reel == pos.Reel+1) &&
+						(joker.Position.Row == pos.Row) {
+						hasNearbyJoker = true
+						break
+					}
 				}
 			}
 
@@ -539,17 +546,21 @@ func CalculateWins(reels [][]string, betMultiplier int, boomingMultiplier int, j
 
 			// Calculate payout
 			matchCount := len(path.Positions)
-			payout := Paytable[Symbol(baseSymbol)][matchCount] * Denomination * float64(betMultiplier) * float64(boomingMultiplier)
-			// payout to be rounded to 2 decimal places
-			payout = math.Round(payout*100) / 100
+			if payoutMap, exists := Paytable[Symbol(baseSymbol)]; exists {
+				if payout, found := payoutMap[matchCount]; found {
+					payout = payout * Denomination * float64(betMultiplier) * float64(boomingMultiplier)
+					// payout to be rounded to 2 decimal places
+					payout = math.Round(payout*100) / 100
 
-			// Add to win details
-			winDetails = append(winDetails, WinDetail{
-				Symbols:     path.Symbols,
-				Payline:     path.Positions,
-				Payout:      payout,
-				GoldenCards: path.GoldenCards,
-			})
+					// Add to win details
+					winDetails = append(winDetails, WinDetail{
+						Symbols:     path.Symbols,
+						Payline:     path.Positions,
+						Payout:      payout,
+						GoldenCards: path.GoldenCards,
+					})
+				}
+			}
 		}
 	}
 
@@ -577,65 +588,84 @@ func CountScatters(reels [][]string) (int, []Position) {
 	return count, positions
 }
 
+// Helper function to count golden cards in win details
+func countGoldenCards(winDetails []WinDetail) int {
+    count := 0
+    for _, win := range winDetails {
+        count += len(win.GoldenCards)
+    }
+    return count
+}
+
 // TransformGoldenCards transforms Golden Cards that are part of a win into Joker Cards
 func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existingJokerCards []JokerCard, r *rand.Rand) []JokerCard {
-	var newJokerCards []JokerCard
-	occupiedPositions := make(map[Position]bool)
+    log.Printf("TransformGoldenCards: Examining %d golden cards from %d win details", 
+               countGoldenCards(lastWinDetails), len(lastWinDetails))
+    
+    var newJokerCards []JokerCard
+    occupiedPositions := make(map[Position]bool)
 
-	for _, joker := range existingJokerCards {
-		occupiedPositions[joker.Position] = true
-	}
-	for reel := 0; reel < Reels; reel++ {
-		for row := 0; row < Rows; row++ {
-			symbol := reels[reel][row]
-			if strings.Contains(symbol, "wild") || strings.HasPrefix(symbol, "golden_") || symbol == string(SymbolScatter) {
-				occupiedPositions[Position{Reel: reel, Row: row}] = true
-			}
-		}
-	}
+    // Initialize with existing joker positions
+    if existingJokerCards != nil {
+        for _, joker := range existingJokerCards {
+            occupiedPositions[joker.Position] = true
+        }
+    }
+    
+    // Track other occupied positions
+    for reel := 0; reel < Reels; reel++ {
+        for row := 0; row < Rows; row++ {
+            symbol := reels[reel][row]
+            if strings.Contains(symbol, "wild") || strings.HasPrefix(symbol, "golden_") || symbol == string(SymbolScatter) {
+                occupiedPositions[Position{Reel: reel, Row: row}] = true
+            }
+        }
+    }
 
-	for _, win := range lastWinDetails {
-		for _, pos := range win.GoldenCards {
-			symbol := reels[pos.Reel][pos.Row]
-			if strings.HasPrefix(symbol, "golden_") {
-				 // Randomly determine joker type
+    for _, win := range lastWinDetails {
+        for _, pos := range win.GoldenCards {
+            symbol := reels[pos.Reel][pos.Row]
+            if strings.HasPrefix(symbol, "golden_") {
+                log.Printf("Processing golden card at position %d,%d", pos.Reel, pos.Row)
+                
+                // Fix probability distribution
                 roll := r.Intn(100)
-                mode := ModeSmallJoker // default (60% chance)
-                remainingRounds := 1   // default for Small Joker and Big Joker
-
-				if roll < 60 {
-                    mode = ModeSuperJoker     // 10% chance
-                    remainingRounds = 3       // Only Super Joker has 3 rounds
-                } else if roll < 20 {
-                    mode = ModeBigJoker       // 30% chance
+                mode := ModeSmallJoker // default
+                remainingRounds := 1   // default
+                
+                if roll < 10 { // First 10% chance for Super Joker
+                    mode = ModeSuperJoker
+                    remainingRounds = 3
+                    log.Printf("Selected Super Joker (roll: %d)", roll)
+                } else if roll < 40 { // Next 30% chance for Big Joker (10-39)
+                    mode = ModeBigJoker
+                    remainingRounds = 1
+                    log.Printf("Selected Big Joker (roll: %d)", roll)
+                } else { // Remaining 60% chance for Small Joker (40-99)
+                    mode = ModeSmallJoker
+                    remainingRounds = 1
+                    log.Printf("Selected Small Joker (roll: %d)", roll)
                 }
-				// if roll < 60 {
-				// 	mode = ModeSuperJoker
-				// 	remainingRounds = 3       // Super Joker starts with 3 rounds
-				// } else if roll < 20 {
-				// 	mode = ModeBigJoker
-				// 	remainingRounds = 1       // Big Joker only lasts for 1 spin/cascade unless specified otherwise
-				// } else {
-				// 	mode = ModeSmallJoker
-				// 	remainingRounds = 1       // Small Joker only lasts for 1 spin/cascade unless specified otherwise
-				// }
 
-				// Create the joker card
+                // Create the joker card
                 newJoker := JokerCard{
                     Position:        pos,
                     Mode:            mode,
                     RemainingRounds: remainingRounds,
                 }
-				
-				if err := newJoker.ValidateMode(); err != nil {
-					// Log the error and skip this transformation (shouldn't happen with predefined modes)
-					continue
-				}
+                
+                if err := newJoker.ValidateMode(); err != nil {
+                    log.Printf("Error validating joker mode: %v - skipping", err)
+                    continue
+                }
 
-				newJokerCards = append(newJokerCards, newJoker)
-				reels[pos.Reel][pos.Row] = string(SymbolWild)
-				occupiedPositions[pos] = true
-				 // If Big Joker, create a random duplicate
+                newJokerCards = append(newJokerCards, newJoker)
+                reels[pos.Reel][pos.Row] = string(SymbolWild)
+                occupiedPositions[pos] = true
+                log.Printf("Created %s at position %d,%d with %d rounds", 
+                          mode, pos.Reel, pos.Row, remainingRounds)
+                
+                // If Big Joker, duplicate to a random position
                 if mode == ModeBigJoker {
                     // Try to find a valid position for duplicate
                     const maxAttempts = 20
@@ -667,116 +697,131 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
                         
                         log.Printf("Created duplicate Big Joker at position %d,%d", 
                                   newReel, newRow)
+                    } else {
+                        log.Printf("Could not find position for duplicate Big Joker after %d attempts", 
+                                  maxAttempts)
                     }
                 }
             }
         }
     }
     
+    log.Printf("TransformGoldenCards: Created %d new joker cards", len(newJokerCards))
     return newJokerCards
 }
 
 // getRandomPosition finds a random position on the reels, avoiding the given position and occupied positions (Improvement #3)
 func getRandomPosition(reels [][]string, r *rand.Rand, excludeReel, excludeRow int, occupiedPositions map[Position]bool) (int, int) {
-	for {
-		reel := r.Intn(Reels)
-		row := r.Intn(Rows)
-		pos := Position{Reel: reel, Row: row}
-		symbol := reels[reel][row]
-		if (reel != excludeReel || row != excludeRow) &&
-			!occupiedPositions[pos] &&
-			symbol != string(SymbolScatter) &&
-			!strings.HasPrefix(symbol, "golden_") {
-			return reel, row
-		}
-	}
+    // Maximum attempts to prevent infinite loop
+    maxAttempts := 100
+    attempts := 0
+    
+    for attempts < maxAttempts {
+        attempts++
+        reel := r.Intn(Reels)
+        row := r.Intn(Rows)
+        pos := Position{Reel: reel, Row: row}
+        symbol := reels[reel][row]
+        if (reel != excludeReel || row != excludeRow) &&
+            !occupiedPositions[pos] &&
+            symbol != string(SymbolScatter) &&
+            !strings.HasPrefix(symbol, "golden_") {
+            return reel, row
+        }
+    }
+    
+    // If we couldn't find a suitable position after maximum attempts, log and return invalid
+    log.Printf("Warning: Could not find suitable random position after %d attempts", maxAttempts)
+    return -1, -1
 }
 
 // Path represents a potential winning path
 type Path struct {
-	Positions   []Position
-	Symbols     []string
-	GoldenCards []Position
+    Positions   []Position
+    Symbols     []string
+    GoldenCards []Position
 }
 
 // findAllPaths recursively finds all possible paths for a symbol starting at a given position
 func findAllPaths(reels [][]string, jokerCards []JokerCard, symbol Symbol, currentReel, currentRow int, currentPath Path) []Path {
-	var paths []Path
+    var paths []Path
 
-	// Base case: if we're at the last reel, stop recursion
-	if currentReel == Reels-1 {
-		if len(currentPath.Positions) >= 3 { // Minimum 3 symbols for a win
-			paths = append(paths, currentPath)
-		}
-		return paths
-	}
+    // Base case: if we're at the last reel, stop recursion
+    if currentReel == Reels-1 {
+        if len(currentPath.Positions) >= 3 { // Minimum 3 symbols for a win
+            paths = append(paths, currentPath)
+        }
+        return paths
+    }
 
-	// Try each row in the next reel
-	nextReel := currentReel + 1
-	for nextRow := 0; nextRow < Rows; nextRow++ {
-		nextPos := Position{Reel: nextReel, Row: nextRow}
-		nextSymbol := reels[nextReel][nextRow]
+    // Try each row in the next reel
+    nextReel := currentReel + 1
+    for nextRow := 0; nextRow < Rows; nextRow++ {
+        nextPos := Position{Reel: nextReel, Row: nextRow}
+        nextSymbol := reels[nextReel][nextRow]
 
-		// Check for Joker Cards
-		isJoker := false
-		for _, joker := range jokerCards {
-			if joker.Position.Reel == nextReel && joker.Position.Row == nextRow {
-				nextSymbol = string(SymbolWild)
-				isJoker = true
-				break
-			}
-		}
+        // Check for Joker Cards
+        isJoker := false
+        if jokerCards != nil {
+            for _, joker := range jokerCards {
+                if joker.Position.Reel == nextReel && joker.Position.Row == nextRow {
+                    nextSymbol = string(SymbolWild)
+                    isJoker = true
+                    break
+                }
+            }
+        }
 
-		// Check if the symbol matches (including wilds)
-		baseNextSymbol := nextSymbol
-		if strings.HasPrefix(nextSymbol, "golden_") {
-			baseNextSymbol = strings.TrimPrefix(nextSymbol, "golden_")
-		}
-		if baseNextSymbol == string(symbol) || nextSymbol == string(SymbolWild) || (isJoker && string(symbol) != string(SymbolScatter)) {
-			newPath := Path{
-				Positions:   append([]Position{}, currentPath.Positions...),
-				Symbols:     append([]string{}, currentPath.Symbols...),
-				GoldenCards: append([]Position{}, currentPath.GoldenCards...),
-			}
-			newPath.Positions = append(newPath.Positions, nextPos)
-			newPath.Symbols = append(newPath.Symbols, nextSymbol)
-			if strings.HasPrefix(nextSymbol, "golden_") {
-				newPath.GoldenCards = append(newPath.GoldenCards, nextPos)
-			}
-			subPaths := findAllPaths(reels, jokerCards, symbol, nextReel, nextRow, newPath)
-			paths = append(paths, subPaths...)
-		}
-	}
+        // Check if the symbol matches (including wilds)
+        baseNextSymbol := nextSymbol
+        if strings.HasPrefix(nextSymbol, "golden_") {
+            baseNextSymbol = strings.TrimPrefix(nextSymbol, "golden_")
+        }
+        if baseNextSymbol == string(symbol) || nextSymbol == string(SymbolWild) || (isJoker && string(symbol) != string(SymbolScatter)) {
+            newPath := Path{
+                Positions:   append([]Position{}, currentPath.Positions...),
+                Symbols:     append([]string{}, currentPath.Symbols...),
+                GoldenCards: append([]Position{}, currentPath.GoldenCards...),
+            }
+            newPath.Positions = append(newPath.Positions, nextPos)
+            newPath.Symbols = append(newPath.Symbols, nextSymbol)
+            if strings.HasPrefix(nextSymbol, "golden_") {
+                newPath.GoldenCards = append(newPath.GoldenCards, nextPos)
+            }
+            subPaths := findAllPaths(reels, jokerCards, symbol, nextReel, nextRow, newPath)
+            paths = append(paths, subPaths...)
+        }
+    }
 
-	// If the current path has at least 3 symbols, it might be a valid win
-	if len(currentPath.Positions) >= 3 {
-		paths = append(paths, currentPath)
-	}
+    // If the current path has at least 3 symbols, it might be a valid win
+    if len(currentPath.Positions) >= 3 {
+        paths = append(paths, currentPath)
+    }
 
-	return paths
+    return paths
 }
 
 // filterLongestPaths keeps only the paths with the maximum length
 func filterLongestPaths(paths []Path) []Path {
-	if len(paths) == 0 {
-		return nil
-	}
+    if len(paths) == 0 {
+        return nil
+    }
 
-	// Find the maximum length
-	maxLength := 0
-	for _, path := range paths {
-		if len(path.Positions) > maxLength {
-			maxLength = len(path.Positions)
-		}
-	}
+    // Find the maximum length
+    maxLength := 0
+    for _, path := range paths {
+        if len(path.Positions) > maxLength {
+            maxLength = len(path.Positions)
+        }
+    }
 
-	// Keep only paths with the maximum length
-	var longestPaths []Path
-	for _, path := range paths {
-		if len(path.Positions) == maxLength {
-			longestPaths = append(longestPaths, path)
-		}
-	}
+    // Keep only paths with the maximum length
+    var longestPaths []Path
+    for _, path := range paths {
+        if len(path.Positions) == maxLength {
+            longestPaths = append(longestPaths, path)
+        }
+    }
 
-	return longestPaths
+    return longestPaths
 }

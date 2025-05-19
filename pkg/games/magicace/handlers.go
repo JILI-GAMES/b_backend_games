@@ -161,40 +161,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	// // Update Joker Cards after the spin
-	// var updatedJokerCards []JokerCard
-	// for _, joker := range req.GameState.JokerCards {
-	// 	wasInWin := false
-	// 	for _, win := range winDetails {
-	// 		for _, pos := range win.Payline {
-	// 			if pos.Reel == joker.Position.Reel && pos.Row == joker.Position.Row {
-	// 				wasInWin = true
-	// 				break
-	// 			}
-	// 		}
-	// 		if wasInWin {
-	// 			break
-	// 		}
-	// 	}
-	// 	 // If joker formed a winning combination, remove it (rule for all jokers)
-	// 	 if wasInWin {
-	// 		// Skip adding to updatedJokerCards to remove the joker
-	// 		continue
-	// 	} else {
-	// 		// Only Super Joker has rounds counter - others are removed in next spin
-	// 		if joker.Mode == ModeSuperJoker {
-	// 			joker.RemainingRounds--
-	// 			if joker.RemainingRounds > 0 {
-	// 				updatedJokerCards = append(updatedJokerCards, joker)
-	// 			}
-	// 		} else {
-	// 			// For Big and Small Jokers, keep them for the next spin unless they were in a win
-	// 			updatedJokerCards = append(updatedJokerCards, joker)
-	// 		}
-	// 	}
-	// }
-
-	// Update Joker Cards logic for SpinHandler and CascadeHandler:
+	// Update Joker Cards after the spin
 	var updatedJokerCards []JokerCard
 	for _, joker := range req.GameState.JokerCards {
 		wasInWin := false
@@ -209,37 +176,70 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				break
 			}
 		}
-		
-		// Special handling for Super Joker
-		if joker.Mode == ModeSuperJoker {
-			// Always decrement counter after each spin
-			joker.RemainingRounds--
-			
-			// When counter is now 0 (was 1), remove the joker
-			if joker.RemainingRounds <= 0 {
-				// Don't add to updatedJokerCards - joker is removed
-				continue
-			}
-			
-			// When counter is now 1 (was 2) and formed a win, remove the joker 
-			if joker.RemainingRounds == 1 && wasInWin {
-				// Don't add to updatedJokerCards - joker is removed
-				continue
-			}
-			
-			// Otherwise, keep the joker with its updated counter
-			updatedJokerCards = append(updatedJokerCards, joker)
+		 // If joker formed a winning combination, remove it (rule for all jokers)
+		 if wasInWin {
+			// Skip adding to updatedJokerCards to remove the joker
+			continue
 		} else {
-			// For Big and Small Jokers, remove if they formed a winning combination
-			if wasInWin {
-				// Don't add to updatedJokerCards - joker is removed
-				continue
+			// Only Super Joker has rounds counter - others are removed in next spin
+			if joker.Mode == ModeSuperJoker {
+				joker.RemainingRounds--
+				if joker.RemainingRounds > 0 {
+					updatedJokerCards = append(updatedJokerCards, joker)
+				}
 			} else {
-				// Keep the joker for one more spin
+				// For Big and Small Jokers, keep them for the next spin unless they were in a win
 				updatedJokerCards = append(updatedJokerCards, joker)
 			}
 		}
 	}
+
+	// // Update Joker Cards logic for SpinHandler and CascadeHandler:
+	// var updatedJokerCards []JokerCard
+	// for _, joker := range req.GameState.JokerCards {
+	// 	wasInWin := false
+	// 	for _, win := range winDetails {
+	// 		for _, pos := range win.Payline {
+	// 			if pos.Reel == joker.Position.Reel && pos.Row == joker.Position.Row {
+	// 				wasInWin = true
+	// 				break
+	// 			}
+	// 		}
+	// 		if wasInWin {
+	// 			break
+	// 		}
+	// 	}
+		
+	// 	// Special handling for Super Joker
+	// 	if joker.Mode == ModeSuperJoker {
+	// 		// Always decrement counter after each spin
+	// 		joker.RemainingRounds--
+			
+	// 		// When counter is now 0 (was 1), remove the joker
+	// 		if joker.RemainingRounds <= 0 {
+	// 			// Don't add to updatedJokerCards - joker is removed
+	// 			continue
+	// 		}
+			
+	// 		// When counter is now 1 (was 2) and formed a win, remove the joker 
+	// 		if joker.RemainingRounds == 1 && wasInWin {
+	// 			// Don't add to updatedJokerCards - joker is removed
+	// 			continue
+	// 		}
+			
+	// 		// Otherwise, keep the joker with its updated counter
+	// 		updatedJokerCards = append(updatedJokerCards, joker)
+	// 	} else {
+	// 		// For Big and Small Jokers, remove if they formed a winning combination
+	// 		if wasInWin {
+	// 			// Don't add to updatedJokerCards - joker is removed
+	// 			continue
+	// 		} else {
+	// 			// Keep the joker for one more spin
+	// 			updatedJokerCards = append(updatedJokerCards, joker)
+	// 		}
+	// 	}
+	// }
 
 	req.GameState.JokerCards = updatedJokerCards
 	req.GameState.SpecialSymbols.JokerCards = updatedJokerCards
@@ -256,6 +256,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			totalCost *= 1.5 // Add 50% for Extra Bet
 		}
 	}
+	
 
 	log.Printf("Spin completed: totalWin=%v, cascading=%v, gameMode=%s, totalCost=%v", totalWinnings, req.GameState.Cascading, req.GameState.GameMode, totalCost)
 
@@ -335,7 +336,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Transform Golden Cards if present in the last win
 	newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
+	if req.GameState.JokerCards == nil {
+		req.GameState.JokerCards = []JokerCard{}
+	}
 	req.GameState.JokerCards = append(req.GameState.JokerCards, newJokerCards...)
+	if req.GameState.SpecialSymbols.JokerCards == nil {
+		req.GameState.SpecialSymbols.JokerCards = []JokerCard{}
+	}
 	req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
 	log.Printf("Transformed Golden Cards into %d Joker Cards", len(newJokerCards))
 

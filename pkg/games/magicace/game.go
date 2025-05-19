@@ -17,7 +17,7 @@ import (
 // Constants
 const (
 	Denomination          = 0.01
-	GoldenCardProbability = 0.10
+	GoldenCardProbability = 0.20
 	Reels                 = 5
 	Rows                  = 4
 	MinBet                = 20
@@ -33,7 +33,7 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolSpade:   0.1,
 	SymbolClub:    0.1,
 	SymbolDiamond: 0.1,
-	SymbolScatter: 0.05,
+	SymbolScatter: 0.08,
 }
 
 // global constant
@@ -603,22 +603,22 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
                 mode := ModeSmallJoker // default (60% chance)
                 remainingRounds := 1   // default for Small Joker and Big Joker
 
-				// if roll < 60 {
-                //     mode = ModeSuperJoker     // 10% chance
-                //     remainingRounds = 3       // Only Super Joker has 3 rounds
-                // } else if roll < 20 {
-                //     mode = ModeBigJoker       // 30% chance
-                // }
 				if roll < 60 {
-					mode = ModeSuperJoker
-					remainingRounds = 3       // Super Joker starts with 3 rounds
-				} else if roll < 20 {
-					mode = ModeBigJoker
-					remainingRounds = 1       // Big Joker only lasts for 1 spin/cascade unless specified otherwise
-				} else {
-					mode = ModeSmallJoker
-					remainingRounds = 1       // Small Joker only lasts for 1 spin/cascade unless specified otherwise
-				}
+                    mode = ModeSuperJoker     // 10% chance
+                    remainingRounds = 3       // Only Super Joker has 3 rounds
+                } else if roll < 20 {
+                    mode = ModeBigJoker       // 30% chance
+                }
+				// if roll < 60 {
+				// 	mode = ModeSuperJoker
+				// 	remainingRounds = 3       // Super Joker starts with 3 rounds
+				// } else if roll < 20 {
+				// 	mode = ModeBigJoker
+				// 	remainingRounds = 1       // Big Joker only lasts for 1 spin/cascade unless specified otherwise
+				// } else {
+				// 	mode = ModeSmallJoker
+				// 	remainingRounds = 1       // Small Joker only lasts for 1 spin/cascade unless specified otherwise
+				// }
 
 				// Create the joker card
                 newJoker := JokerCard{

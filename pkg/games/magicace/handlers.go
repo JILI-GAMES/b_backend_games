@@ -576,7 +576,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 		for reel := 0; reel < Reels; reel++ {
 			for row := 0; row < Rows; row++ {
 				symbol := req.GameState.Reels[reel][row]
-				if strings.Contains(symbol, "Joker") || strings.HasPrefix(symbol, "golden_") || symbol == string(SymbolScatter) {
+				if strings.Contains(symbol, "wild") || strings.HasPrefix(symbol, "golden_") || symbol == string(SymbolScatter) {
 					occupiedPositions[Position{Reel: reel, Row: row}] = true
 				}
 			}

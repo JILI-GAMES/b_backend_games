@@ -603,12 +603,22 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
                 mode := ModeSmallJoker // default (60% chance)
                 remainingRounds := 1   // default for Small Joker and Big Joker
 
+				// if roll < 60 {
+                //     mode = ModeSuperJoker     // 10% chance
+                //     remainingRounds = 3       // Only Super Joker has 3 rounds
+                // } else if roll < 20 {
+                //     mode = ModeBigJoker       // 30% chance
+                // }
 				if roll < 60 {
-                    mode = ModeSuperJoker     // 10% chance
-                    remainingRounds = 3       // Only Super Joker has 3 rounds
-                } else if roll < 20 {
-                    mode = ModeBigJoker       // 30% chance
-                }
+					mode = ModeSuperJoker
+					remainingRounds = 3       // Super Joker starts with 3 rounds
+				} else if roll < 20 {
+					mode = ModeBigJoker
+					remainingRounds = 1       // Big Joker only lasts for 1 spin/cascade unless specified otherwise
+				} else {
+					mode = ModeSmallJoker
+					remainingRounds = 1       // Small Joker only lasts for 1 spin/cascade unless specified otherwise
+				}
 
 				// Create the joker card
                 newJoker := JokerCard{

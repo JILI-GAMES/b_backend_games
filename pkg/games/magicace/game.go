@@ -633,15 +633,15 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
                 mode := ModeSmallJoker // default
                 remainingRounds := 1   // default
                 
-                if roll < 10 { // First 10% chance for Super Joker
+                if roll < 20 { // First 20% chance for Super Joker
                     mode = ModeSuperJoker
                     remainingRounds = 3
                     log.Printf("Selected Super Joker (roll: %d)", roll)
-                } else if roll < 40 { // Next 30% chance for Big Joker (10-39)
+                } else if roll < 60 { // Next 40% chance for Big Joker (20-60)
                     mode = ModeBigJoker
                     remainingRounds = 1
                     log.Printf("Selected Big Joker (roll: %d)", roll)
-                } else { // Remaining 60% chance for Small Joker (40-99)
+                } else { // Remaining 40% chance for Small Joker (60-100)
                     mode = ModeSmallJoker
                     remainingRounds = 1
                     log.Printf("Selected Small Joker (roll: %d)", roll)

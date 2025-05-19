@@ -37,7 +37,7 @@ var SymbolWeights = map[Symbol]float64{
     Symbol9:         0.11,
     SymbolWild:      0.05,
     SymbolScatter:   0.04,
-    SymbolFreeSpins: 0.08,
+    SymbolFreeSpins: 0.20,
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

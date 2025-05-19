@@ -35,7 +35,7 @@ type Position struct {
 type JokerCard struct {
     Position        Position `json:"position"`
     Mode            string   `json:"mode"` // "super_joker", "big_joker", "small_joker"
-    RemainingRounds int      `json:"remaining_rounds"`
+    RemainingRounds int      `json:"remainingRounds"`
 }
 
 // ValidateMode validates the JokerCard's mode (Issue 7)

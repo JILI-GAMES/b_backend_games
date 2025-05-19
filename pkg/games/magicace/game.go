@@ -581,58 +581,89 @@ func CountScatters(reels [][]string) (int, []Position) {
 func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existingJokerCards []JokerCard, r *rand.Rand) []JokerCard {
 	var newJokerCards []JokerCard
 	occupiedPositions := make(map[Position]bool)
+
 	for _, joker := range existingJokerCards {
 		occupiedPositions[joker.Position] = true
 	}
 	for reel := 0; reel < Reels; reel++ {
 		for row := 0; row < Rows; row++ {
 			symbol := reels[reel][row]
-			if strings.Contains(symbol, "Joker") || strings.HasPrefix(symbol, "golden_") || symbol == string(SymbolScatter) {
+			if strings.Contains(symbol, "wild") || strings.HasPrefix(symbol, "golden_") || symbol == string(SymbolScatter) {
 				occupiedPositions[Position{Reel: reel, Row: row}] = true
 			}
 		}
 	}
+
 	for _, win := range lastWinDetails {
 		for _, pos := range win.GoldenCards {
 			symbol := reels[pos.Reel][pos.Row]
 			if strings.HasPrefix(symbol, "golden_") {
-				mode := ModeSmallJoker
-				roll := r.Intn(100)
-				if roll < 10 {
-					mode = ModeSuperJoker
-				} else if roll < 40 { // 10% + 30% = 40%
-					mode = ModeBigJoker
-				}
-				newJoker := JokerCard{
-					Position:        pos,
-					Mode:            mode,
-					RemainingRounds: 3,
-				}
+				 // Randomly determine joker type
+                roll := r.Intn(100)
+                mode := ModeSmallJoker // default (60% chance)
+                remainingRounds := 1   // default for Small Joker and Big Joker
+
+				if roll < 60 {
+                    mode = ModeSuperJoker     // 10% chance
+                    remainingRounds = 3       // Only Super Joker has 3 rounds
+                } else if roll < 20 {
+                    mode = ModeBigJoker       // 30% chance
+                }
+
+				// Create the joker card
+                newJoker := JokerCard{
+                    Position:        pos,
+                    Mode:            mode,
+                    RemainingRounds: remainingRounds,
+                }
+				
 				if err := newJoker.ValidateMode(); err != nil {
 					// Log the error and skip this transformation (shouldn't happen with predefined modes)
 					continue
 				}
+
 				newJokerCards = append(newJokerCards, newJoker)
 				reels[pos.Reel][pos.Row] = string(SymbolWild)
 				occupiedPositions[pos] = true
-				// If Big Joker, duplicate to a random position
-				if mode == ModeBigJoker {
-					newReel, newRow := getRandomPosition(reels, r, pos.Reel, pos.Row, occupiedPositions)
-					if newReel != -1 && newRow != -1 {
-						newPos := Position{Reel: newReel, Row: newRow}
-						newJokerCards = append(newJokerCards, JokerCard{
-							Position:        newPos,
-							Mode:            ModeBigJoker,
-							RemainingRounds: 3,
-						})
-						reels[newReel][newRow] = string(SymbolWild)
-						occupiedPositions[newPos] = true
-					}
-				}
-			}
-		}
-	}
-	return newJokerCards
+				 // If Big Joker, create a random duplicate
+                if mode == ModeBigJoker {
+                    // Try to find a valid position for duplicate
+                    const maxAttempts = 20
+                    var newReel, newRow int = -1, -1
+                    
+                    for attempt := 0; attempt < maxAttempts; attempt++ {
+                        candidateReel := r.Intn(Reels)
+                        candidateRow := r.Intn(Rows)
+                        candidatePos := Position{Reel: candidateReel, Row: candidateRow}
+                        
+                        if !occupiedPositions[candidatePos] {
+                            newReel, newRow = candidateReel, candidateRow
+                            break
+                        }
+                    }
+                    
+                    // If found a valid position, create the duplicate
+                    if newReel != -1 && newRow != -1 {
+                        newPos := Position{Reel: newReel, Row: newRow}
+                        duplicateJoker := JokerCard{
+                            Position:        newPos,
+                            Mode:            ModeBigJoker,
+                            RemainingRounds: remainingRounds, // Same as original
+                        }
+                        
+                        newJokerCards = append(newJokerCards, duplicateJoker)
+                        reels[newReel][newRow] = string(SymbolWild)
+                        occupiedPositions[newPos] = true
+                        
+                        log.Printf("Created duplicate Big Joker at position %d,%d", 
+                                  newReel, newRow)
+                    }
+                }
+            }
+        }
+    }
+    
+    return newJokerCards
 }
 
 // getRandomPosition finds a random position on the reels, avoiding the given position and occupied positions (Improvement #3)

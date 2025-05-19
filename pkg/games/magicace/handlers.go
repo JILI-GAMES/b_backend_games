@@ -176,19 +176,24 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				break
 			}
 		}
-		if wasInWin {
-			if joker.RemainingRounds > 1 {
-				joker.RemainingRounds--
-				updatedJokerCards = append(updatedJokerCards, joker)
-			}
-			// If RemainingRounds == 1, remove it (already handled by not appending)
+		 // If joker formed a winning combination, remove it (rule for all jokers)
+		 if wasInWin {
+			// Skip adding to updatedJokerCards to remove the joker
+			continue
 		} else {
-			joker.RemainingRounds--
-			if joker.RemainingRounds > 0 {
+			// Only Super Joker has rounds counter - others are removed in next spin
+			if joker.Mode == ModeSuperJoker {
+				joker.RemainingRounds--
+				if joker.RemainingRounds > 0 {
+					updatedJokerCards = append(updatedJokerCards, joker)
+				}
+			} else {
+				// For Big and Small Jokers, keep them for the next spin unless they were in a win
 				updatedJokerCards = append(updatedJokerCards, joker)
 			}
 		}
 	}
+
 	req.GameState.JokerCards = updatedJokerCards
 	req.GameState.SpecialSymbols.JokerCards = updatedJokerCards
 	log.Printf("Updated Joker Cards: %d", len(req.GameState.JokerCards))

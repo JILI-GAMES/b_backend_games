@@ -336,13 +336,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Transform Golden Cards if present in the last win
 	newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
-	if req.GameState.JokerCards == nil {
-		req.GameState.JokerCards = []JokerCard{}
-	}
+	// if req.GameState.JokerCards == nil {
+	// 	req.GameState.JokerCards = []JokerCard{}
+	// }
 	req.GameState.JokerCards = append(req.GameState.JokerCards, newJokerCards...)
-	if req.GameState.SpecialSymbols.JokerCards == nil {
-		req.GameState.SpecialSymbols.JokerCards = []JokerCard{}
-	}
+	// if req.GameState.SpecialSymbols.JokerCards == nil {
+	// 	req.GameState.SpecialSymbols.JokerCards = []JokerCard{}
+	// }
 	req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
 	log.Printf("Transformed Golden Cards into %d Joker Cards", len(newJokerCards))
 

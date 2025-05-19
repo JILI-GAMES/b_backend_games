@@ -20,9 +20,9 @@ const (
 
 // Joker Card modes (Issue 7)
 const (
-    ModeSuperJoker = "superJoker"
-    ModeBigJoker   = "bigJoker"
-    ModeSmallJoker = "smallJoker"
+    ModeSuperJoker = "super_joker"
+    ModeBigJoker   = "big_joker"
+    ModeSmallJoker = "small_joker"
 )
 
 // Position represents a position on the reel grid
@@ -34,8 +34,8 @@ type Position struct {
 // JokerCard represents a Joker Card on the reels
 type JokerCard struct {
     Position        Position `json:"position"`
-    Mode            string   `json:"mode"` // "superJoker", "bigJoker", "smallJoker"
-    RemainingRounds int      `json:"remainingRounds"`
+    Mode            string   `json:"mode"` // "super_joker", "big_joker", "small_joker"
+    RemainingRounds int      `json:"remaining_rounds"`
 }
 
 // ValidateMode validates the JokerCard's mode (Issue 7)

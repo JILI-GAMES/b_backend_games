@@ -12,7 +12,7 @@ import (
 // Constants
 const (
 	Denomination          = 0.01
-	GoldenCardProbability = 0.10
+	GoldenCardProbability = 0.20
 	Reels                 = 5
 	Rows                  = 4
 	MinBet                = 20
@@ -649,12 +649,25 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 			}
 			log.Printf("Processing golden card at position %d,%d", pos.Reel, pos.Row)
 
-			// Fix probability distribution
-			mode := ModeSuperJoker
+			// Fix probability distribution: equal chance for Super, Big, or Small Joker
+			roll := r.Intn(3)
+			var mode string
+			var remainingRounds int
+			switch roll {
+			case 0:
+				mode = ModeSuperJoker
+				remainingRounds = 2
+			case 1:
+				mode = ModeBigJoker
+				remainingRounds = 1
+			case 2:
+				mode = ModeSmallJoker
+				remainingRounds = 1
+			}
 			joker := JokerCard{
 				Position:        pos,
 				Mode:            mode,
-				RemainingRounds: 2, // or whatever your default is
+				RemainingRounds: remainingRounds,
 			}
 			newJokerCards = append(newJokerCards, joker)
 			occupiedPositions[pos] = true
@@ -827,6 +840,7 @@ func UpdateSuperJokers(jokers []JokerCard, winDetails []WinDetail, reels [][]str
 	}
 	return updated
 }
+
 
 
 // package magicace

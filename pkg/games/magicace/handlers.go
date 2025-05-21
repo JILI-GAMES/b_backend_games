@@ -871,6 +871,9 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 	req.GameState.TotalWin = 0
 	req.GameState.Cascading = false
 	req.GameState.LastWinDetails = nil
+	req.GameState.ScatterCount = 0
+	req.GameState.SpecialSymbols.TargetSymbols = []Position{}
+	req.GameState.SpecialSymbols.NewTargetSymbols = []Position{}
 
 	return c.JSON(SpinResponse{
 		Status:       "success",

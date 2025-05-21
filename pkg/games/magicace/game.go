@@ -687,11 +687,11 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 			// - Super Joker: 20% chance (rare but powerful)
 			// - Big Joker: 30% chance (medium rarity)
 			// - Small Joker: 50% chance (most common)
-			if roll < 60 {
+			if roll < 20 {
 				mode = ModeSuperJoker
 				remainingRounds = 3 // Start with 3 rounds for Super Joker
 				log.Printf("Selected Super Joker (roll: %d)", roll)
-			} else if roll < 80 {
+			} else if roll < 50 {
 				mode = ModeBigJoker
 				remainingRounds = 1
 				log.Printf("Selected Big Joker (roll: %d)", roll)

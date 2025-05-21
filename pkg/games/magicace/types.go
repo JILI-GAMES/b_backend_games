@@ -118,20 +118,22 @@ type FeatureBuyRequest struct {
 
 // SpinResponse represents the response body for the /spin and /cascade endpoints
 type SpinResponse struct {
-    Status     string     `json:"status"`
-    Message    string     `json:"message"`
-    GameState  GameState  `json:"gameState"`
-    WinDetails []WinDetail `json:"winDetails"`
-    TotalCost  float64    `json:"totalCost"`
+    Status       string     `json:"status"`
+    Message      string     `json:"message"`
+    GameState    GameState  `json:"gameState"`
+    WinDetails   []WinDetail `json:"winDetails"`
+    TotalCost    float64    `json:"totalCost"`
+    ReturnToSpin bool       `json:"returnToSpin,omitempty"` // New field
 }
 
 // CascadeResponse represents the response body for the /cascade endpoint
 type CascadeResponse struct {
-    Status     string     `json:"status"`
-    Message    string     `json:"message"`
-    GameState  GameState  `json:"gameState"`
-    WinDetails []WinDetail `json:"winDetails"`
-    TotalCost  float64    `json:"totalCost"`
+    Status                   string     `json:"status"`
+    Message                  string     `json:"message"`
+    GameState                GameState  `json:"gameState"`
+    WinDetails               []WinDetail `json:"winDetails"`
+    TotalCost                float64    `json:"totalCost"`
+    NeedsSuperJokerProcessing bool       `json:"needsSuperJokerProcessing,omitempty"` // New field
 }
 
 // FeatureBuyResponse represents the response body for the /featureBuy endpoint

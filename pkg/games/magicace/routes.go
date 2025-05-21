@@ -25,4 +25,5 @@ func (rg *RouteGroup) Register(app *fiber.App) {
     app.Post("/spin/magicace", rg.SpinHandler)
     app.Post("/cascade/magicace", rg.CascadeHandler)
     app.Post("/featureBuy/magicace", rg.FeatureBuyHandler)
+    app.Post("/processSuperJokers/magicace", rg.ProcessSuperJokersHandler)
 }

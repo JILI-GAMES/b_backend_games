@@ -453,7 +453,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// First cascade case: Transform golden cards to jokers
 	if hasGoldenCards {
-		log.Printf("First cascade case: Transforming golden cards to jokers")
+		log.Printf("Processing golden cards: Transforming golden cards to jokers")
 		// Transform Golden Cards if present in the last win
 		log.Printf("Transforming Golden Cards from last win details")
 		newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
@@ -484,9 +484,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		log.Printf("Transformed %d Golden Cards into Joker Cards. Total jokers now: %d",
 			len(newJokerCards), len(req.GameState.JokerCards))
-	} else if hasExistingJokers {
-		// SECOND CASCADE CASE: Process existing jokers
-		log.Printf("Second cascade case: Processing existing jokers")
+	}
+
+	// Second cascade case: Process existing jokers
+	if hasExistingJokers {
+		log.Printf("Processing existing jokers")
 
 		// First check which jokers are in winning positions
 		jokersInWins := make(map[Position]bool)

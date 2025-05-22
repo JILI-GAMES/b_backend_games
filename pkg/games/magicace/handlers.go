@@ -458,6 +458,9 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		log.Printf("Transforming Golden Cards from last win details")
 		newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
 
+		// Ensure the mutated grid (with new jokers/wilds) is used for the next cascade and win calculation
+		req.GameState.Reels = req.GameState.Reels // This is mutated in-place by TransformGoldenCards
+
 		// Log joker cards created and remove their positions from winningPositions
 		for _, joker := range newJokerCards {
 			log.Printf("New joker created: mode=%s, position=%d,%d, rounds=%d",
@@ -606,25 +609,45 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		// Generate a loss grid that preserves jokers
 		lossMakingPositions := make(map[Position]bool)
-		for reel := 0; reel < Reels; reel++ {
-			for row := 0; row < Rows; row++ {
-				pos := Position{Reel: reel, Row: row}
 
-				// Skip positions with jokers
-				isJoker := false
-				for _, joker := range req.GameState.JokerCards {
-					if joker.Position.Reel == reel && joker.Position.Row == row {
-						isJoker = true
-						break
-					}
-				}
-
-				if !isJoker && newReels[reel][row] != string(SymbolScatter) &&
-					!strings.HasPrefix(newReels[reel][row], "golden_") {
-					lossMakingPositions[pos] = true
-				}
+		// Only add positions that were actually part of the winning combination
+		for pos := range winningPositions {
+			// Skip positions with jokers 
+			isJoker := false 
+			for _, joker := range req.GameState.JokerCards { 
+				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row { 
+					isJoker = true 
+					break 
+				} 
 			}
+
+			if !isJoker && newReels[pos.Reel][pos.Row] != string(SymbolScatter) && 
+				!strings.HasPrefix(newReels[pos.Reel][pos.Row], "golden_") { 
+				lossMakingPositions[pos] = true 
+			} 
 		}
+
+		// for reel := 0; reel < Reels; reel++ {
+		// 	for row := 0; row < Rows; row++ {
+		// 		pos := Position{Reel: reel, Row: row}
+
+		// 		// Skip positions with jokers
+		// 		isJoker := false
+		// 		for _, joker := range req.GameState.JokerCards {
+		// 			if joker.Position.Reel == reel && joker.Position.Row == row {
+		// 				isJoker = true
+		// 				break
+		// 			}
+		// 		}
+
+		// 		if !isJoker && newReels[reel][row] != string(SymbolScatter) &&
+		// 			!strings.HasPrefix(newReels[reel][row], "golden_") {
+		// 			lossMakingPositions[pos] = true
+		// 		}
+		// 	}
+		// }
+
+		log.Printf("############Loss making positions: %v", lossMakingPositions)
 
 		// Use preserving jokers version
 		newReels, specialSymbols = GenerateLossForCascadePreservingJokers(

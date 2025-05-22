@@ -433,12 +433,18 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	hasExistingJokers := req.GameState.JokerCards != nil && len(req.GameState.JokerCards) > 0
 	log.Printf("Request contains %d existing jokers", len(req.GameState.JokerCards))
 
-	// Track positions to replace
+	// Track positions to replace 
+	
+	// Track unique positions to replace
 	winningPositions := make(map[Position]bool)
+	seenPositions := make(map[Position]bool)
 	for _, win := range req.GameState.LastWinDetails {
 		for i, pos := range win.Payline {
-			log.Printf("Symbol to replace: %s at position %d,%d", win.Symbols[i], pos.Reel, pos.Row)
-			winningPositions[pos] = true
+			if !seenPositions[pos] {
+				log.Printf("Symbol to replace: %s at position %d,%d", win.Symbols[i], pos.Reel, pos.Row)
+				winningPositions[pos] = true
+				seenPositions[pos] = true
+			}
 		}
 	}
 
@@ -451,6 +457,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	log.Printf("$$$$$$$$$$$ hasGoldenCards: %v", hasGoldenCards)
+
 	// First cascade case: Transform golden cards to jokers
 	if hasGoldenCards {
 		log.Printf("Processing golden cards: Transforming golden cards to jokers")
@@ -458,9 +466,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		log.Printf("Transforming Golden Cards from last win details")
 		newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
 
-		// Ensure the mutated grid (with new jokers/wilds) is used for the next cascade and win calculation
-		req.GameState.Reels = req.GameState.Reels // This is mutated in-place by TransformGoldenCards
-
+		log.Printf("<--------> newJokerCards: %v", newJokerCards)
 		// Log joker cards created and remove their positions from winningPositions
 		for _, joker := range newJokerCards {
 			log.Printf("New joker created: mode=%s, position=%d,%d, rounds=%d",
@@ -546,14 +552,22 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 					log.Printf("%s Joker not in win but doesn't persist - removing", joker.Mode)
 					// Will be replaced with random symbols in next step
 
-					// First replace the joker with a random symbol
-					randomSymbol := WeightedRandomSymbol(r)
-					for randomSymbol == SymbolWild || randomSymbol == SymbolScatter ||
-						strings.HasPrefix(string(randomSymbol), "golden_") {
-						randomSymbol = WeightedRandomSymbol(r)
-					}
-					req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(randomSymbol)
-					log.Printf("Replaced %s Joker with %s", joker.Mode, randomSymbol)
+					// // First replace the joker with a random symbol
+					// randomSymbol := WeightedRandomSymbol(r)
+					// for randomSymbol == SymbolWild || randomSymbol == SymbolScatter ||
+					// 	strings.HasPrefix(string(randomSymbol), "golden_") {
+					// 	randomSymbol = WeightedRandomSymbol(r)
+					// }
+
+					// Keep the joker symbol in the reels
+					req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
+
+					updatedJokerCards = append(updatedJokerCards, joker)
+
+					log.Printf("'''''''''''''''''''''''''''updatedJokerCards: %v", updatedJokerCards)
+					
+
+					// log.Printf("Replaced %s Joker with %s", joker.Mode, randomSymbol)
 				}
 			}
 		}
@@ -566,8 +580,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		req.GameState.SpecialSymbols.JokerCards = updatedJokerCards
 	}
 
+	
+	log.Printf("winningPositions: %v", winningPositions)
 	// Generate new symbols for the cascade, only for non-joker positions
 	newReels, specialSymbols := GenerateReelsForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
+
 
 	// Calculate new wins
 	payout, winDetails := CalculateWins(newReels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, req.GameState.JokerCards)
@@ -612,7 +629,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		// Only add positions that were actually part of the winning combination
 		for pos := range winningPositions {
-			// Skip positions with jokers 
+			// Skip positions with jokers
 			isJoker := false 
 			for _, joker := range req.GameState.JokerCards { 
 				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row { 
@@ -624,7 +641,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			if !isJoker && newReels[pos.Reel][pos.Row] != string(SymbolScatter) && 
 				!strings.HasPrefix(newReels[pos.Reel][pos.Row], "golden_") { 
 				lossMakingPositions[pos] = true 
-			} 
+			}
 		}
 
 		// for reel := 0; reel < Reels; reel++ {
@@ -648,6 +665,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		// }
 
 		log.Printf("############Loss making positions: %v", lossMakingPositions)
+
+		log.Printf("*************New reels in loss: %v", newReels)
 
 		// Use preserving jokers version
 		newReels, specialSymbols = GenerateLossForCascadePreservingJokers(
@@ -682,6 +701,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			NeedsSuperJokerProcessing: hasSuperJokers,
 		})
 	}
+
+	log.Printf("*************New reels in win: %v", newReels)
 
 	// Update game state
 	req.GameState.Reels = newReels

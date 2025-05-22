@@ -28,7 +28,7 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolSpade:   0.1,
 	SymbolClub:    0.1,
 	SymbolDiamond: 0.1,
-	SymbolScatter: 0.04,
+	SymbolScatter: 0.08,
 }
 
 // global constant
@@ -691,7 +691,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 				mode = ModeSuperJoker
 				remainingRounds = 3 // Start with 3 rounds for Super Joker
 				log.Printf("Selected Super Joker (roll: %d)", roll)
-			} else if roll < 50 {
+			} else if roll < 80 {
 				mode = ModeBigJoker
 				remainingRounds = 1
 				log.Printf("Selected Big Joker (roll: %d)", roll)
@@ -718,12 +718,13 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 
 			// Add duplication logic for Big Joker
 			if mode == ModeBigJoker {
-				// Try to find a valid position for duplicate
+				// Try to find a valid position for duplicate in reels 2-5
 				const maxAttempts = 20
 				var newReel, newRow int = -1, -1
 
 				for attempt := 0; attempt < maxAttempts; attempt++ {
-					candidateReel := r.Intn(Reels)
+					// Generate reel number from 1-4 and add 1 to get reels 2-5
+					candidateReel := r.Intn(4) + 1
 					candidateRow := r.Intn(Rows)
 					candidatePos := Position{Reel: candidateReel, Row: candidateRow}
 

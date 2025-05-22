@@ -585,9 +585,14 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	// Generate new symbols for the cascade, only for non-joker positions
 	newReels, specialSymbols := GenerateReelsForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
 
+	log.Printf("@@@@@@@@@@@@@@@@@@@@@@@@@newReels: %v", newReels)
+
 
 	// Calculate new wins
 	payout, winDetails := CalculateWins(newReels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, req.GameState.JokerCards)
+
+	log.Printf("TOTAL PAYOUT: %v", payout)
+	log.Printf("WIN DETAILS: %v", winDetails)
 
 	// Call RNG
 	rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
@@ -666,41 +671,171 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		log.Printf("############Loss making positions: %v", lossMakingPositions)
 
-		log.Printf("*************New reels in loss: %v", newReels)
+		log.Printf("*************NEW REELS BEFORE FORCING LOSS: %v", newReels)
 
-		// Use preserving jokers version
-		newReels, specialSymbols = GenerateLossForCascadePreservingJokers(
+		lossReels, lossSpecialSymbols, winOverride := GenerateLossForCascadePreservingJokers(
 			newReels, lossMakingPositions, req.GameState.JokerCards, r)
 
-		// Update the game state
-		specialSymbols.JokerCards = req.GameState.JokerCards
-		req.GameState.Reels = newReels
-		req.GameState.SpecialSymbols = specialSymbols
-		req.GameState.TotalWin = 0
-		req.GameState.Cascading = false
-		req.GameState.LastWinDetails = nil
-
-		// Count scatters
-		scatterPositions := make([]Position, 0)
-		for reel := 0; reel < Reels; reel++ {
-			for row := 0; row < Rows; row++ {
-				if req.GameState.Reels[reel][row] == string(SymbolScatter) {
-					scatterPositions = append(scatterPositions, Position{Reel: reel, Row: row})
+		if winOverride {
+			// RNG wanted loss but we're accepting the win
+			log.Printf("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
+			
+			// Calculate the actual win with current reels and jokers
+			actualPayout, actualWinDetails := CalculateWins(
+				newReels, 
+				req.GameState.Bet.Multiplier, 
+				req.GameState.BoomingMultiplier, 
+				req.GameState.JokerCards,
+			)
+			
+			// Update game state with the win
+			req.GameState.Reels = newReels
+			specialSymbols.JokerCards = req.GameState.JokerCards
+			req.GameState.SpecialSymbols = specialSymbols
+			req.GameState.TotalWin = actualPayout
+			req.GameState.LastWinDetails = actualWinDetails
+			req.GameState.Cascading = actualPayout > 0
+			
+			log.Printf("WIN OVERRIDE RESULT: Payout=%.2f, Cascading=%t", actualPayout, req.GameState.Cascading)
+			
+			// Count scatters
+			scatterPositions := make([]Position, 0)
+			for reel := 0; reel < Reels; reel++ {
+				for row := 0; row < Rows; row++ {
+					if req.GameState.Reels[reel][row] == string(SymbolScatter) {
+						scatterPositions = append(scatterPositions, Position{Reel: reel, Row: row})
+					}
 				}
 			}
-		}
-		req.GameState.SpecialSymbols.TargetSymbols = scatterPositions
-		req.GameState.ScatterCount = len(scatterPositions)
+			req.GameState.SpecialSymbols.TargetSymbols = scatterPositions
+			req.GameState.ScatterCount = len(scatterPositions)
 
-		return c.JSON(CascadeResponse{
-			Status:                    "success",
-			Message:                   "",
-			GameState:                 req.GameState,
-			WinDetails:                nil,
-			TotalCost:                 0,
-			NeedsSuperJokerProcessing: hasSuperJokers,
-		})
+			// Handle free spins if needed
+			if req.GameState.GameMode == "base" && req.GameState.ScatterCount >= 3 {
+				log.Printf("Free Spins triggered during win override: %d scatter(s)", req.GameState.ScatterCount)
+				req.GameState.GameMode = "freeSpins"
+				req.GameState.FreeSpins.ScattersTriggered = req.GameState.ScatterCount
+				if req.GameState.ScatterCount == 3 {
+					req.GameState.FreeSpins.Remaining = 10
+					req.GameState.FreeSpins.TotalAwarded = 10
+				} else if req.GameState.ScatterCount == 4 {
+					req.GameState.FreeSpins.Remaining = 12
+					req.GameState.FreeSpins.TotalAwarded = 12
+				} else {
+					req.GameState.FreeSpins.Remaining = 15
+					req.GameState.FreeSpins.TotalAwarded = 15
+				}
+				if req.GameState.Bet.ExtraBetEnabled {
+					req.GameState.BoomingMultiplier = BoomingMultipliersFreeSpinsExtraBet[0]
+				} else {
+					req.GameState.BoomingMultiplier = BoomingMultipliersFreeSpins[0]
+				}
+			}
+
+			// Ensure wild symbols have corresponding joker cards
+			for reel := 0; reel < Reels; reel++ {
+				for row := 0; row < Rows; row++ {
+					if req.GameState.Reels[reel][row] == string(SymbolWild) {
+						found := false
+						for _, joker := range req.GameState.JokerCards {
+							if joker.Position.Reel == reel && joker.Position.Row == row {
+								found = true
+								break
+							}
+						}
+						if !found {
+							log.Printf("WARNING: Found wild symbol at %d,%d without joker card in win override - adding one", reel, row)
+							newJoker := JokerCard{
+								Position: Position{Reel: reel, Row: row},
+								Mode:     ModeSmallJoker,
+								RemainingRounds: 1,
+							}
+							req.GameState.JokerCards = append(req.GameState.JokerCards, newJoker)
+							req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
+						}
+					}
+				}
+			}
+
+			return c.JSON(CascadeResponse{
+				Status:                    "success",
+				Message:                   "",
+				GameState:                 req.GameState,
+				WinDetails:                actualWinDetails,
+				TotalCost:                 0,
+				NeedsSuperJokerProcessing: false,
+			})
+		} else {
+			// Successfully generated loss
+			log.Printf("**************NEW REELS AFTER FORCING LOSS: %v", lossReels)
+
+			// Update the game state with loss
+			lossSpecialSymbols.JokerCards = req.GameState.JokerCards
+			req.GameState.Reels = lossReels
+			req.GameState.SpecialSymbols = lossSpecialSymbols
+			req.GameState.TotalWin = 0
+			req.GameState.Cascading = false
+			req.GameState.LastWinDetails = nil
+
+			// Count scatters
+			scatterPositions := make([]Position, 0)
+			for reel := 0; reel < Reels; reel++ {
+				for row := 0; row < Rows; row++ {
+					if req.GameState.Reels[reel][row] == string(SymbolScatter) {
+						scatterPositions = append(scatterPositions, Position{Reel: reel, Row: row})
+					}
+				}
+			}
+			req.GameState.SpecialSymbols.TargetSymbols = scatterPositions
+			req.GameState.ScatterCount = len(scatterPositions)
+
+			return c.JSON(CascadeResponse{
+				Status:                    "success",
+				Message:                   "",
+				GameState:                 req.GameState,
+				WinDetails:                nil,
+				TotalCost:                 0,
+				NeedsSuperJokerProcessing: hasSuperJokers,
+			})
+		}
 	}
+
+
+	// 	// Use preserving jokers version
+	// 	newReels, specialSymbols = GenerateLossForCascadePreservingJokers(
+	// 		newReels, lossMakingPositions, req.GameState.JokerCards, r)
+
+	// 	log.Printf("**************NEW REELS AFTER FORCING LOSS: %v", newReels)
+
+	// 	// Update the game state
+	// 	specialSymbols.JokerCards = req.GameState.JokerCards
+	// 	req.GameState.Reels = newReels
+	// 	req.GameState.SpecialSymbols = specialSymbols
+	// 	req.GameState.TotalWin = 0
+	// 	req.GameState.Cascading = false
+	// 	req.GameState.LastWinDetails = nil
+
+	// 	// Count scatters
+	// 	scatterPositions := make([]Position, 0)
+	// 	for reel := 0; reel < Reels; reel++ {
+	// 		for row := 0; row < Rows; row++ {
+	// 			if req.GameState.Reels[reel][row] == string(SymbolScatter) {
+	// 				scatterPositions = append(scatterPositions, Position{Reel: reel, Row: row})
+	// 			}
+	// 		}
+	// 	}
+	// 	req.GameState.SpecialSymbols.TargetSymbols = scatterPositions
+	// 	req.GameState.ScatterCount = len(scatterPositions)
+
+	// 	return c.JSON(CascadeResponse{
+	// 		Status:                    "success",
+	// 		Message:                   "",
+	// 		GameState:                 req.GameState,
+	// 		WinDetails:                nil,
+	// 		TotalCost:                 0,
+	// 		NeedsSuperJokerProcessing: hasSuperJokers,
+	// 	})
+	// }
 
 	log.Printf("*************New reels in win: %v", newReels)
 
@@ -909,9 +1044,15 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 	}
 
 	// Guarantee a loss by randomizing all non-joker positions until no win exists
-	req.GameState.Reels, req.GameState.SpecialSymbols = GenerateLossForCascadePreservingJokers(
+	override := false
+	req.GameState.Reels, req.GameState.SpecialSymbols, override = GenerateLossForCascadePreservingJokers(
 		req.GameState.Reels, positionsToRandomize, req.GameState.JokerCards, rand.New(rand.NewSource(time.Now().UnixNano())),
 	)
+	if override {
+		log.Printf("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
+	}
+
+	
 
 	// Update game state
 	req.GameState.TotalWin = 0

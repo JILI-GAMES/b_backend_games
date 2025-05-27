@@ -154,7 +154,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 							// Occasionally add Scatters to allow for free spin triggers
 							for reel := 0; reel < 5; reel++ {
 								for row := 0; row < 3; row++ {
-									if rand.Float32() < 0.2 { // 20% chance of a Scatter
+									if rand.Float32() < 0.1 { // 20% chance of a Scatter
 										reels[reel][row] = string(SymbolScatter)
 									}
 								}

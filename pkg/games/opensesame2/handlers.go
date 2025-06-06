@@ -41,16 +41,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
     // Generate reels with a guaranteed win
     reels := GenerateReelsWithWin()
 
-    // Calculate winnings with the appropriate multiplier
-    totalWinnings, winDetails, scatterWinAmount, freeSpinCount, freeSpinWinAmount, mysteryBoxPositions := 
+    // Calculate winnings with the appropriate multiplier - Updated for combination payouts
+    totalWinnings, winDetails, scatterWinAmount, combinationWinAmount, combinationType, combinationPositions, scatterPositions := 
         CalculateWins(reels, betMultiplier, req.FreeSpinMultiplier, req.ExtraFreeSpinMultiplier, req.IsFreeSpin, req.IsExtraFreeSpin)
     
-    log.Printf("Initial calculation: totalWinnings=%v, scatterWinAmount=%v, freeSpinWinAmount=%v, winDetails=%v",
-        totalWinnings, scatterWinAmount, freeSpinWinAmount, winDetails)
-
-    // Get positions of scatter and free spin symbols
-    scatterPositions := GetSymbolPositions(reels, string(SymbolScatter))
-    freeSpinPositions := GetFreeSpinSymbolPositions(reels)
+    log.Printf("Initial calculation: totalWinnings=%v, scatterWinAmount=%v, combinationWinAmount=%v, combinationType=%s, winDetails=%v",
+        totalWinnings, scatterWinAmount, combinationWinAmount, combinationType, winDetails)
 
     // Get RTP
     rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
@@ -66,8 +62,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
     // Calculate total bet amount
     totalBetAmount := req.BetAmount
 
-    // Calculate payout multiplier (total_win / bet_amount)
-    payoutMultiplier := (totalWinnings + scatterWinAmount + freeSpinWinAmount) / totalBetAmount
+    // Calculate payout multiplier (total_win / bet_amount) - Updated to include combination wins
+    payoutMultiplier := (totalWinnings + scatterWinAmount + combinationWinAmount) / totalBetAmount
     if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
         payoutMultiplier = 0
         log.Printf("Payout multiplier is NaN or Inf, setting to 0")
@@ -92,13 +88,9 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
         totalWinnings = 0
         winDetails = nil
 
-        // Recalculate scatter and free spin wins (they can still win on a "loss" outcome)
-        _, _, scatterWinAmount, freeSpinCount, freeSpinWinAmount, mysteryBoxPositions = 
+        // Recalculate scatter and combination wins (they can still win on a "loss" outcome)
+        _, _, scatterWinAmount, combinationWinAmount, combinationType, combinationPositions, scatterPositions = 
             CalculateWins(reels, betMultiplier, req.FreeSpinMultiplier, req.ExtraFreeSpinMultiplier, req.IsFreeSpin, req.IsExtraFreeSpin)
-
-        // Update positions for scatter and free spin symbols
-        scatterPositions = GetSymbolPositions(reels, string(SymbolScatter))
-        freeSpinPositions = GetFreeSpinSymbolPositions(reels)
     }
 
     // Check for free spin trigger/retrigger
@@ -171,11 +163,23 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
         log.Printf("Free Spin Bonus ended")
     }
 
-    // Calculate total win amount
-    totalWinAmount := totalWinnings + scatterWinAmount + freeSpinWinAmount
+    // Calculate total win amount - Updated to include combination wins
+    totalWinAmount := totalWinnings + scatterWinAmount + combinationWinAmount
 
-    log.Printf("Spin completed: regularWin=%v, scatterWin=%v, freeSpinSymbolWin=%v, totalWin=%v, freeSpinTriggered=%v, extraFreeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v, isExtraFreeSpin=%v",
-        totalWinnings, scatterWinAmount, freeSpinWinAmount, totalWinAmount, freeSpinTriggered, extraFreeSpinTriggered, freeSpinRetriggered, isFreeSpin, isExtraFreeSpin)
+    // Determine combination details for response
+    var combinationCount int
+    var combinationSymbols []string
+    
+    if combinationType == "FreeSpinCombination" {
+        combinationCount = 3 // 3 Free Spin symbols
+        combinationSymbols = []string{"FreeSpins", "FreeSpins", "FreeSpins"}
+    } else if combinationType == "MysteryBoxCombination" {
+        combinationCount = 3 // 2 Free Spin + 1 Mystery Box
+        combinationSymbols = []string{"FreeSpins", "FreeSpins", "MysteryBox"}
+    }
+
+    log.Printf("Spin completed: regularWin=%v, scatterWin=%v, combinationWin=%v, combinationType=%s, totalWin=%v, freeSpinTriggered=%v, extraFreeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v, isExtraFreeSpin=%v",
+        totalWinnings, scatterWinAmount, combinationWinAmount, combinationType, totalWinAmount, freeSpinTriggered, extraFreeSpinTriggered, freeSpinRetriggered, isFreeSpin, isExtraFreeSpin)
 
     return c.JSON(SpinResponse{
         Reels:                  reels,
@@ -184,11 +188,11 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
         ScatterCount:           len(scatterPositions),
         ScatterWinAmount:       scatterWinAmount,
         ScatterPositions:       scatterPositions,
-        FreeSpinCount:          freeSpinCount,
-        FreeSpinWinAmount:      freeSpinWinAmount,
-        FreeSpinPositions:      freeSpinPositions,
-        MysteryBoxCount:        len(mysteryBoxPositions),
-        MysteryBoxPositions:    mysteryBoxPositions,
+        CombinationCount:       combinationCount,
+        CombinationWinAmount:   combinationWinAmount,
+        CombinationType:        combinationType,
+        CombinationPositions:   combinationPositions,
+        CombinationSymbols:     combinationSymbols,
         FreeSpinTriggered:      freeSpinTriggered,
         FreeSpinRetriggered:    freeSpinRetriggered,
         ExtraFreeSpinTriggered: extraFreeSpinTriggered,

@@ -58,11 +58,11 @@ type SpinResponse struct {
     ScatterCount          int         `json:"scatter_count"`
     ScatterWinAmount      float64     `json:"scatter_win_amount"`
     ScatterPositions      []Position  `json:"scatter_positions"`
-    FreeSpinCount         int         `json:"free_spin_count"`
-    FreeSpinWinAmount     float64     `json:"free_spin_win_amount"`
-    FreeSpinPositions     []Position  `json:"free_spin_positions"`
-    MysteryBoxCount       int         `json:"mystery_box_count"`     
-    MysteryBoxPositions   []Position  `json:"mystery_box_positions"` 
+    CombinationCount      int         `json:"combination_count"`        // Number of symbols in combination
+    CombinationWinAmount  float64     `json:"combination_win_amount"`   // Win amount from combination
+    CombinationType       string      `json:"combination_type"`         // "FreeSpinCombination" or "MysteryBoxCombination"
+    CombinationPositions  []Position  `json:"combination_positions"`    // Positions of symbols in combination
+    CombinationSymbols    []string    `json:"combination_symbols"`      // Symbols involved in combination
     FreeSpinTriggered     bool        `json:"free_spin_triggered"`
     FreeSpinRetriggered   bool        `json:"free_spin_retriggered"`
     ExtraFreeSpinTriggered bool       `json:"extra_free_spin_triggered"` 

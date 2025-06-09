@@ -118,7 +118,7 @@ func GenerateReelsWithWin() [][]string {
                 
                 // Wilds only on reels 2-5 (indices 1-4)
                 if reel == 0 && symbol == SymbolWild {
-                    symbol = WeightedRandomSymbol(r)
+                    // symbol = WeightedRandomSymbol(r)
                     for symbol == SymbolWild {
                         symbol = WeightedRandomSymbol(r)
                     }
@@ -170,7 +170,7 @@ func GenerateLossReels() [][]string {
                 
                 // Wilds only on reels 2-5 (indices 1-4)
                 if reel == 0 && symbol == SymbolWild {
-                    symbol = WeightedRandomSymbol(r)
+                    // symbol = WeightedRandomSymbol(r)
                     for symbol == SymbolWild {
                         symbol = WeightedRandomSymbol(r)
                     }

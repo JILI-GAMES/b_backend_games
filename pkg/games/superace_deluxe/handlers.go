@@ -43,8 +43,11 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		gs.Cards = ConvertToReelBased(rowReq.Cards)
 	}
 
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
+
 	// Use the shared settings service
-	rtp, err := rg.Settings.GetRTP(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID)
+	rtp, err := settingsClient.GetRTP(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  500,
@@ -66,7 +69,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	fmt.Printf("Potential wins: %v, Payout multiplier: %v\n", potentialWins, payoutMultiplier)
 
 	// Use the shared RNG service
-	rngResp, err := rg.RNG.GetOutcome(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID, rowReq.BetID, rtp, payoutMultiplier, rowReq.BetAmount)
+	rngResp, err := rngClient.GetOutcome(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID, rowReq.BetID, rtp, payoutMultiplier, rowReq.BetAmount)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  500,
@@ -102,4 +105,3 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Return row-based response
 	return c.JSON(rowBasedResponse)
 }
-

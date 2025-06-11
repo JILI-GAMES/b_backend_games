@@ -12,6 +12,8 @@ import (
 
 // SpinHandler handles the /spin/magicace endpoint
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
 		log.Printf("Failed to parse request body: %v", err)
@@ -110,7 +112,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	// Get RTP
-	rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
 		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -122,7 +124,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Call RNG
 	payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -366,6 +368,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 // CascadeHandler handles the /cascade/magicace endpoint
 func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
 	var req CascadeRequest
 	if err := c.BodyParser(&req); err != nil {
 		log.Printf("Failed to parse request body: %v", err)
@@ -433,8 +437,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	hasExistingJokers := req.GameState.JokerCards != nil && len(req.GameState.JokerCards) > 0
 	log.Printf("Request contains %d existing jokers", len(req.GameState.JokerCards))
 
-	// Track positions to replace 
-	
+	// Track positions to replace
+
 	// Track unique positions to replace
 	winningPositions := make(map[Position]bool)
 	seenPositions := make(map[Position]bool)
@@ -565,7 +569,6 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 					updatedJokerCards = append(updatedJokerCards, joker)
 
 					log.Printf("'''''''''''''''''''''''''''updatedJokerCards: %v", updatedJokerCards)
-					
 
 					// log.Printf("Replaced %s Joker with %s", joker.Mode, randomSymbol)
 				}
@@ -580,13 +583,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		req.GameState.SpecialSymbols.JokerCards = updatedJokerCards
 	}
 
-	
 	log.Printf("winningPositions: %v", winningPositions)
 	// Generate new symbols for the cascade, only for non-joker positions
 	newReels, specialSymbols := GenerateReelsForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
 
 	log.Printf("@@@@@@@@@@@@@@@@@@@@@@@@@newReels: %v", newReels)
-
 
 	// Calculate new wins
 	payout, winDetails := CalculateWins(newReels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, req.GameState.JokerCards)
@@ -595,7 +596,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	log.Printf("WIN DETAILS: %v", winDetails)
 
 	// Call RNG
-	rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
 		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -606,7 +607,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	log.Printf("RTP retrieved: %v", rtp)
 
 	payoutMultiplier := payout / req.GameState.Bet.Amount
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -635,17 +636,17 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		// Only add positions that were actually part of the winning combination
 		for pos := range winningPositions {
 			// Skip positions with jokers
-			isJoker := false 
-			for _, joker := range req.GameState.JokerCards { 
-				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row { 
-					isJoker = true 
-					break 
-				} 
+			isJoker := false
+			for _, joker := range req.GameState.JokerCards {
+				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
+					isJoker = true
+					break
+				}
 			}
 
-			if !isJoker && newReels[pos.Reel][pos.Row] != string(SymbolScatter) && 
-				!strings.HasPrefix(newReels[pos.Reel][pos.Row], "golden_") { 
-				lossMakingPositions[pos] = true 
+			if !isJoker && newReels[pos.Reel][pos.Row] != string(SymbolScatter) &&
+				!strings.HasPrefix(newReels[pos.Reel][pos.Row], "golden_") {
+				lossMakingPositions[pos] = true
 			}
 		}
 
@@ -679,15 +680,15 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		if winOverride {
 			// RNG wanted loss but we're accepting the win
 			log.Printf("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
-			
+
 			// Calculate the actual win with current reels and jokers
 			actualPayout, actualWinDetails := CalculateWins(
-				newReels, 
-				req.GameState.Bet.Multiplier, 
-				req.GameState.BoomingMultiplier, 
+				newReels,
+				req.GameState.Bet.Multiplier,
+				req.GameState.BoomingMultiplier,
 				req.GameState.JokerCards,
 			)
-			
+
 			// Update game state with the win
 			req.GameState.Reels = newReels
 			specialSymbols.JokerCards = req.GameState.JokerCards
@@ -695,9 +696,9 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			req.GameState.TotalWin = actualPayout
 			req.GameState.LastWinDetails = actualWinDetails
 			req.GameState.Cascading = actualPayout > 0
-			
+
 			log.Printf("WIN OVERRIDE RESULT: Payout=%.2f, Cascading=%t", actualPayout, req.GameState.Cascading)
-			
+
 			// Count scatters
 			scatterPositions := make([]Position, 0)
 			for reel := 0; reel < Reels; reel++ {
@@ -746,8 +747,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 						if !found {
 							log.Printf("WARNING: Found wild symbol at %d,%d without joker card in win override - adding one", reel, row)
 							newJoker := JokerCard{
-								Position: Position{Reel: reel, Row: row},
-								Mode:     ModeSmallJoker,
+								Position:        Position{Reel: reel, Row: row},
+								Mode:            ModeSmallJoker,
 								RemainingRounds: 1,
 							}
 							req.GameState.JokerCards = append(req.GameState.JokerCards, newJoker)
@@ -799,7 +800,6 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			})
 		}
 	}
-
 
 	// 	// Use preserving jokers version
 	// 	newReels, specialSymbols = GenerateLossForCascadePreservingJokers(
@@ -952,21 +952,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 // ProcessSuperJokersHandler handles Super Jokers after a loss in cascade
 func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
+	// Remove unused rngClient, settingsClient
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
 		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
-		})
-	}
-
-	// Validate request
-	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		log.Printf("Request validation failed: %v", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "error",
-			"message": err.Error(),
 		})
 	}
 
@@ -1052,8 +1044,6 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 		log.Printf("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
 	}
 
-	
-
 	// Update game state
 	req.GameState.TotalWin = 0
 	req.GameState.Cascading = false
@@ -1074,6 +1064,7 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 
 // FeatureBuyHandler handles the /featureBuy/magicace endpoint
 func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
+	// Remove unused rngClient, settingsClient
 	var req FeatureBuyRequest
 	if err := c.BodyParser(&req); err != nil {
 		log.Printf("Failed to parse request body: %v", err)

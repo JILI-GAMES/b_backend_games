@@ -47,16 +47,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	totalWinnings, winDetails := CalculateWins(reels, betMultiplier, effectiveMultiplier, req.IsFreeSpin)
 	log.Printf("Initial calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
 
-	// Get RTP
-	rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
-	if err != nil {
-		log.Printf("Failed to get RTP: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to retrieve game settings",
-		})
-	}
-	log.Printf("RTP retrieved: %v", rtp)
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
 
 	// Calculate payout multiplier (corrected formula: total_win / bet_amount)
 	payoutMultiplier := totalWinnings / req.BetAmount
@@ -66,8 +58,19 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
+	// Get RTP
+	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	if err != nil {
+		log.Printf("Failed to get RTP: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve game settings",
+		})
+	}
+	log.Printf("RTP retrieved: %v", rtp)
+
 	// Call RNG
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

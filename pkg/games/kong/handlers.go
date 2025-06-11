@@ -42,7 +42,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			Message: "ClientID, PlayerID, BetID, GameID must not be empty",
 		})
 	}
-	
+
 	if req.IsFreeSpin && req.FreeSpinCount <= 0 {
 		log.Printf("Validation error: Free spin count must be positive")
 		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
@@ -82,8 +82,11 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 	log.Printf("Bet multiplier: %d", betMultiplier)
 
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
+
 	// Call the Settings API to get RTP
-	rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
 		log.Printf("Error retrieving game settings: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(SpinResponse{
@@ -111,7 +114,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("Payout multiplier: %f", payoutMultiplier)
 
 	// Call the RNG API
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, betAmountForPayout)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, betAmountForPayout)
 	if err != nil {
 		log.Printf("Error retrieving RNG outcome: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(SpinResponse{

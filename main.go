@@ -8,16 +8,15 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/blossomsofwealth"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/kong"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicace"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame1"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/blossomsofwealth"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame2"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/winningmask"
-	
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -28,19 +27,28 @@ import (
 )
 
 func main() {
-	// Load configuration
-	cfg := config.Load()
+	// Load both production and test configs
+	prodCfg, testCfg := config.LoadAll()
 
-	// Set up logging with lumberjack for daily rotation and 1 day retention
+	// Set up logging with lumberjack for daily rotation and 1 day retention (use prod config for log file)
 	log.SetOutput(&lumberjack.Logger{
-		Filename:  cfg.LogFile,
+		Filename:  prodCfg.LogFile,
+		MaxAge:    1,    // days to keep
+		LocalTime: true, // use local time for file names
+	})
+	// Set up logging with lumberjack for daily rotation and 1 day retention (use test config for log file)
+	log.SetOutput(&lumberjack.Logger{
+		Filename:  testCfg.LogFile,
 		MaxAge:    1,    // days to keep
 		LocalTime: true, // use local time for file names
 	})
 
-	// Create shared clients
-	rngClient := rng.NewClient(cfg.RNGServiceURL)
-	settingsClient := settings.NewClient(cfg.SettingsServiceURL)
+	// Create both prod and test clients
+	rngClientProd := rng.NewClient(prodCfg.RNGServiceURL)
+	settingsClientProd := settings.NewClient(prodCfg.SettingsServiceURL)
+
+	rngClientTest := rng.NewClient(testCfg.RNGServiceURL)
+	settingsClientTest := settings.NewClient(testCfg.SettingsServiceURL)
 
 	// Create fiber app
 	app := fiber.New(fiber.Config{
@@ -66,32 +74,32 @@ func main() {
 		Output:     os.Stdout,
 	}))
 
-	// Register routes for individual games
-	superaceRoutes := superace_deluxe.NewRouteGroup(rngClient, settingsClient)
+	// Register routes for individual games, passing both sets of clients
+	superaceRoutes := superace_deluxe.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	superaceRoutes.Register(app)
 
-	kongRoutes := kong.NewRouteGroup(rngClient, settingsClient)
+	kongRoutes := kong.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	kongRoutes.Register(app)
 
-	magicAceRoutes := magicace.NewRouteGroup(rngClient, settingsClient)
+	magicAceRoutes := magicace.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	magicAceRoutes.Register(app)
 
-	moneyBagsMan2Routes := moneybagsman2.NewRouteGroup(rngClient, settingsClient)
+	moneyBagsMan2Routes := moneybagsman2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	moneyBagsMan2Routes.Register(app)
 
-	moneyBagsManRoutes := moneybagsman.NewRouteGroup(rngClient, settingsClient)
+	moneyBagsManRoutes := moneybagsman.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	moneyBagsManRoutes.Register(app)
 
-	openSesame1Routes:= opensesame1.NewRouteGroup(rngClient, settingsClient)
+	openSesame1Routes := opensesame1.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	openSesame1Routes.Register(app)
 
-	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClient, settingsClient)
+	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	blossomsofwealthRoutes.Register(app)
 
-	openSesame2Routes := opensesame2.NewRouteGroup(rngClient, settingsClient)
+	openSesame2Routes := opensesame2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	openSesame2Routes.Register(app)
 
-	winningmaskRoutes := winningmask.NewRouteGroup(rngClient, settingsClient)
+	winningmaskRoutes := winningmask.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	winningmaskRoutes.Register(app)
 
 	// Add a simple status endpoint
@@ -113,7 +121,7 @@ func main() {
 	})
 
 	// Start the server
-	port := cfg.ServerPort
+	port := prodCfg.ServerPort
 	log.Printf("Starting server on port %s", port)
 	log.Fatal(app.Listen(":" + port))
 }

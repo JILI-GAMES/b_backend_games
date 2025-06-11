@@ -25,7 +25,7 @@ func Load() Config {
 
 	return Config{
 		RNGServiceURL:      getEnv("RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
-		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t2.ibibe.africa/get-game-settings"),
+		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 	}
@@ -47,4 +47,26 @@ func getEnvAsInt(key string, defaultValue int) int {
 		return value
 	}
 	return defaultValue
+}
+
+// LoadAll loads both production and test configurations from environment variables
+func LoadAll() (prod Config, test Config) {
+	// Try to load .env file, but don't fail if it doesn't exist
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found or error loading it")
+	}
+
+	prod = Config{
+		RNGServiceURL:      getEnv("PROD_RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
+		SettingsServiceURL: getEnv("PROD_SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
+		ServerPort:         getEnv("PORT", "11400"),
+		LogFile:            getEnv("LOG_FILE", "app.log"),
+	}
+	test = Config{
+		RNGServiceURL:      getEnv("TEST_RNG_API_URL", "http://test-rng-url"),
+		SettingsServiceURL: getEnv("TEST_SETTINGS_API_URL", "https://test-settings-url"),
+		ServerPort:         getEnv("PORT", "11400"),
+		LogFile:            getEnv("LOG_FILE", "app.log"),
+	}
+	return
 }

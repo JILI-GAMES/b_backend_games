@@ -8,22 +8,35 @@ import (
 
 // RouteGroup holds the dependencies for the handlers
 type RouteGroup struct {
-    RNG     *rng.Client
-    Settings *settings.Client
+	RNGProd      *rng.Client
+	SettingsProd *settings.Client
+	RNGTest      *rng.Client
+	SettingsTest *settings.Client
 }
 
 // NewRouteGroup creates a new RouteGroup
-func NewRouteGroup(rngClient *rng.Client, settingsClient *settings.Client) *RouteGroup {
-    return &RouteGroup{
-        RNG:     rngClient,
-        Settings: settingsClient,
-    }
+func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *rng.Client, settingsTest *settings.Client) *RouteGroup {
+	return &RouteGroup{
+		RNGProd:      rngProd,
+		SettingsProd: settingsProd,
+		RNGTest:      rngTest,
+		SettingsTest: settingsTest,
+	}
+}
+
+// Helper to select the correct clients per request
+func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
+	origin := c.Get("Origin")
+	if origin == "https://playgamestest.ibibe.cloud" {
+		return rg.RNGTest, rg.SettingsTest
+	}
+	return rg.RNGProd, rg.SettingsProd
 }
 
 // Register registers the routes with the Fiber app
 func (rg *RouteGroup) Register(app *fiber.App) {
-    app.Post("/spin/magicace", rg.SpinHandler)
-    app.Post("/cascade/magicace", rg.CascadeHandler)
-    app.Post("/featureBuy/magicace", rg.FeatureBuyHandler)
-    app.Post("/processSuperJokers/magicace", rg.ProcessSuperJokersHandler)
+	app.Post("/spin/magicace", rg.SpinHandler)
+	app.Post("/cascade/magicace", rg.CascadeHandler)
+	app.Post("/featureBuy/magicace", rg.FeatureBuyHandler)
+	app.Post("/processSuperJokers/magicace", rg.ProcessSuperJokersHandler)
 }

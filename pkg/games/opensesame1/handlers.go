@@ -50,8 +50,11 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	scatterPositions := GetSymbolPositions(reels, string(SymbolScatter))
 	freeSpinPositions := GetFreeSpinSymbolPositions(reels)
 
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
+
 	// Get RTP
-	rtp, err := rg.Settings.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
 		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -73,7 +76,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
 	// Call RNG
-	rngResp, err := rg.RNG.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, totalBetAmount)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, totalBetAmount)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

@@ -2,6 +2,7 @@ package moneybagsman2
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
@@ -30,7 +31,7 @@ func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *
 func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
 	origin := c.Get("Origin")
 	fmt.Printf("Origin: %s\n", origin)
-	if origin == "https://playgamestest.ibibe.cloud" {
+	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) {
 		return rg.RNGTest, rg.SettingsTest
 	}
 	return rg.RNGProd, rg.SettingsProd

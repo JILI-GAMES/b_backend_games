@@ -17,6 +17,7 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame2"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/winningmask"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdsparty"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -102,6 +103,9 @@ func main() {
 	winningmaskRoutes := winningmask.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	winningmaskRoutes.Register(app)
 
+	birdspartyRoutes := birdsparty.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	birdspartyRoutes.Register(app)
+
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -116,6 +120,7 @@ func main() {
 				"blossomsofwealth",
 				"openSesame2",
 				"winningmask",
+				"birdsparty",
 			},
 		})
 	})

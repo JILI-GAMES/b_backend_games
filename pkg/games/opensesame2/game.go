@@ -40,9 +40,9 @@ var SymbolWeights = map[Symbol]float64{
 	Symbol10:         0.11,
 	Symbol9:          0.11,
 	SymbolWild:       0.05,
-	SymbolScatter:    0.11, //0.11 for testing 0.04 normal 
-	SymbolFreeSpins:  0.03, //30 % for testing
-	SymbolMysteryBox: 0.02, //20 % for testing
+	SymbolScatter:    0.30, //0.3 for testing 0.06 normal 
+	SymbolFreeSpins:  0.05, //50 % for testing
+	SymbolMysteryBox: 0.04, //50 % for testing
 }
 
 // Paytable (payouts for Bet Multiplier = 1) - Regular symbol payouts
@@ -108,11 +108,16 @@ func generateWaysToWin() [][]int {
 func generateReelWithConstraints(r *rand.Rand, reelIndex int) []string {
 	reel := make([]string, Rows)
 
-	// Track if we've already placed a special symbol on this reel
+	// Track if we've already placed special symbols on this reel
 	hasSpecialSymbol := false
+	hasScatterSymbol := false
 	specialSymbolPosition := -1
+	scatterSymbolPosition := -1
 
-	// First pass: decide if we want a special symbol on this reel and where
+	log.Println("has scatter symbol: ", hasScatterSymbol)
+	log.Println("has special symbol: ", hasSpecialSymbol)
+
+	// First pass: decide if we want special symbols on this reel and where
 	if reelIndex <= 2 { // Reels 0, 1, 2 can have Free Spin symbols
 		// Random chance to place a Free Spin symbol
 		if r.Float64() < SymbolWeights[SymbolFreeSpins] {
@@ -133,7 +138,18 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int) []string {
 		}
 	}
 
-	// Second pass: fill remaining positions with regular symbols
+	// Second pass: decide if we want a Scatter symbol on this reel (if no other special symbol)
+	if !hasSpecialSymbol {
+		// Random chance to place a Scatter symbol
+		if r.Float64() < SymbolWeights[SymbolScatter] {
+			scatterSymbolPosition = r.Intn(Rows)
+			reel[scatterSymbolPosition] = string(SymbolScatter)
+			hasScatterSymbol = true
+			log.Printf("Placed Scatter symbol on reel %d at position %d", reelIndex, scatterSymbolPosition)
+		}
+	}
+
+	// Third pass: fill remaining positions with regular symbols
 	for row := 0; row < Rows; row++ {
 		if reel[row] != "" {
 			continue // Skip positions already filled with special symbols
@@ -145,7 +161,7 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int) []string {
 
 		for symbol, weight := range SymbolWeights {
 			// Exclude special symbols from regular generation
-			if symbol == SymbolFreeSpins || symbol == SymbolMysteryBox {
+			if symbol == SymbolFreeSpins || symbol == SymbolMysteryBox || symbol == SymbolScatter {
 				continue
 			}
 			// Wild only appears on reels 2-5

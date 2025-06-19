@@ -40,8 +40,8 @@ var SymbolWeights = map[Symbol]float64{
 	Symbol10:         0.11,
 	Symbol9:          0.11,
 	SymbolWild:       0.05,
-	SymbolScatter:    0.30, //0.3 for testing 0.06 normal 
-	SymbolFreeSpins:  0.05, //50 % for testing
+	SymbolScatter:    0.06, //0.3 for testing 0.06 normal 
+	SymbolFreeSpins:  0.5, //50 % for testing 0.05 normal
 	SymbolMysteryBox: 0.04, //50 % for testing
 }
 

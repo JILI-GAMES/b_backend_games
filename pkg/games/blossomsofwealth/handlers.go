@@ -187,19 +187,21 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	// For an active free spin, update the spin count and multiplier for next round
+    isFreeSpin := req.IsFreeSpin
 	if req.IsFreeSpin {
 		currentFreeSpinIndex++
 		remainingFreeSpins--
 
-		// Increase multiplier by 1 for the next round
-		freeSpinMultiplier = req.FreeSpinMultiplier + 1
+		// Prepare multiplier for NEXT spin (only if there are more spins)
+		if remainingFreeSpins > 0 {
+			freeSpinMultiplier = req.FreeSpinMultiplier + 1
+		}
 
 		log.Printf("Free Spin in progress: spin=%d, remaining=%d, multiplier=%d",
 			currentFreeSpinIndex, remainingFreeSpins, freeSpinMultiplier)
 	}
 
 	// Check if Free Spin Bonus has ended
-	isFreeSpin := req.IsFreeSpin
 	if req.IsFreeSpin && remainingFreeSpins <= 0 {
 		isFreeSpin = false
 		currentFreeSpinIndex = 0

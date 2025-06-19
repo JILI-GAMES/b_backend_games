@@ -28,8 +28,8 @@ var SymbolWeights = map[Symbol]float64{
     SymbolQ:              0.10,
     SymbolJ:              0.10,
     SymbolWild:           0.08,
-    SymbolSilverFlower:   0.20, // 0.10 but 0.20 for testing
-    SymbolGoldFlower:     0.20, // 0.10 but 0.20 for testing
+    SymbolSilverFlower:   0.10, // 0.10 but 0.20 for testing
+    SymbolGoldFlower:     0.10, // 0.10 but 0.20 for testing
 }
 
 // Paytable (payouts for Bet Multiplier = 1)
@@ -484,20 +484,21 @@ func HasSilverFlowerOnEachFirstReel(reels [][]string) bool {
 
 // CheckBonusMultiplierCondition checks if the bonus multiplier condition is met:
 // 1. There must be Silver Flowers on each of reels 0, 1, and 2 (to trigger free spins)
-// 2. There must be a Gold Flower on reel 3
+// 2. There must be a Gold Flower on reel 3 or 4
 func CheckBonusMultiplierCondition(reels [][]string) bool {
     // First condition: Check for Silver Flowers on reels 0, 1, and 2
     if !HasSilverFlowerOnEachFirstReel(reels) {
         return false
     }
     
-    // Second condition: Check for Gold Flower on reel 3
-    for row := 0; row < Rows; row++ {
-        if reels[3][row] == string(SymbolGoldFlower) {
-            return true // Both conditions met
+    // Check for Gold Flower on reel 4 OR reel 5 (indices 3 OR 4)
+    for reel := 3; reel < 5; reel++ {
+        for row := 0; row < Rows; row++ {
+            if reels[reel][row] == string(SymbolGoldFlower) {
+                return true
+            }
         }
     }
-    
     return false
 }
 

@@ -28,8 +28,8 @@ var SymbolWeights = map[Symbol]float64{
     SymbolQ:              0.10,
     SymbolJ:              0.10,
     SymbolWild:           0.08,
-    SymbolSilverFlower:   0.10, // 0.10 but 0.20 for testing
-    SymbolGoldFlower:     0.10, // 0.10 but 0.20 for testing
+    SymbolSilverFlower:   0.08, // 0.10 but 0.20 for testing
+    SymbolGoldFlower:     0.07, // 0.10 but 0.20 for testing
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

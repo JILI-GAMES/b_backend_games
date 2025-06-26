@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides comprehensive guidelines for integrating the Winning Mask slot game backend API with a Unity frontend. The game features a 5x4 reel structure with 1024 ways to win, wild substitutions, and two bonus features: Free Spin Bonus and Mask Reel Bonus.
+This document provides comprehensive guidelines for integrating the Winning Mask slot game backend API with a Unity frontend. The game features a 5x4 reel structure with 1024 ways to win, wild substitutions, and two bonus features: Free Spin Bonus with Mask Transformation and Mask Reel Bonus.
 
 ## API Endpoints
 
@@ -43,16 +43,39 @@ This document provides comprehensive guidelines for integrating the Winning Mask
 - Appears on reels 2, 3, 4, and 5 only
 - Substitutes for all symbols except Bonus and Mask Reel symbols
 
-### Free Spin Bonus
-- Triggered when 3 or more Bonus symbols appear on reels 1, 2, and 3 (one per reel maximum)
-- Awards 10 free spins
+### Free Spin Bonus with Mask Transformation
+- **Trigger**: 3 or more Bonus symbols appear on reels 1, 2, and 3 (one per reel maximum)
+- **Awards**: 10 free spins
 - **Bonus Symbol Payout**: 3 Bonus symbols pay 2 credits times the total bet amount
-- Free spins can be retriggered (maximum 150 free spins)
-- During free spins, bet amount remains the same as the triggering spin
+- **Retriggerable**: Up to maximum 150 free spins
+- **Bet Consistency**: Bet amount remains the same throughout free spins
+
+#### **🎭 Mask Transformation Feature (Free Spins Only)**
+During free spins, each spin operates in **two stages**:
+
+**Stage 1**: Normal spin calculation and wins are awarded
+
+**Stage 2**: **Conditional Mask Transformation**
+- **Condition**: If there is at least **one mask symbol OR wild symbol in EACH of the first 3 reels** (reels 1, 2, 3)
+- **Wild Substitution**: Wild symbols count as masks for the transformation condition
+- **Transformation**: ALL mask symbols in the ENTIRE 5x4 grid transform to one randomly selected mask type (Wild symbols remain unchanged)
+- **Additional Wins**: New wins are calculated on the transformed grid and added to Stage 1 wins
+- **RNG Compliance**: Both stages are pre-calculated and the total payout is RNG-approved before awarding
+
+**Example Flow**:
+1. Stage 1: Normal spin awards 5.00 with masks in reels 1 & 2, wild in reel 3
+2. Transformation check: ✅ Reel 1 has mask, ✅ Reel 2 has mask, ✅ Reel 3 has wild (counts as mask)
+3. Stage 2: All masks transform to "PurpleMask", awards additional 100.00
+4. Total payout: 5.00 + 100.00 = 105.00 (if RNG approves)
+
+**Transformation Condition Examples**:
+- ✅ **TRIGGERS**: Reel 1: PurpleMask, Reel 2: Wild, Reel 3: BlueMask
+- ✅ **TRIGGERS**: Reel 1: Wild, Reel 2: OrangeMask, Reel 3: Wild  
+- ❌ **NO TRIGGER**: Reel 1: PurpleMask, Reel 2: A, Reel 3: BlueMask (missing mask/wild in reel 2)
 
 ### Mask Reel Bonus
-- Triggered when 3 or more Mask Reel symbols appear on reels 3, 4, and 5 (one per reel maximum)
-- Does NOT appear during Free Spin Bonus
+- **Trigger**: 3 or more Mask Reel symbols appear on reels 3, 4, and 5 (one per reel maximum)
+- **Availability**: Base game only (does NOT appear during Free Spin Bonus)
 - **RNG-Controlled**: A potential multiplier (2x-200x) is generated and submitted to RNG
 - **If RNG approves**: Full multiplier is awarded
 - **If RNG declines**: Minimum multiplier (2x-3x) is awarded instead
@@ -77,18 +100,18 @@ This document provides comprehensive guidelines for integrating the Winning Mask
 }
 ```
 
-#### Response Format
+#### Base Game Response Format
 ```json
 {
-  "reels": [
+  "stage1_reels": [
     ["Symbol1", "Symbol2", "Symbol3", "Symbol4"],
     ["Symbol1", "Symbol2", "Symbol3", "Symbol4"],
     ["Symbol1", "Symbol2", "Symbol3", "Symbol4"],
     ["Symbol1", "Symbol2", "Symbol3", "Symbol4"],
     ["Symbol1", "Symbol2", "Symbol3", "Symbol4"]
   ],
-  "win_amount": 3.50,
-  "win_details": [
+  "stage1_win_amount": 3.50,
+  "stage1_win_details": [
     {
       "symbol": "SymbolName",
       "count": 3,
@@ -100,6 +123,9 @@ This document provides comprehensive guidelines for integrating the Winning Mask
       ]
     }
   ],
+  "stage2_win_amount": 0,
+  "total_win_amount": 3.50,
+  "mask_transformation_used": false,
   "bonus_count": 3,
   "bonus_win_amount": 1.00,
   "bonus_positions": [
@@ -121,9 +147,7 @@ This document provides comprehensive guidelines for integrating the Winning Mask
 }
 ```
 
-### 2. Free Spin Game
-
-When free spins are triggered, use the same spin endpoint with updated parameters:
+### 2. Free Spin with Mask Transformation
 
 #### Free Spin Request Format
 ```json
@@ -140,12 +164,106 @@ When free spins are triggered, use the same spin endpoint with updated parameter
 }
 ```
 
+#### Free Spin Response with Transformation
+```json
+{
+  "stage1_reels": [
+    ["PurpleMask", "A", "K", "Q"],
+    ["OrangeMask", "10", "J", "Wild"],
+    ["BlueMask", "Wild", "A", "K"],
+    ["GreenMask", "K", "Q", "10"],
+    ["YellowMask", "J", "A", "Wild"]
+  ],
+  "stage1_win_amount": 5.00,
+  "stage1_win_details": [
+    {
+      "symbol": "A",
+      "count": 3,
+      "payout": 3.00,
+      "positions": [
+        {"reel": 0, "row": 1},
+        {"reel": 2, "row": 2},
+        {"reel": 4, "row": 2}
+      ]
+    }
+  ],
+  "stage2_reels": [
+    ["PurpleMask", "A", "K", "Q"],
+    ["PurpleMask", "10", "J", "Wild"],
+    ["PurpleMask", "Wild", "A", "K"],
+    ["PurpleMask", "K", "Q", "10"],
+    ["PurpleMask", "J", "A", "Wild"]
+  ],
+  "stage2_win_amount": 100.00,
+  "stage2_win_details": [
+    {
+      "symbol": "PurpleMask",
+      "count": 5,
+      "payout": 100.00,
+      "positions": [
+        {"reel": 0, "row": 0},
+        {"reel": 1, "row": 0},
+        {"reel": 2, "row": 0},
+        {"reel": 3, "row": 0},
+        {"reel": 4, "row": 0}
+      ]
+    }
+  ],
+  "total_win_amount": 105.00,
+  "mask_transformation_used": true,
+  "selected_mask_type": "PurpleMask",
+  "bonus_count": 0,
+  "bonus_win_amount": 0,
+  "bonus_positions": [],
+  "mask_reel_count": 0,
+  "mask_reel_positions": [],
+  "free_spin_triggered": false,
+  "free_spin_retriggered": false,
+  "mask_reel_triggered": false,
+  "is_free_spin": true,
+  "remaining_free_spins": 9,
+  "current_free_spin_index": 1,
+  "total_free_spins_awarded": 10,
+  "bet_amount": 1.0,
+  "bet_multiplier": 2
+}
+```
+
+#### Free Spin Response without Transformation
+```json
+{
+  "stage1_reels": [
+    ["PurpleMask", "A", "K", "Q"],
+    ["OrangeMask", "10", "J", "Wild"],
+    ["A", "Wild", "K", "J"],
+    ["Q", "K", "J", "10"],
+    ["BlueMask", "J", "Wild", "K"]
+  ],
+  "stage1_win_amount": 7.50,
+  "stage1_win_details": [...],
+  "stage2_win_amount": 0,
+  "total_win_amount": 7.50,
+  "mask_transformation_used": false,
+  "bonus_count": 0,
+  "bonus_win_amount": 0,
+  "bonus_positions": [],
+  "mask_reel_count": 0,
+  "mask_reel_positions": [],
+  "free_spin_triggered": false,
+  "free_spin_retriggered": false,
+  "mask_reel_triggered": false,
+  "is_free_spin": true,
+  "remaining_free_spins": 8,
+  "current_free_spin_index": 2,
+  "total_free_spins_awarded": 10,
+  "bet_amount": 1.0,
+  "bet_multiplier": 2
+}
+```
+
 ### 3. Mask Reel Bonus
 
-When the Mask Reel Bonus is triggered, call the separate bonus endpoint which will:
-1. Generate a potential multiplier (2x-200x)
-2. Submit to RNG for approval
-3. Award full multiplier if approved, or minimum (2x-3x) if declined
+When the Mask Reel Bonus is triggered in base game, call the separate bonus endpoint:
 
 #### Mask Reel Bonus Request
 ```json
@@ -166,8 +284,6 @@ When the Mask Reel Bonus is triggered, call the separate bonus endpoint which wi
 }
 ```
 
-**Note**: The multiplier returned is the RNG-approved amount, which could be the full potential multiplier or a reduced minimum multiplier.
-
 ## Detailed API Reference
 
 ### Spin Request Parameters
@@ -186,11 +302,26 @@ When the Mask Reel Bonus is triggered, call the separate bonus endpoint which wi
 
 ### Spin Response Parameters
 
+#### Stage Results
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| reels | [][]string | 5x4 grid of symbols |
-| win_amount | float | Total win amount for this spin (includes bonus payout) |
-| win_details | []WinDetail | Details of each winning combination |
+| stage1_reels | [][]string | 5x4 grid of symbols from normal spin |
+| stage1_win_amount | float | Win amount from Stage 1 (normal spin) |
+| stage1_win_details | []WinDetail | Details of Stage 1 winning combinations |
+| stage2_reels | [][]string | 5x4 grid after mask transformation (only if transformation occurred) |
+| stage2_win_amount | float | Additional win amount from Stage 2 (transformation) |
+| stage2_win_details | []WinDetail | Details of Stage 2 winning combinations |
+
+#### Combined Results
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| total_win_amount | float | Combined win from both stages |
+| mask_transformation_used | bool | Whether mask transformation occurred |
+| selected_mask_type | string | Which mask type was selected for transformation |
+
+#### Feature Information
+| Parameter | Type | Description |
+|-----------|------|-------------|
 | bonus_count | int | Number of bonus symbols on reels 1-3 |
 | bonus_win_amount | float | Win amount from bonus symbols (2x bet for 3 symbols) |
 | bonus_positions | []Position | Positions of bonus symbols |
@@ -199,12 +330,60 @@ When the Mask Reel Bonus is triggered, call the separate bonus endpoint which wi
 | free_spin_triggered | bool | Whether free spins were triggered |
 | free_spin_retriggered | bool | Whether free spins were retriggered |
 | mask_reel_triggered | bool | Whether mask reel bonus was triggered |
+
+#### Game State
+| Parameter | Type | Description |
+|-----------|------|-------------|
 | is_free_spin | bool | Whether we're in free spin mode |
 | remaining_free_spins | int | Number of free spins remaining |
 | current_free_spin_index | int | Current index of free spin (0-based) |
 | total_free_spins_awarded | int | Total number of free spins awarded |
 | bet_amount | float | The bet amount used for this spin |
 | bet_multiplier | int | The bet multiplier derived from bet amount |
+
+## Implementation Guidelines
+
+### 1. Game Flow
+1. **Base Game**: Player spins and can trigger either Free Spin Bonus or Mask Reel Bonus
+2. **Free Spin Bonus**: 10 free spins with potential mask transformation, can retrigger
+3. **Mask Reel Bonus**: Immediate multiplier win, only in base game
+
+### 2. Handling Two-Stage Free Spins
+- **Stage 1 Display**: Show `stage1_reels` with `stage1_win_amount` and celebrate wins
+- **Check Transformation**: If `mask_transformation_used: true`, prepare for Stage 2
+- **Stage 2 Display**: Show `stage2_reels` with mask transformation animation to `selected_mask_type`
+- **Stage 2 Wins**: Display `stage2_win_amount` and `stage2_win_details`
+- **Total Celebration**: Show combined `total_win_amount`
+
+### 3. Mask Transformation Logic
+**Transformation occurs when**:
+- It's a free spin AND
+- At least one mask OR wild exists in reel 1 AND
+- At least one mask OR wild exists in reel 2 AND  
+- At least one mask OR wild exists in reel 3
+
+**Important**: Wild symbols count as masks for the transformation condition but are NOT transformed - they remain as Wild symbols.
+
+**Visual Flow**:
+1. Show Stage 1 result
+2. Highlight mask and wild symbols in first 3 reels that triggered transformation
+3. Transform ONLY mask symbols in entire grid to selected type (Wild symbols stay Wild)
+4. Calculate and show additional wins
+5. Display total combined payout
+
+### 4. State Management
+- Always use response values for next request
+- Free spins maintain the same bet amount throughout
+- Mask Reel Bonus does not appear during free spins
+- Track both stage wins separately and combined total
+
+### 5. Visual Presentation
+- **Stage 1**: Highlight wins using `stage1_win_details[].positions`
+- **Stage 2**: Show transformation animation and highlight `stage2_win_details[].positions`
+- **Bonus Symbols**: Show using `bonus_positions` 
+- **Bonus Payout**: Display `bonus_win_amount` separately
+- **Mask Reel Symbols**: Show using `mask_reel_positions`
+- **Total Win**: Always display `total_win_amount` as final result
 
 ## Bet Amounts and Multipliers
 
@@ -218,31 +397,6 @@ The game uses the following bet amounts and their corresponding multipliers:
 | 5.00       | 10             | 500           |
 | 12.50      | 25             | 1250          |
 
-## Implementation Guidelines
-
-### 1. Game Flow
-1. **Base Game**: Player spins and can trigger either Free Spin Bonus or Mask Reel Bonus
-2. **Free Spin Bonus**: 10 free spins with same bet amount, can retrigger
-3. **Mask Reel Bonus**: Immediate multiplier win, only in base game
-
-### 2. Handling Bonuses
-- **Free Spin Trigger**: When `free_spin_triggered: true`, start free spin sequence
-- **Mask Reel Trigger**: When `mask_reel_triggered: true`, call mask reel bonus endpoint
-- **Retriggering**: During free spins, check for `free_spin_retriggered: true`
-
-### 3. State Management
-- Always use response values for next request
-- Free spins maintain the same bet amount throughout
-- Mask Reel Bonus does not appear during free spins
-
-### 4. Visual Presentation
-- Highlight winning combinations using `win_details[].positions`
-- Show bonus symbols using `bonus_positions` 
-- **Display bonus payout separately** using `bonus_win_amount`
-- Show mask reel symbols using `mask_reel_positions`
-- Display appropriate animations for each bonus type
-- **Total win amount includes both regular wins and bonus payouts**
-
 ## Error Handling
 
 Common error responses:
@@ -250,6 +404,7 @@ Common error responses:
 - "client_id is required" - Missing required field
 - "Failed to retrieve game settings" - Settings service issue
 - "Failed to determine outcome" - RNG service issue
+- "Failed to process mask transformation" - Two-stage logic error
 
 All errors return:
 ```json
@@ -258,3 +413,11 @@ All errors return:
   "message": "Error description"
 }
 ```
+
+## Key Differences from Standard Slot Games
+
+1. **Two-Stage Free Spins**: Each free spin can have two separate result stages
+2. **Conditional Transformation**: Mask transformation only occurs when specific conditions are met
+3. **Separate Win Tracking**: Stage 1 and Stage 2 wins are tracked separately but combined for total payout
+4. **Enhanced Visual Flow**: Frontend must handle two-stage reveal animations
+5. **RNG Compliance**: Total combined payout is pre-approved by RNG system

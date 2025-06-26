@@ -42,18 +42,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Select correct clients for this request
 	rngClient, settingsClient := rg.getClientsForRequest(c)
 
-	// Generate reels with a guaranteed win
-	reels := GenerateReelsWithWin()
-
-	// Calculate winnings
-	totalWinnings, winDetails, bonusCount, maskReelCount, allSpecialPositions := CalculateWins(reels, betMultiplier, req.IsFreeSpin)
-	log.Printf("Initial calculation: totalWinnings=%v, bonusCount=%v, maskReelCount=%v, winDetails=%v, allSpecialPositions=%v",
-		totalWinnings, bonusCount, maskReelCount, winDetails, allSpecialPositions)
-
-	// Get positions of bonus and mask reel symbols
-	bonusPositions := GetSymbolPositions(reels, string(SymbolBonus))
-	maskReelPositions := GetMaskReelPositions(reels)
-
 	// Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
@@ -65,47 +53,120 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 	log.Printf("RTP retrieved: %v", rtp)
 
-	// Calculate total bet amount
-	totalBetAmount := req.BetAmount
+	var response SpinResponse
 
-	// Calculate payout multiplier (total_win / bet_amount)
-	payoutMultiplier := totalWinnings / totalBetAmount
-	if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
-		payoutMultiplier = 0
-		log.Printf("Payout multiplier is NaN or Inf, setting to 0")
+	if req.IsFreeSpin {
+		log.Printf("Processing free spin %d with two-stage mask transformation logic", req.CurrentFreeSpinIndex+1)
+		
+		// Handle two-stage mask transformation for free spins
+		selectedScenario, err := HandleTwoStageMaskTransformation(betMultiplier, req, rngClient, rtp)
+		if err != nil {
+			log.Printf("Error in two-stage mask transformation: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to process mask transformation",
+			})
+		}
+
+		// Build response from selected scenario
+		response = SpinResponse{
+			// Stage 1 Results
+			Stage1Reels:       selectedScenario.Stage1Reels,
+			Stage1WinAmount:   selectedScenario.Stage1Win,
+			Stage1WinDetails:  selectedScenario.Stage1Details,
+			
+			// Stage 2 Results (if transformation occurred)
+			Stage2WinAmount:   selectedScenario.Stage2Win,
+			Stage2WinDetails:  selectedScenario.Stage2Details,
+			
+			// Combined Results
+			TotalWinAmount:         selectedScenario.TotalWin,
+			MaskTransformationUsed: selectedScenario.HasTransform,
+			
+			// Basic game info
+			BetAmount:     req.BetAmount,
+			BetMultiplier: betMultiplier,
+		}
+
+		// Add Stage 2 reels and mask type if transformation occurred
+		if selectedScenario.HasTransform {
+			response.Stage2Reels = selectedScenario.Stage2Reels
+			response.SelectedMaskType = selectedScenario.MaskType
+		}
+
+		log.Printf("Free spin result: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s", 
+			selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin,
+			selectedScenario.HasTransform, selectedScenario.MaskType)
+
+	} else {
+		log.Printf("Processing regular base game spin")
+		
+		// Generate reels with a guaranteed win for base game
+		reels := GenerateReelsWithWin()
+
+		// Calculate winnings for base game (no mask transformation in base game)
+		totalWinnings, winDetails, _, _, _ := CalculateWins(reels, betMultiplier, false)
+		log.Printf("Base game calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
+
+		// Calculate payout multiplier (total_win / bet_amount)
+		payoutMultiplier := totalWinnings / req.BetAmount
+		if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
+			payoutMultiplier = 0
+			log.Printf("Payout multiplier is NaN or Inf, setting to 0")
+		}
+		log.Printf("Payout multiplier: %v", payoutMultiplier)
+
+		// Call RNG for base game
+		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount)
+		if err != nil {
+			log.Printf("Failed to call RNG API: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to determine outcome",
+			})
+		}
+		log.Printf("RNG response: %v", rngResp)
+
+		// Adjust outcome based on RNG for base game
+		if rngResp.PrefOutcome == "loss" {
+			log.Printf("RNG determined a loss outcome")
+			reels = GenerateLossReels()
+			totalWinnings = 0
+			winDetails = nil
+		}
+
+		// Build response for base game
+		response = SpinResponse{
+			// For base game, Stage1 is the only stage
+			Stage1Reels:            reels,
+			Stage1WinAmount:        totalWinnings,
+			Stage1WinDetails:       winDetails,
+			
+			// No Stage2 for base game
+			Stage2WinAmount:        0,
+			Stage2WinDetails:       nil,
+			
+			// Combined is same as Stage1 for base game
+			TotalWinAmount:         totalWinnings,
+			MaskTransformationUsed: false,
+			
+			// Basic game info
+			BetAmount:     req.BetAmount,
+			BetMultiplier: betMultiplier,
+		}
 	}
-	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
-	// Call RNG
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, totalBetAmount)
-	if err != nil {
-		log.Printf("Failed to call RNG API: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to determine outcome",
-		})
-	}
-	log.Printf("RNG response: %v", rngResp)
+	// Get positions of bonus and mask reel symbols from Stage1 reels
+	bonusPositions := GetSymbolPositions(response.Stage1Reels, string(SymbolBonus))
+	maskReelPositions := GetMaskReelPositions(response.Stage1Reels)
 
-	// Adjust outcome based on RNG
-	if rngResp.PrefOutcome == "loss" {
-		log.Printf("RNG determined a loss outcome")
-		reels = GenerateLossReels()
-		totalWinnings = 0
-		winDetails = nil
-
-		// Update positions for bonus and mask reel symbols
-		bonusPositions = GetSymbolPositions(reels, string(SymbolBonus))
-		maskReelPositions = GetMaskReelPositions(reels)
-	}
-
-	// Check for bonus triggers
+	// Check for bonus triggers (based on Stage1 reels)
 	freeSpinTriggered := false
 	freeSpinRetriggered := false
 	maskReelTriggered := false
 
 	// Check for Free Spin Bonus trigger (3+ bonus symbols on reels 1-3)
-	if HasBonusOnFirstThreeReels(reels) {
+	if HasBonusOnFirstThreeReels(response.Stage1Reels) {
 		if !req.IsFreeSpin {
 			freeSpinTriggered = true
 			log.Printf("Free Spin Bonus triggered")
@@ -117,9 +178,20 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Check for Mask Reel Bonus trigger (3+ mask symbols on reels 3-5)
 	// Note: Mask Reel Bonus does not appear in Free Spin Bonus
-	if !req.IsFreeSpin && HasMaskReelOnLastThreeReels(reels) {
+	if !req.IsFreeSpin && HasMaskReelOnLastThreeReels(response.Stage1Reels) {
 		maskReelTriggered = true
 		log.Printf("Mask Reel Bonus triggered")
+	}
+
+	// Calculate bonus payout from Stage1 reels
+	bonusWinAmount := 0.0
+	if len(bonusPositions) >= 3 {
+		bonusPayValue := float64(Paytable[SymbolBonus][3])
+		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
+		bonusWinAmount = bonusPayValue * totalBetAmount
+		bonusWinAmount = math.Round(bonusWinAmount*100) / 100
+		log.Printf("Bonus payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+			len(bonusPositions), bonusPayValue, betMultiplier, totalBetAmount, bonusWinAmount)
 	}
 
 	// Update Free Spin state
@@ -160,30 +232,25 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		log.Printf("Free Spin Bonus ended")
 	}
 
-	// Calculate total win amount
-	totalWinAmount := totalWinnings
+	// Complete the response with bonus and state information
+	response.BonusCount = len(bonusPositions)
+	response.BonusWinAmount = bonusWinAmount
+	response.BonusPositions = bonusPositions
+	response.MaskReelCount = len(maskReelPositions)
+	response.MaskReelPositions = maskReelPositions
+	response.FreeSpinTriggered = freeSpinTriggered
+	response.FreeSpinRetriggered = freeSpinRetriggered
+	response.MaskReelTriggered = maskReelTriggered
+	response.IsFreeSpin = isFreeSpin
+	response.RemainingFreeSpins = remainingFreeSpins
+	response.CurrentFreeSpinIndex = currentFreeSpinIndex
+	response.TotalFreeSpinsAwarded = totalFreeSpinsAwarded
 
-	log.Printf("Spin completed: regularWin=%v, totalWin=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, maskReelTriggered=%v, isFreeSpin=%v",
-		totalWinnings, totalWinAmount, freeSpinTriggered, freeSpinRetriggered, maskReelTriggered, isFreeSpin)
+	log.Printf("Spin completed: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, maskReelTriggered=%v",
+		response.Stage1WinAmount, response.Stage2WinAmount, response.TotalWinAmount, response.MaskTransformationUsed,
+		freeSpinTriggered, freeSpinRetriggered, maskReelTriggered)
 
-	return c.JSON(SpinResponse{
-		Reels:                 reels,
-		WinAmount:             totalWinAmount,
-		WinDetails:            winDetails,
-		BonusCount:            len(bonusPositions),
-		BonusPositions:        bonusPositions,
-		MaskReelCount:         len(maskReelPositions),
-		MaskReelPositions:     maskReelPositions,
-		FreeSpinTriggered:     freeSpinTriggered,
-		FreeSpinRetriggered:   freeSpinRetriggered,
-		MaskReelTriggered:     maskReelTriggered,
-		IsFreeSpin:            isFreeSpin,
-		RemainingFreeSpins:    remainingFreeSpins,
-		CurrentFreeSpinIndex:  currentFreeSpinIndex,
-		TotalFreeSpinsAwarded: totalFreeSpinsAwarded,
-		BetAmount:             req.BetAmount,
-		BetMultiplier:         betMultiplier,
-	})
+	return c.JSON(response)
 }
 
 // MaskReelBonusHandler handles the /mask-reel-bonus/winningmask endpoint

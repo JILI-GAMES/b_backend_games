@@ -5,9 +5,12 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 )
 
 // Constants
@@ -33,9 +36,9 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolQ:          0.12,
 	SymbolJ:          0.12,
 	Symbol10:         0.12,
-	SymbolWild:       0.04,
-	SymbolBonus:      0.04,
-	SymbolMaskReel:   0.04,
+	SymbolWild:       0.02,
+	SymbolBonus:      0.02,
+	SymbolMaskReel:   0.02,
 }
 
 // Paytable (payouts for Bet Multiplier = 1)
@@ -486,4 +489,276 @@ func GenerateMaskReelMultiplier() int {
 	}
 	
 	return 2 // Fallback
+}
+
+// GetAllMaskTypes returns all available mask symbol types
+func GetAllMaskTypes() []Symbol {
+	return []Symbol{
+		SymbolPurpleMask,
+		SymbolOrangeMask,
+		SymbolGreenMask,
+		SymbolYellowMask,
+		SymbolBlueMask,
+	}
+}
+
+// HasAtLeastOneMaskInEachFirstThreeReels checks if there's at least one mask OR wild in EACH of the first 3 reels
+func HasAtLeastOneMaskInEachFirstThreeReels(reels [][]string) bool {
+	maskSymbols := map[string]bool{
+		string(SymbolPurpleMask): true,
+		string(SymbolOrangeMask): true,
+		string(SymbolGreenMask):  true,
+		string(SymbolYellowMask): true,
+		string(SymbolBlueMask):   true,
+		string(SymbolWild):       true, // Wild can substitute for masks
+	}
+
+	// Check each of the first 3 reels (indices 0, 1, 2)
+	for reelIndex := 0; reelIndex < 3; reelIndex++ {
+		hasMaskOrWildInThisReel := false
+		
+		// Check each row in this reel
+		for _, symbol := range reels[reelIndex] {
+			if maskSymbols[symbol] {
+				hasMaskOrWildInThisReel = true
+				log.Printf("Reel %d has %s, contributing to transformation condition", reelIndex, symbol)
+				break
+			}
+		}
+		
+		// If any of the first 3 reels has no mask or wild, condition is not met
+		if !hasMaskOrWildInThisReel {
+			log.Printf("Reel %d has no mask or wild symbols, transformation condition not met", reelIndex)
+			return false
+		}
+	}
+	
+	log.Printf("All first 3 reels have at least one mask or wild, transformation condition met")
+	return true
+}
+
+// TransformAllMasksInGrid transforms all mask symbols in the entire 5x4 grid to the specified mask type
+func TransformAllMasksInGrid(reels [][]string, targetMask Symbol) [][]string {
+	transformed := make([][]string, len(reels))
+	maskSymbols := map[string]bool{
+		string(SymbolPurpleMask): true,
+		string(SymbolOrangeMask): true,
+		string(SymbolGreenMask):  true,
+		string(SymbolYellowMask): true,
+		string(SymbolBlueMask):   true,
+	}
+
+	transformationCount := 0
+	for i, reel := range reels {
+		transformed[i] = make([]string, len(reel))
+		for j, symbol := range reel {
+			if maskSymbols[symbol] {
+				// Transform this mask to the target mask type
+				transformed[i][j] = string(targetMask)
+				transformationCount++
+				log.Printf("Transformed mask at reel %d, row %d from %s to %s", 
+					i, j, symbol, string(targetMask))
+			} else {
+				// Keep non-mask symbols unchanged
+				transformed[i][j] = symbol
+			}
+		}
+	}
+
+	log.Printf("Transformed %d masks to %s in entire grid", transformationCount, string(targetMask))
+	return transformed
+}
+
+// GenerateStage1Scenarios generates possible Stage 1 (normal spin) scenarios
+func GenerateStage1Scenarios(betMultiplier int) []Stage1Result {
+	scenarios := make([]Stage1Result, 0, 2)
+	
+	// Generate a winning scenario
+	winReels := GenerateReelsWithWin()
+	winAmount, winDetails, _, _, _ := CalculateWins(winReels, betMultiplier, true)
+	
+	scenarios = append(scenarios, Stage1Result{
+		Reels:      winReels,
+		WinAmount:  winAmount,
+		WinDetails: winDetails,
+	})
+	
+	// Generate a losing scenario
+	lossReels := GenerateLossReels()
+	lossAmount, lossDetails, _, _, _ := CalculateWins(lossReels, betMultiplier, true)
+	
+	scenarios = append(scenarios, Stage1Result{
+		Reels:      lossReels,
+		WinAmount:  lossAmount,
+		WinDetails: lossDetails,
+	})
+	
+	log.Printf("Generated %d Stage1 scenarios", len(scenarios))
+	return scenarios
+}
+
+// GenerateTransformationScenarios generates all possible mask transformation scenarios for given reels
+func GenerateTransformationScenarios(stage1Reels [][]string, betMultiplier int) []TransformationResult {
+	maskTypes := GetAllMaskTypes()
+	transformations := make([]TransformationResult, 0, len(maskTypes))
+
+	for _, maskType := range maskTypes {
+		// Transform all masks in the entire grid to this type
+		transformedReels := TransformAllMasksInGrid(stage1Reels, maskType)
+
+		// Calculate wins for this transformation
+		winAmount, winDetails, _, _, _ := CalculateWins(transformedReels, betMultiplier, true)
+
+		transformation := TransformationResult{
+			MaskType:   maskType,
+			Reels:      transformedReels,
+			WinAmount:  winAmount,
+			WinDetails: winDetails,
+		}
+
+		transformations = append(transformations, transformation)
+		
+		log.Printf("Transformation scenario - Type: %s, Win: %v", maskType, winAmount)
+	}
+
+	return transformations
+}
+
+// GenerateCombinedScenarios creates all possible combined scenarios
+func GenerateCombinedScenarios(betMultiplier int) []CombinedScenario {
+	combinedScenarios := make([]CombinedScenario, 0)
+	
+	// Generate Stage 1 scenarios
+	stage1Scenarios := GenerateStage1Scenarios(betMultiplier)
+	
+	for _, stage1 := range stage1Scenarios {
+		// Check if transformation condition is met
+		if HasAtLeastOneMaskInEachFirstThreeReels(stage1.Reels) {
+			log.Printf("Stage1 win: %v - Transformation condition met, generating transformation scenarios", stage1.WinAmount)
+			
+			// Generate all possible transformations for this Stage 1 result
+			transformations := GenerateTransformationScenarios(stage1.Reels, betMultiplier)
+			
+			for _, transform := range transformations {
+				combined := CombinedScenario{
+					Stage1Win:     stage1.WinAmount,
+					Stage2Win:     transform.WinAmount,
+					TotalWin:      stage1.WinAmount + transform.WinAmount,
+					Stage1Reels:   stage1.Reels,
+					Stage2Reels:   transform.Reels,
+					Stage1Details: stage1.WinDetails,
+					Stage2Details: transform.WinDetails,
+					MaskType:      string(transform.MaskType),
+					HasTransform:  true,
+				}
+				combinedScenarios = append(combinedScenarios, combined)
+				
+				log.Printf("Combined scenario - Stage1: %v, Stage2: %v, Total: %v, Mask: %s", 
+					combined.Stage1Win, combined.Stage2Win, combined.TotalWin, combined.MaskType)
+			}
+		} else {
+			log.Printf("Stage1 win: %v - Transformation condition NOT met, no transformation", stage1.WinAmount)
+			
+			// No transformation possible for this Stage 1 result
+			combined := CombinedScenario{
+				Stage1Win:     stage1.WinAmount,
+				Stage2Win:     0,
+				TotalWin:      stage1.WinAmount,
+				Stage1Reels:   stage1.Reels,
+				Stage2Reels:   nil,
+				Stage1Details: stage1.WinDetails,
+				Stage2Details: nil,
+				MaskType:      "",
+				HasTransform:  false,
+			}
+			combinedScenarios = append(combinedScenarios, combined)
+		}
+	}
+	
+	// Sort scenarios by total win amount (lowest to highest)
+	sort.Slice(combinedScenarios, func(i, j int) bool {
+		return combinedScenarios[i].TotalWin < combinedScenarios[j].TotalWin
+	})
+	
+	log.Printf("Generated %d combined scenarios, sorted by total win", len(combinedScenarios))
+	return combinedScenarios
+}
+
+// SelectBestScenarioWithRNG selects the best combined scenario that RNG approves
+func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Client, req SpinRequest, rtp float64) (CombinedScenario, error) {
+	if len(scenarios) == 0 {
+		return CombinedScenario{}, fmt.Errorf("no scenarios provided")
+	}
+
+	log.Printf("Testing %d combined scenarios with RNG", len(scenarios))
+
+	// Start with the highest total win and work down
+	for i := len(scenarios) - 1; i >= 0; i-- {
+		scenario := scenarios[i]
+
+		// Skip scenarios with no total win unless it's our last option
+		if scenario.TotalWin == 0 && i > 0 {
+			continue
+		}
+
+		// Calculate payout multiplier for this scenario's total win
+		payoutMultiplier := scenario.TotalWin / req.BetAmount
+		if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
+			payoutMultiplier = 0
+		}
+
+		log.Printf("Testing combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s, Multiplier=%v", 
+			scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin, 
+			scenario.HasTransform, scenario.MaskType, payoutMultiplier)
+
+		// Ask RNG if we can award this total win amount
+		rngResp, err := rngClient.GetOutcome(
+			req.ClientID, req.GameID, req.PlayerID, req.BetID,
+			rtp, payoutMultiplier, req.BetAmount,
+		)
+		if err != nil {
+			log.Printf("RNG call failed for combined scenario (total: %v): %v", scenario.TotalWin, err)
+			continue // Try next scenario
+		}
+
+		log.Printf("RNG response for combined scenario (total: %v): outcome=%s, winAmount=%v", 
+			scenario.TotalWin, rngResp.PrefOutcome, rngResp.WinAmount)
+
+		if rngResp.PrefOutcome == "win" {
+			log.Printf("RNG approved combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v", 
+				scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin, scenario.HasTransform)
+			return scenario, nil
+		}
+
+		log.Printf("RNG rejected combined scenario: Stage1=%v, Stage2=%v, Total=%v", 
+			scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin)
+	}
+
+	// If all scenarios were rejected, use the lowest/no-win scenario
+	selectedScenario := scenarios[0]
+	log.Printf("All combined scenarios rejected by RNG, using lowest scenario: Stage1=%v, Stage2=%v, Total=%v", 
+		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin)
+	
+	return selectedScenario, nil
+}
+
+// HandleTwoStageMaskTransformation handles the complete two-stage mask transformation logic for free spins
+func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngClient *rng.Client, rtp float64) (CombinedScenario, error) {
+	log.Printf("Starting two-stage mask transformation for free spin %d", req.CurrentFreeSpinIndex+1)
+
+	// Generate all possible combined scenarios (Stage 1 + Stage 2)
+	combinedScenarios := GenerateCombinedScenarios(betMultiplier)
+
+	// Select the best scenario that RNG approves
+	selectedScenario, err := SelectBestScenarioWithRNG(combinedScenarios, rngClient, req, rtp)
+	if err != nil {
+		log.Printf("Error selecting combined scenario: %v", err)
+		return CombinedScenario{}, err
+	}
+
+	log.Printf("Selected combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s", 
+		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin, 
+		selectedScenario.HasTransform, selectedScenario.MaskType)
+
+	return selectedScenario, nil
 }

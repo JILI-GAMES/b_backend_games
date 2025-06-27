@@ -18,6 +18,7 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/winningmask"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdsparty"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicaceoriginal"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -105,6 +106,9 @@ func main() {
 
 	birdspartyRoutes := birdsparty.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	birdspartyRoutes.Register(app)
+	
+	magicAceOriginalRoutes := magicaceoriginal.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	magicAceOriginalRoutes.Register(app)
 
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
@@ -121,6 +125,7 @@ func main() {
 				"openSesame2",
 				"winningmask",
 				"birdsparty",
+				"magicAceOriginal",
 			},
 		})
 	})

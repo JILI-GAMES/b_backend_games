@@ -203,7 +203,7 @@ func GenerateLossReels(jokerCards []JokerCard, r *rand.Rand) ([][]string, Specia
 					SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond, SymbolTarget,
 				}
 				symbol := availableSymbols[r.Intn(len(availableSymbols))]
-				
+
 				// Try to avoid matching adjacent symbols
 				if reel > 0 {
 					previousSymbol := reels[reel-1][row]
@@ -213,9 +213,9 @@ func GenerateLossReels(jokerCards []JokerCard, r *rand.Rand) ([][]string, Specia
 						attempts++
 					}
 				}
-				
+
 				reels[reel][row] = string(symbol)
-				
+
 				if symbol == SymbolTarget {
 					specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
 				}
@@ -246,14 +246,14 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 	for _, joker := range jokerCards {
 		// Check if this joker was newly created in this cascade
 		isNewlyCreated := newlyCreatedJokerPositions[joker.Position]
-		
+
 		if isNewlyCreated {
 			// Keep newly created jokers - they should persist to next cascade
 			remainingJokers = append(remainingJokers, joker)
 			log.Printf("Joker at %d,%d was newly created - keeping for next cascade", joker.Position.Reel, joker.Position.Row)
 			continue
 		}
-		
+
 		// For existing jokers, check if they were in any winning combination
 		wasInWin := false
 		for _, win := range lastWinDetails {
@@ -328,7 +328,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 
 			// Generate new symbol for non-joker positions
 			symbol := WeightedRandomSymbol(r)
-			
+
 			// Add Golden Cards on reels 2, 3, 4 with defined probability
 			if pos.Reel >= 1 && pos.Reel <= 3 && symbol != SymbolTarget && r.Float64() < GoldenCardProbability {
 				specialSymbols.GoldenCards = append(specialSymbols.GoldenCards, pos)
@@ -371,14 +371,14 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 	for _, joker := range jokerCards {
 		// Check if this joker was newly created in this cascade
 		isNewlyCreated := newlyCreatedJokerPositions[joker.Position]
-		
+
 		if isNewlyCreated {
 			// Keep newly created jokers - they should persist to next cascade
 			remainingJokers = append(remainingJokers, joker)
 			log.Printf("Joker at %d,%d was newly created - keeping for next cascade", joker.Position.Reel, joker.Position.Row)
 			continue
 		}
-		
+
 		// For existing jokers, check if they were in any winning combination
 		wasInWin := false
 		for _, win := range lastWinDetails {
@@ -451,7 +451,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 				SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
 			}
 			symbol := availableSymbols[r.Intn(len(availableSymbols))]
-			
+
 			// Try to avoid matching patterns with adjacent positions
 			if pos.Reel > 0 {
 				adjacentSymbol := newReels[pos.Reel-1][pos.Row]
@@ -461,9 +461,9 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 					attempts++
 				}
 			}
-			
+
 			newReels[pos.Reel][pos.Row] = string(symbol)
-			
+
 			if symbol == SymbolTarget {
 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
 			}
@@ -536,7 +536,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 
 // 			// Generate new symbol for non-joker positions
 // 			symbol := WeightedRandomSymbol(r)
-			
+
 // 			// Add Golden Cards on reels 2, 3, 4 with defined probability
 // 			if pos.Reel >= 1 && pos.Reel <= 3 && symbol != SymbolTarget && r.Float64() < GoldenCardProbability {
 // 				specialSymbols.GoldenCards = append(specialSymbols.GoldenCards, pos)
@@ -615,7 +615,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 // 				SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
 // 			}
 // 			symbol := availableSymbols[r.Intn(len(availableSymbols))]
-			
+
 // 			// Try to avoid matching patterns with adjacent positions
 // 			if pos.Reel > 0 {
 // 				adjacentSymbol := newReels[pos.Reel-1][pos.Row]
@@ -625,9 +625,9 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 // 					attempts++
 // 				}
 // 			}
-			
+
 // 			newReels[pos.Reel][pos.Row] = string(symbol)
-			
+
 // 			if symbol == SymbolTarget {
 // 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
 // 			}
@@ -843,7 +843,7 @@ func UpdateBaseGameCollector(collector *BaseGameCollector, superJokerCount int) 
 		// Add to collection count
 		collector.CollectedCount += superJokerCount
 		log.Printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@Base game collector: Added %d Super Jokers, total collected: %d/5", superJokerCount, collector.CollectedCount)
-		
+
 		// Check if we reached 5 to activate
 		if collector.CollectedCount >= 5 {
 			collector.IsActive = true
@@ -862,7 +862,7 @@ func UpdateBaseGameCollectorRounds(collector *BaseGameCollector, hasWins bool) {
 	if collector.IsActive && collector.RemainingRounds > 0 && hasWins {
 		collector.RemainingRounds--
 		log.Printf("Base game collector: Round used, remaining: %d", collector.RemainingRounds)
-		
+
 		if collector.RemainingRounds <= 0 {
 			// Reset collector completely
 			collector.IsActive = false
@@ -882,17 +882,17 @@ func UpdateFreeSpinsCollector(collector *FreeSpinsCollector, superJokerCount int
 		} else {
 			collector.MaxUpgrades = 10
 		}
-		
+
 		// Check if we can still upgrade
 		if collector.UpgradeCount < collector.MaxUpgrades {
 			newUpgradeCount := collector.UpgradeCount + superJokerCount
 			if newUpgradeCount > collector.MaxUpgrades {
 				newUpgradeCount = collector.MaxUpgrades
 			}
-			
+
 			actualUpgrades := newUpgradeCount - collector.UpgradeCount
 			collector.UpgradeCount = newUpgradeCount
-			
+
 			log.Printf("********************Free spins collector: Added %d upgrades, total: %d/%d", actualUpgrades, collector.UpgradeCount, collector.MaxUpgrades)
 		} else {
 			log.Printf("Free spins collector: Max upgrades reached (%d), Super Jokers ignored", collector.MaxUpgrades)
@@ -913,14 +913,14 @@ func GetBoomingMultiplier(cascadeCount int, gameMode string, baseGameCollector B
 	if index < 0 {
 		index = 0
 	}
-	
+
 	var multipliers []int
-	
+
 	if gameMode == "freeSpins" {
 		// Start with base free spins multipliers
 		multipliers = make([]int, len(BoomingMultipliersFreeSpins))
 		copy(multipliers, BoomingMultipliersFreeSpins)
-		
+
 		// Add free spins collector upgrades
 		for i := range multipliers {
 			multipliers[i] += freeSpinsCollector.UpgradeCount
@@ -929,7 +929,7 @@ func GetBoomingMultiplier(cascadeCount int, gameMode string, baseGameCollector B
 		// Base game multipliers
 		multipliers = make([]int, len(BoomingMultipliers))
 		copy(multipliers, BoomingMultipliers)
-		
+
 		// Add base game collector upgrade (+1 when active)
 		if baseGameCollector.IsActive {
 			for i := range multipliers {
@@ -937,17 +937,12 @@ func GetBoomingMultiplier(cascadeCount int, gameMode string, baseGameCollector B
 			}
 		}
 	}
-	
+
 	if index < len(multipliers) {
 		return multipliers[index]
 	} else {
-		// For cascades beyond the array
-		lastMultiplier := multipliers[len(multipliers)-1]
-		step := 1
-		if gameMode == "freeSpins" {
-			step = 2
-		}
-		return lastMultiplier + (index-len(multipliers)+1)*step
+		// For cascades beyond the array, always use the last value
+		return multipliers[len(multipliers)-1]
 	}
 }
 

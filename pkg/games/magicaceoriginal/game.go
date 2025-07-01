@@ -27,7 +27,7 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolSpade:   0.13,
 	SymbolClub:    0.13,
 	SymbolDiamond: 0.13,
-	SymbolTarget:  0.02,
+	SymbolTarget:  0.01,
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

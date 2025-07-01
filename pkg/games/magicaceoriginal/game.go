@@ -19,15 +19,15 @@ const (
 
 // Symbol weights for random generation
 var SymbolWeights = map[Symbol]float64{
-	SymbolACE:     0.12,
-	SymbolKING:    0.12,
-	SymbolQUEEN:   0.12,
-	SymbolJACK:    0.12,
-	SymbolHeart:   0.13,
-	SymbolSpade:   0.13,
-	SymbolClub:    0.13,
-	SymbolDiamond: 0.13,
-	SymbolTarget:  0.01,
+	SymbolACE:     0.11,
+	SymbolKING:    0.11,
+	SymbolQUEEN:   0.11,
+	SymbolJACK:    0.11,
+	SymbolHeart:   0.12,
+	SymbolSpade:   0.12,
+	SymbolClub:    0.12,
+	SymbolDiamond: 0.12,
+	SymbolTarget:  0.02,
 }
 
 // Paytable (payouts for Bet Multiplier = 1)
@@ -312,8 +312,9 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 		}
 	}
 
-	// STEP 4: Keep generating until a potential win is found
-	for {
+	// STEP 4: Keep generating until a potential win is found, but limit attempts
+	maxAttempts := 1000
+	for attempts := 0; attempts < maxAttempts; attempts++ {
 		// Reset GoldenCards for this iteration
 		specialSymbols.GoldenCards = nil
 
@@ -351,10 +352,10 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 		// Check for a potential win using the remaining jokers
 		totalWinnings, _ := CalculateWins(newReels, 1, 1, remainingJokers)
 		if totalWinnings > 0 {
-			break
+			return newReels, specialSymbols, remainingJokers
 		}
 	}
-
+	log.Printf("ERROR: Max attempts reached in GenerateReelsForCascade. Returning last generated reels.")
 	return newReels, specialSymbols, remainingJokers
 }
 
@@ -432,8 +433,9 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 		}
 	}
 
-	// STEP 4: Keep generating until no wins are found
-	for {
+	// STEP 4: Keep generating until no wins are found, but limit attempts
+	maxAttempts := 1000
+	for attempts := 0; attempts < maxAttempts; attempts++ {
 		specialSymbols.GoldenCards = nil
 
 		// Replace only the winning positions
@@ -455,10 +457,10 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 			// Try to avoid matching patterns with adjacent positions
 			if pos.Reel > 0 {
 				adjacentSymbol := newReels[pos.Reel-1][pos.Row]
-				attempts := 0
-				for string(symbol) == adjacentSymbol && attempts < 3 {
+				attemptsAdj := 0
+				for string(symbol) == adjacentSymbol && attemptsAdj < 3 {
 					symbol = availableSymbols[r.Intn(len(availableSymbols))]
-					attempts++
+					attemptsAdj++
 				}
 			}
 
@@ -477,176 +479,12 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 		// Check for no wins using the remaining jokers
 		totalWinnings, _ := CalculateWins(newReels, 1, 1, remainingJokers)
 		if totalWinnings == 0 {
-			break
+			return newReels, specialSymbols, remainingJokers
 		}
 	}
-
+	log.Printf("ERROR: Max attempts reached in GenerateLossForCascade. Returning last generated reels.")
 	return newReels, specialSymbols, remainingJokers
 }
-
-// // GenerateReelsForCascade generates new symbols for a cascade
-// func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]bool, jokerCards []JokerCard, r *rand.Rand) ([][]string, SpecialSymbols) {
-// 	// Create a copy of the reels
-// 	newReels := make([][]string, Reels)
-// 	for reel := 0; reel < Reels; reel++ {
-// 		newReels[reel] = make([]string, Rows)
-// 		copy(newReels[reel], reels[reel])
-// 	}
-
-// 	// Initialize special symbols
-// 	specialSymbols := SpecialSymbols{
-// 		GoldenCards:   nil,
-// 		JokerCards:    jokerCards,
-// 		TargetSymbols: nil,
-// 	}
-
-// 	// Mark joker positions to preserve them - THIS IS CRITICAL
-// 	jokerPositions := make(map[Position]bool)
-// 	if jokerCards != nil {
-// 		for _, joker := range jokerCards {
-// 			jokerPositions[joker.Position] = true
-// 			// ENSURE joker positions are set as wild in the new reels
-// 			newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
-// 		}
-// 	}
-
-// 	// Preserve existing Target symbols (outside winning positions)
-// 	for reel := 0; reel < Reels; reel++ {
-// 		for row := 0; row < Rows; row++ {
-// 			pos := Position{Reel: reel, Row: row}
-// 			if newReels[reel][row] == string(SymbolTarget) && !winningPositions[pos] {
-// 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
-// 			}
-// 		}
-// 	}
-
-// 	// Keep generating until a potential win is found
-// 	for {
-// 		// Reset GoldenCards for this iteration
-// 		specialSymbols.GoldenCards = nil
-
-// 		// Replace only the winning positions that are NOT jokers
-// 		for pos := range winningPositions {
-// 			// CRITICAL: Skip if the position contains a Joker Card
-// 			if jokerPositions[pos] {
-// 				// Ensure the joker position remains as wild
-// 				newReels[pos.Reel][pos.Row] = string(SymbolWild)
-// 				continue
-// 			}
-
-// 			// Generate new symbol for non-joker positions
-// 			symbol := WeightedRandomSymbol(r)
-
-// 			// Add Golden Cards on reels 2, 3, 4 with defined probability
-// 			if pos.Reel >= 1 && pos.Reel <= 3 && symbol != SymbolTarget && r.Float64() < GoldenCardProbability {
-// 				specialSymbols.GoldenCards = append(specialSymbols.GoldenCards, pos)
-// 				newReels[pos.Reel][pos.Row] = fmt.Sprintf("golden_%s", string(symbol))
-// 			} else {
-// 				newReels[pos.Reel][pos.Row] = string(symbol)
-// 			}
-
-// 			// Track Target symbols
-// 			if symbol == SymbolTarget {
-// 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
-// 			}
-// 		}
-
-// 		// AFTER generation, ensure all joker positions are still wild
-// 		for _, joker := range jokerCards {
-// 			newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
-// 		}
-
-// 		// Check for a potential win
-// 		totalWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
-// 		if totalWinnings > 0 {
-// 			break
-// 		}
-// 	}
-
-// 	return newReels, specialSymbols
-// }
-
-// // GenerateLossForCascade generates new symbols for a cascade with no wins
-// func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool, jokerCards []JokerCard, r *rand.Rand) ([][]string, SpecialSymbols) {
-// 	newReels := make([][]string, Reels)
-// 	for reel := 0; reel < Reels; reel++ {
-// 		newReels[reel] = make([]string, Rows)
-// 		copy(newReels[reel], reels[reel])
-// 	}
-
-// 	var specialSymbols SpecialSymbols
-// 	specialSymbols.JokerCards = jokerCards
-
-// 	// Mark joker positions to preserve them
-// 	jokerPositions := make(map[Position]bool)
-// 	if jokerCards != nil {
-// 		for _, joker := range jokerCards {
-// 			jokerPositions[joker.Position] = true
-// 			newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
-// 		}
-// 	}
-
-// 	// Preserve existing Target symbols
-// 	for reel := 0; reel < Reels; reel++ {
-// 		for row := 0; row < Rows; row++ {
-// 			pos := Position{Reel: reel, Row: row}
-// 			if newReels[reel][row] == string(SymbolTarget) {
-// 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
-// 			}
-// 		}
-// 	}
-
-// 	// Keep generating until no wins are found
-// 	for {
-// 		specialSymbols.GoldenCards = nil
-
-// 		// Replace only the winning positions
-// 		for pos := range winningPositions {
-// 			// CRITICAL: Don't replace Joker Cards
-// 			if jokerPositions[pos] {
-// 				// Ensure the joker position remains as wild
-// 				newReels[pos.Reel][pos.Row] = string(SymbolWild)
-// 				continue
-// 			}
-
-// 			// Try to generate symbols that avoid wins
-// 			availableSymbols := []Symbol{
-// 				SymbolACE, SymbolKING, SymbolQUEEN, SymbolJACK,
-// 				SymbolHeart, SymbolSpade, SymbolClub, SymbolDiamond,
-// 			}
-// 			symbol := availableSymbols[r.Intn(len(availableSymbols))]
-
-// 			// Try to avoid matching patterns with adjacent positions
-// 			if pos.Reel > 0 {
-// 				adjacentSymbol := newReels[pos.Reel-1][pos.Row]
-// 				attempts := 0
-// 				for string(symbol) == adjacentSymbol && attempts < 3 {
-// 					symbol = availableSymbols[r.Intn(len(availableSymbols))]
-// 					attempts++
-// 				}
-// 			}
-
-// 			newReels[pos.Reel][pos.Row] = string(symbol)
-
-// 			if symbol == SymbolTarget {
-// 				specialSymbols.TargetSymbols = append(specialSymbols.TargetSymbols, pos)
-// 			}
-// 		}
-
-// 		// AFTER generation, ensure all joker positions are still wild
-// 		for _, joker := range jokerCards {
-// 			newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
-// 		}
-
-// 		// Check for no wins
-// 		totalWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
-// 		if totalWinnings == 0 {
-// 			break
-// 		}
-// 	}
-
-// 	return newReels, specialSymbols
-// }
 
 // CalculateWins calculates the total payout and win details using 1024 ways
 func CalculateWins(reels [][]string, betMultiplier int, boomingMultiplier int, jokerCards []JokerCard) (float64, []WinDetail) {

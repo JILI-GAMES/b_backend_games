@@ -612,7 +612,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, r *rand.
 			var mode string
 
 			// Probability distribution: Super 20%, Big 30%, Small 50%
-			if roll < 50 {
+			if roll < 20 {
 				mode = ModeSuperJoker
 			} else if roll < 30 {
 				mode = ModeBigJoker

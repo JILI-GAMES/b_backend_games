@@ -318,8 +318,8 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 		actualWinAmount = potentialWinAmount
 		log.Printf("RNG approved full mask bonus: multiplier=%d, winAmount=%v", actualMultiplier, actualWinAmount)
 	} else {
-		// Award minimum multiplier (2x or 3x)
-		minMultipliers := []int{2, 3}
+		// Award minimum multiplier (5x or 10x)
+		minMultipliers := []int{5, 10}
 		actualMultiplier = minMultipliers[rand.Intn(len(minMultipliers))]
 		actualWinAmount = float64(actualMultiplier) * req.BetAmount
 		actualWinAmount = math.Round(actualWinAmount*100) / 100

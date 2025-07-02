@@ -85,7 +85,7 @@ func generateWaysToWin() [][]int {
 }
 
 // WeightedRandomSymbol selects a symbol based on weights, with reel-specific restrictions
-func WeightedRandomSymbol(r *rand.Rand, reelIndex int, bonusPlacedInReel bool, maskReelPlacedInReel bool) Symbol {
+func WeightedRandomSymbol(r *rand.Rand, reelIndex int, bonusPlacedInReel bool, maskReelPlacedInReel bool, isFreeSpin bool) Symbol {
 	totalWeight := 0.0
 	for symbol, weight := range SymbolWeights {
 		// Wild only appears on reels 2-5 (indices 1-4)
@@ -97,7 +97,7 @@ func WeightedRandomSymbol(r *rand.Rand, reelIndex int, bonusPlacedInReel bool, m
 			continue
 		}
 		// Mask Reel symbols only appear on reels 3-5 (indices 2-4) and only once per reel
-		if symbol == SymbolMaskReel && (reelIndex < 2 || maskReelPlacedInReel) {
+		if symbol == SymbolMaskReel && (reelIndex < 2 || maskReelPlacedInReel || isFreeSpin) {
 			continue
 		}
 		totalWeight += weight
@@ -113,7 +113,7 @@ func WeightedRandomSymbol(r *rand.Rand, reelIndex int, bonusPlacedInReel bool, m
 		if symbol == SymbolBonus && (reelIndex > 2 || bonusPlacedInReel) {
 			continue
 		}
-		if symbol == SymbolMaskReel && (reelIndex < 2 || maskReelPlacedInReel) {
+		if symbol == SymbolMaskReel && (reelIndex < 2 || maskReelPlacedInReel || isFreeSpin) {
 			continue
 		}
 
@@ -126,7 +126,7 @@ func WeightedRandomSymbol(r *rand.Rand, reelIndex int, bonusPlacedInReel bool, m
 }
 
 // GenerateReelsWithWin generates a 5x4 grid with a guaranteed win
-func GenerateReelsWithWin() [][]string {
+func GenerateReelsWithWin(isFreeSpin bool) [][]string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var reels [][]string
 
@@ -138,7 +138,7 @@ func GenerateReelsWithWin() [][]string {
 			bonusPlaced := false
 			maskReelPlaced := false
 			for row := 0; row < Rows; row++ {
-				symbol := WeightedRandomSymbol(r, reel, bonusPlaced, maskReelPlaced)
+				symbol := WeightedRandomSymbol(r, reel, bonusPlaced, maskReelPlaced, isFreeSpin)
 				if symbol == SymbolBonus {
 					bonusPlaced = true
 				}
@@ -150,7 +150,7 @@ func GenerateReelsWithWin() [][]string {
 		}
 
 		// Check for a win
-		totalWinnings, _, bonusPayout, _, _ := CalculateWins(reels, 1, false)
+		totalWinnings, _, bonusPayout, _, _ := CalculateWins(reels, 1, isFreeSpin)
 		if totalWinnings > 0 || bonusPayout > 0 {
 			log.Printf("Generated reels with win: %v", reels)
 			break
@@ -161,7 +161,7 @@ func GenerateReelsWithWin() [][]string {
 }
 
 // GenerateLossReels generates a 5x4 grid with no wins but allows triggering features
-func GenerateLossReels() [][]string {
+func GenerateLossReels(isFreeSpin bool) [][]string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var reels [][]string
 
@@ -173,7 +173,7 @@ func GenerateLossReels() [][]string {
 			bonusPlaced := false
 			maskReelPlaced := false
 			for row := 0; row < Rows; row++ {
-				symbol := WeightedRandomSymbol(r, reel, bonusPlaced, maskReelPlaced)
+				symbol := WeightedRandomSymbol(r, reel, bonusPlaced, maskReelPlaced, isFreeSpin)
 				if symbol == SymbolBonus {
 					bonusPlaced = true
 				}
@@ -185,7 +185,7 @@ func GenerateLossReels() [][]string {
 		}
 
 		// Check for no regular wins (but allow bonus payouts)
-		totalWinnings, _, _, _, _ := CalculateWins(reels, 1, false)
+		totalWinnings, _, _, _, _ := CalculateWins(reels, 1, isFreeSpin)
 		if totalWinnings == 0 {
 			log.Printf("Generated reels with no wins: %v", reels)
 			break
@@ -569,13 +569,27 @@ func TransformAllMasksInGrid(reels [][]string, targetMask Symbol) [][]string {
 	return transformed
 }
 
-// GenerateStage1Scenarios generates possible Stage 1 (normal spin) scenarios
-func GenerateStage1Scenarios(betMultiplier int) []Stage1Result {
+// Add a helper to sanitize MaskReel from reels
+func sanitizeMaskReel(reels [][]string) {
+	for i := range reels {
+		for j := range reels[i] {
+			if reels[i][j] == string(SymbolMaskReel) {
+				reels[i][j] = string(SymbolA) // Replace with a regular symbol
+			}
+		}
+	}
+}
+
+// Update GenerateStage1Scenarios to accept isFreeSpin
+func GenerateStage1Scenarios(betMultiplier int, isFreeSpin bool) []Stage1Result {
 	scenarios := make([]Stage1Result, 0, 2)
 
 	// Generate a winning scenario
-	winReels := GenerateReelsWithWin()
-	winAmount, winDetails, _, _, _ := CalculateWins(winReels, betMultiplier, true)
+	winReels := GenerateReelsWithWin(isFreeSpin)
+	if isFreeSpin {
+		sanitizeMaskReel(winReels)
+	}
+	winAmount, winDetails, _, _, _ := CalculateWins(winReels, betMultiplier, isFreeSpin)
 
 	scenarios = append(scenarios, Stage1Result{
 		Reels:      winReels,
@@ -584,8 +598,11 @@ func GenerateStage1Scenarios(betMultiplier int) []Stage1Result {
 	})
 
 	// Generate a losing scenario
-	lossReels := GenerateLossReels()
-	lossAmount, lossDetails, _, _, _ := CalculateWins(lossReels, betMultiplier, true)
+	lossReels := GenerateLossReels(isFreeSpin)
+	if isFreeSpin {
+		sanitizeMaskReel(lossReels)
+	}
+	lossAmount, lossDetails, _, _, _ := CalculateWins(lossReels, betMultiplier, isFreeSpin)
 
 	scenarios = append(scenarios, Stage1Result{
 		Reels:      lossReels,
@@ -597,17 +614,19 @@ func GenerateStage1Scenarios(betMultiplier int) []Stage1Result {
 	return scenarios
 }
 
-// GenerateTransformationScenarios generates all possible mask transformation scenarios for given reels
-func GenerateTransformationScenarios(stage1Reels [][]string, betMultiplier int) []TransformationResult {
+// Update GenerateTransformationScenarios to accept isFreeSpin
+func GenerateTransformationScenarios(stage1Reels [][]string, betMultiplier int, isFreeSpin bool) []TransformationResult {
 	maskTypes := GetAllMaskTypes()
 	transformations := make([]TransformationResult, 0, len(maskTypes))
 
 	for _, maskType := range maskTypes {
 		// Transform all masks in the entire grid to this type
 		transformedReels := TransformAllMasksInGrid(stage1Reels, maskType)
-
+		if isFreeSpin {
+			sanitizeMaskReel(transformedReels)
+		}
 		// Calculate wins for this transformation
-		winAmount, winDetails, _, _, _ := CalculateWins(transformedReels, betMultiplier, true)
+		winAmount, winDetails, _, _, _ := CalculateWins(transformedReels, betMultiplier, isFreeSpin)
 
 		transformation := TransformationResult{
 			MaskType:   maskType,
@@ -624,12 +643,12 @@ func GenerateTransformationScenarios(stage1Reels [][]string, betMultiplier int) 
 	return transformations
 }
 
-// GenerateCombinedScenarios creates all possible combined scenarios
-func GenerateCombinedScenarios(betMultiplier int) []CombinedScenario {
+// Update GenerateCombinedScenarios to accept isFreeSpin
+func GenerateCombinedScenarios(betMultiplier int, isFreeSpin bool) []CombinedScenario {
 	combinedScenarios := make([]CombinedScenario, 0)
 
 	// Generate Stage 1 scenarios
-	stage1Scenarios := GenerateStage1Scenarios(betMultiplier)
+	stage1Scenarios := GenerateStage1Scenarios(betMultiplier, isFreeSpin)
 
 	for _, stage1 := range stage1Scenarios {
 		// Check if transformation condition is met
@@ -637,13 +656,15 @@ func GenerateCombinedScenarios(betMultiplier int) []CombinedScenario {
 			log.Printf("Stage1 win: %v - Transformation condition met, generating transformation scenarios", stage1.WinAmount)
 
 			// Generate all possible transformations for this Stage 1 result
-			transformations := GenerateTransformationScenarios(stage1.Reels, betMultiplier)
+			transformations := GenerateTransformationScenarios(stage1.Reels, betMultiplier, isFreeSpin)
 
 			for _, transform := range transformations {
+				// total win amount to 2 decimal places
+				totalWin := math.Round(stage1.WinAmount+transform.WinAmount*100) / 100
 				combined := CombinedScenario{
 					Stage1Win:     stage1.WinAmount,
 					Stage2Win:     transform.WinAmount,
-					TotalWin:      stage1.WinAmount + transform.WinAmount,
+					TotalWin:      totalWin,
 					Stage1Reels:   stage1.Reels,
 					Stage2Reels:   transform.Reels,
 					Stage1Details: stage1.WinDetails,
@@ -682,6 +703,27 @@ func GenerateCombinedScenarios(betMultiplier int) []CombinedScenario {
 
 	log.Printf("Generated %d combined scenarios, sorted by total win", len(combinedScenarios))
 	return combinedScenarios
+}
+
+// Update HandleTwoStageMaskTransformation to pass isFreeSpin
+func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngClient *rng.Client, rtp float64) (CombinedScenario, error) {
+	log.Printf("Starting two-stage mask transformation for free spin %d", req.CurrentFreeSpinIndex+1)
+
+	// Generate all possible combined scenarios (Stage 1 + Stage 2)
+	combinedScenarios := GenerateCombinedScenarios(betMultiplier, req.IsFreeSpin)
+
+	// Select the best scenario that RNG approves
+	selectedScenario, err := SelectBestScenarioWithRNG(combinedScenarios, rngClient, req, rtp)
+	if err != nil {
+		log.Printf("Error selecting combined scenario: %v", err)
+		return CombinedScenario{}, err
+	}
+
+	log.Printf("Selected combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
+		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin,
+		selectedScenario.HasTransform, selectedScenario.MaskType)
+
+	return selectedScenario, nil
 }
 
 // SelectBestScenarioWithRNG selects the best combined scenario that RNG approves
@@ -738,27 +780,6 @@ func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Clie
 	selectedScenario := scenarios[0]
 	log.Printf("All combined scenarios rejected by RNG, using lowest scenario: Stage1=%v, Stage2=%v, Total=%v",
 		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin)
-
-	return selectedScenario, nil
-}
-
-// HandleTwoStageMaskTransformation handles the complete two-stage mask transformation logic for free spins
-func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngClient *rng.Client, rtp float64) (CombinedScenario, error) {
-	log.Printf("Starting two-stage mask transformation for free spin %d", req.CurrentFreeSpinIndex+1)
-
-	// Generate all possible combined scenarios (Stage 1 + Stage 2)
-	combinedScenarios := GenerateCombinedScenarios(betMultiplier)
-
-	// Select the best scenario that RNG approves
-	selectedScenario, err := SelectBestScenarioWithRNG(combinedScenarios, rngClient, req, rtp)
-	if err != nil {
-		log.Printf("Error selecting combined scenario: %v", err)
-		return CombinedScenario{}, err
-	}
-
-	log.Printf("Selected combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
-		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin,
-		selectedScenario.HasTransform, selectedScenario.MaskType)
 
 	return selectedScenario, nil
 }

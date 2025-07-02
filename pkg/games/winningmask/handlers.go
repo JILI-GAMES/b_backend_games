@@ -57,7 +57,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	if req.IsFreeSpin {
 		log.Printf("Processing free spin %d with two-stage mask transformation logic", req.CurrentFreeSpinIndex+1)
-		
+
 		// Handle two-stage mask transformation for free spins
 		selectedScenario, err := HandleTwoStageMaskTransformation(betMultiplier, req, rngClient, rtp)
 		if err != nil {
@@ -71,18 +71,18 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Build response from selected scenario
 		response = SpinResponse{
 			// Stage 1 Results
-			Stage1Reels:       selectedScenario.Stage1Reels,
-			Stage1WinAmount:   selectedScenario.Stage1Win,
-			Stage1WinDetails:  selectedScenario.Stage1Details,
-			
+			Stage1Reels:      selectedScenario.Stage1Reels,
+			Stage1WinAmount:  selectedScenario.Stage1Win,
+			Stage1WinDetails: selectedScenario.Stage1Details,
+
 			// Stage 2 Results (if transformation occurred)
-			Stage2WinAmount:   selectedScenario.Stage2Win,
-			Stage2WinDetails:  selectedScenario.Stage2Details,
-			
+			Stage2WinAmount:  selectedScenario.Stage2Win,
+			Stage2WinDetails: selectedScenario.Stage2Details,
+
 			// Combined Results
 			TotalWinAmount:         selectedScenario.TotalWin,
 			MaskTransformationUsed: selectedScenario.HasTransform,
-			
+
 			// Basic game info
 			BetAmount:     req.BetAmount,
 			BetMultiplier: betMultiplier,
@@ -92,17 +92,32 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		if selectedScenario.HasTransform {
 			response.Stage2Reels = selectedScenario.Stage2Reels
 			response.SelectedMaskType = selectedScenario.MaskType
+
+			// Filter Stage2WinDetails and Stage2WinAmount to only include wins for the selected mask type
+			filteredDetails := []WinDetail{}
+			total := 0.0
+			for _, wd := range selectedScenario.Stage2Details {
+				if wd.Symbol == selectedScenario.MaskType {
+					filteredDetails = append(filteredDetails, wd)
+					total += wd.Payout
+				}
+			}
+			response.Stage2WinDetails = filteredDetails
+			response.Stage2WinAmount = total
+			if response.MaskTransformationUsed {
+				response.TotalWinAmount = response.Stage1WinAmount + response.Stage2WinAmount
+			}
 		}
 
-		log.Printf("Free spin result: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s", 
+		log.Printf("Free spin result: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
 			selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin,
 			selectedScenario.HasTransform, selectedScenario.MaskType)
 
 	} else {
 		log.Printf("Processing regular base game spin")
-		
+
 		// Generate reels with a guaranteed win for base game
-		reels := GenerateReelsWithWin()
+		reels := GenerateReelsWithWin(false)
 
 		// Calculate winnings for base game (no mask transformation in base game)
 		totalWinnings, winDetails, _, _, _ := CalculateWins(reels, betMultiplier, false)
@@ -130,7 +145,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Adjust outcome based on RNG for base game
 		if rngResp.PrefOutcome == "loss" {
 			log.Printf("RNG determined a loss outcome")
-			reels = GenerateLossReels()
+			reels = GenerateLossReels(false)
 			totalWinnings = 0
 			winDetails = nil
 		}
@@ -138,18 +153,18 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Build response for base game
 		response = SpinResponse{
 			// For base game, Stage1 is the only stage
-			Stage1Reels:            reels,
-			Stage1WinAmount:        totalWinnings,
-			Stage1WinDetails:       winDetails,
-			
+			Stage1Reels:      reels,
+			Stage1WinAmount:  totalWinnings,
+			Stage1WinDetails: winDetails,
+
 			// No Stage2 for base game
-			Stage2WinAmount:        0,
-			Stage2WinDetails:       nil,
-			
+			Stage2WinAmount:  0,
+			Stage2WinDetails: nil,
+
 			// Combined is same as Stage1 for base game
 			TotalWinAmount:         totalWinnings,
 			MaskTransformationUsed: false,
-			
+
 			// Basic game info
 			BetAmount:     req.BetAmount,
 			BetMultiplier: betMultiplier,

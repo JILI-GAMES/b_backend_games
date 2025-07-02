@@ -409,12 +409,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	var connections []Connection
 	var totalWinnings float64
 	var affectedPositions []Position
+	var newPositions []Position
 
 	// Process cascade surgically
 	if req.GameState.CascadeCount >= 1 && len(req.GameState.LastConnections) > 0 {
 		// SURGICAL: Remove previous connections and apply gravity surgically
 		affectedPositions = RemoveConnectionsSurgical(req.GameState.Grid, req.GameState.LastConnections)
-		ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r)
+		newPositions = ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r)
 	} else {
 		// First cascade call - find existing connections
 		connections = FindRegularConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -423,6 +424,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			for _, connection := range connections {
 				affectedPositions = append(affectedPositions, connection.Positions...)
 			}
+			newPositions = ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r)
 		}
 	}
 
@@ -469,8 +471,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		if rngResp.PrefOutcome == "loss" {
 			log.Printf("RNG determined a loss outcome for cascade")
 
-			// Try surgical loss approach first
-			success := ApplySurgicalLossForCascade(&req.GameState, originalGrid, affectedPositions, req.GameState.CurrentLevel, r)
+			// Try surgical loss approach first (only new positions)
+			success := ApplySurgicalLossForCascade(&req.GameState, originalGrid, newPositions, req.GameState.CurrentLevel, r)
 
 			if !success {
 				// If surgical loss is impossible, bypass RNG and allow the win
@@ -485,7 +487,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 				// Surgical loss successful - remove connections
 				connections = nil
 				totalWinnings = 0
-				log.Printf("Surgical loss applied successfully after cascade processing")
+				log.Printf("Surgical loss applied successfully after cascade processing (new only)")
 			}
 		}
 	}

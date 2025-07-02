@@ -335,8 +335,10 @@ func RemoveConnectionsSurgical(grid [][]string, connections []Connection) []Posi
 }
 
 // ApplyGravitySurgicalForCascade applies gravity only to columns affected by connection removal
-func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Position, level Level, r *rand.Rand) {
+// Returns a slice of Position for newly generated symbols
+func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Position, level Level, r *rand.Rand) []Position {
 	gridSize := len(grid)
+	var newPositions []Position
 
 	// Get unique columns that need gravity applied
 	affectedColumns := make(map[int]bool)
@@ -356,8 +358,7 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 					if y != writePos {
 						grid[writePos][x] = grid[y][x]
 						grid[y][x] = ""
-						log.Printf("Moved symbol %s from (%d,%d) to (%d,%d) via cascade gravity",
-							grid[writePos][x], x, y, x, writePos)
+						log.Printf("Moved symbol %s from (%d,%d) to (%d,%d) via cascade gravity", grid[writePos][x], x, y, x, writePos)
 					}
 					writePos--
 				}
@@ -366,30 +367,23 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
 				grid[y][x] = string(WeightedRandomSymbol(level, r))
-				log.Printf("Generated new symbol %s at position (%d,%d) after cascade gravity",
-					grid[y][x], x, y)
+				log.Printf("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
+				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
 		}
 	}
+	return newPositions
 }
 
 // ApplySurgicalLossForCascade attempts to remove connections while preserving the grid structure for cascades
+// Only modifies newly generated positions
 // Returns true if surgical loss was successful, false if impossible
-func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, affectedPositions []Position, level Level, r *rand.Rand) bool {
-	// Get the positions that were affected by connection removal and gravity
-	affectedPositionMap := make(map[string]bool)
-	affectedColumns := make(map[int]bool)
-
-	for _, pos := range affectedPositions {
-		affectedColumns[pos.X] = true
-	}
-
-	// Mark all positions in affected columns that could have been changed by gravity/new symbols
-	for x := range affectedColumns {
-		for y := 0; y < len(gameState.Grid); y++ {
-			key := fmt.Sprintf("%d,%d", x, y)
-			affectedPositionMap[key] = true
-		}
+func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, newPositions []Position, level Level, r *rand.Rand) bool {
+	// Build a set of allowed positions for modification
+	allowed := make(map[string]bool)
+	for _, pos := range newPositions {
+		key := fmt.Sprintf("%d,%d", pos.X, pos.Y)
+		allowed[key] = true
 	}
 
 	connections := FindRegularConnections(gameState.Grid, level)
@@ -398,9 +392,8 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 		return true
 	}
 
-	log.Printf("Attempting surgical cascade loss on %d connections", len(connections))
+	log.Printf("Attempting surgical cascade loss on %d connections (only new positions)", len(connections))
 
-	// Try to break connections by modifying only the newly affected positions
 	maxAttempts := 50
 	for attempts := 0; attempts < maxAttempts; attempts++ {
 		// Create a copy of current grid
@@ -410,11 +403,11 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 			copy(testGrid[i], gameState.Grid[i])
 		}
 
-		// Try modifying a few affected positions to break connections
-		modificationsCount := min(4, len(affectedPositionMap))
+		// Try modifying a few allowed positions to break connections
+		modificationsCount := min(4, len(allowed))
 		modified := 0
 
-		for posKey := range affectedPositionMap {
+		for posKey := range allowed {
 			if modified >= modificationsCount {
 				break
 			}
@@ -424,7 +417,6 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 			fmt.Sscanf(posKey, "%d,%d", &x, &y)
 
 			if x >= 0 && x < len(testGrid) && y >= 0 && y < len(testGrid[0]) {
-				// Try a different symbol
 				originalSymbol := testGrid[y][x]
 				newSymbol := WeightedRandomSymbol(level, r)
 				testGrid[y][x] = string(newSymbol)
@@ -434,8 +426,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 				if len(testConnections) == 0 {
 					// Success! Apply this modification
 					gameState.Grid = testGrid
-					log.Printf("Surgical cascade loss successful: changed symbol at (%d,%d) from %s to %s",
-						x, y, originalSymbol, newSymbol)
+					log.Printf("Surgical cascade loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
 					return true
 				}
 
@@ -444,9 +435,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 		}
 	}
 
-	// If we can't break connections surgically, it means the cascade processing
-	// naturally created an unbreakable winning configuration
-	log.Printf("Surgical cascade loss impossible: cascade processing created unbreakable winning configuration")
+	log.Printf("Surgical cascade loss impossible: cascade processing created unbreakable winning configuration (new only)")
 	return false
 }
 

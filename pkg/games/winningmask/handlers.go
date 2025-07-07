@@ -351,7 +351,7 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 func getBetMultiplierFromAmount(betAmount float64) (int, error) {
 	multiplier, exists := BetAmountMap[betAmount]
 	if !exists {
-		return 0, fmt.Errorf("invalid bet amount, allowed values are 0.5, 1.0, 2.5, 5.0, 12.5")
+		return 0, fmt.Errorf("invalid bet amount, allowed values are 0.5, 1.0, 1.5, 2.5, 5.0")
 	}
 	return multiplier, nil
 }
@@ -371,7 +371,7 @@ func validateRequest(clientID, gameID, playerID, betID string, betAmount float64
 		return fmt.Errorf("bet_id is required")
 	}
 	if !isFreeSpin && !isValidBetAmount(betAmount) {
-		return fmt.Errorf("invalid bet amount, allowed values are 0.5, 1.0, 2.5, 5.0, 12.5")
+		return fmt.Errorf("invalid bet amount, allowed values are 0.5, 1.0, 1.5, 2.5, 5.0")
 	}
 	return nil
 }
@@ -391,14 +391,14 @@ func validateMaskReelBonusRequest(clientID, gameID, playerID, betID string, betA
 		return fmt.Errorf("bet_id is required")
 	}
 	if !isValidBetAmount(betAmount) {
-		return fmt.Errorf("invalid bet amount, allowed values are 0.5, 1.0, 2.5, 5.0, 12.5")
+		return fmt.Errorf("invalid bet amount, allowed values are 0.5, 1.0, 1.5, 2.5, 5.0")
 	}
 	return nil
 }
 
 // isValidBetAmount checks if the bet amount is valid
 func isValidBetAmount(amount float64) bool {
-	validAmounts := []float64{0.5, 1.0, 2.5, 5.0, 12.5}
+	validAmounts := []float64{0.5, 1.0, 1.5, 2.5, 5.0}
 	for _, valid := range validAmounts {
 		if amount == valid {
 			return true

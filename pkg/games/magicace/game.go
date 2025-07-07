@@ -12,7 +12,7 @@ import (
 // Constants
 const (
 	Denomination          = 0.01
-	GoldenCardProbability = 0.20
+	GoldenCardProbability = 0.05   // from 0.20
 	Reels                 = 5
 	Rows                  = 4
 	MinBet                = 20

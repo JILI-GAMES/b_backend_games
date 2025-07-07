@@ -818,7 +818,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 				mode = ModeSuperJoker
 				remainingRounds = 3 // Start with 3 rounds for Super Joker
 				log.Printf("Selected Super Joker (roll: %d)", roll)
-			} else if roll < 80 {
+			} else if roll < 30 {
 				mode = ModeBigJoker
 				remainingRounds = 1
 				log.Printf("Selected Big Joker (roll: %d)", roll)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 )
@@ -728,6 +729,7 @@ func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngCli
 
 // SelectBestScenarioWithRNG selects the best combined scenario that RNG approves
 func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Client, req SpinRequest, rtp float64) (CombinedScenario, error) {
+	
 	if len(scenarios) == 0 {
 		return CombinedScenario{}, fmt.Errorf("no scenarios provided")
 	}
@@ -753,10 +755,13 @@ func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Clie
 			scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin,
 			scenario.HasTransform, scenario.MaskType, payoutMultiplier)
 
+	
+
 		// Ask RNG if we can award this total win amount
 		rngResp, err := rngClient.GetOutcome(
 			req.ClientID, req.GameID, req.PlayerID, req.BetID,
 			rtp, payoutMultiplier, req.BetAmount,
+			"ip", "userAgent",
 		)
 		if err != nil {
 			log.Printf("RNG call failed for combined scenario (total: %v): %v", scenario.TotalWin, err)

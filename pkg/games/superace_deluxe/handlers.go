@@ -68,8 +68,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	payoutMultiplier := potentialWins / rowReq.BetAmount
 	fmt.Printf("Potential wins: %v, Payout multiplier: %v\n", potentialWins, payoutMultiplier)
 
+	// Get IP address and user agent from request
+	ip := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
+
 	// Use the shared RNG service
-	rngResp, err := rngClient.GetOutcome(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID, rowReq.BetID, rtp, payoutMultiplier, rowReq.BetAmount)
+	rngResp, err := rngClient.GetOutcome(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID, rowReq.BetID, rtp, payoutMultiplier, rowReq.BetAmount, ip, userAgent)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  500,

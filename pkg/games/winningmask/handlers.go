@@ -131,8 +131,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 		log.Printf("Payout multiplier: %v", payoutMultiplier)
 
+		// Get IP address and user agent from request
+		ip := c.IP()
+		userAgent := c.Get("User-Agent")
+
+		log.Printf("✅IP: %v", ip)
+		log.Printf("✅User-Agent: %v", userAgent)
+
 		// Call RNG for base game
-		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount)
+		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent)
 		if err != nil {
 			log.Printf("Failed to call RNG API: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -312,8 +319,15 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 	log.Printf("Mask Reel Bonus RNG call: potentialMultiplier=%d, potentialWin=%v, payoutMultiplier=%v",
 		potentialMultiplier, potentialWinAmount, payoutMultiplier)
 
+	// Get IP address and user agent from request
+	ip := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)	
+
 	// Call RNG to determine if we can award the full multiplier
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent)
 	if err != nil {
 		log.Printf("Failed to call RNG API for mask bonus: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

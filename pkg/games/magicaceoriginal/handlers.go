@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+
 	// "strings"
 	"time"
 
@@ -85,7 +86,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Call RNG
 	payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
+
+	// Get IP address and user agent from request
+	ip := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
+
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -101,7 +110,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		totalWinnings = 0
 		winDetails = nil
 		req.GameState.CascadeCount = 0
-		
+
 	}
 
 	req.GameState.Reels = reels
@@ -120,7 +129,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Count Target symbols for Free Spins trigger only
 	req.GameState.TargetCount, req.GameState.SpecialSymbols.TargetSymbols = CountTargets(reels)
-	
+
 	// Check for Free Spins trigger (3+ targets)
 	if req.GameState.GameMode == "base" && req.GameState.TargetCount >= 3 {
 		log.Printf("Free Spins triggered: %d target(s)", req.GameState.TargetCount)
@@ -168,6 +177,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		TotalCost:  totalCost,
 	})
 }
+
 // CascadeHandler handles the /cascade/magicaceoriginal endpoint
 func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	rngClient, settingsClient := rg.getClientsForRequest(c)
@@ -239,13 +249,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	if hasGoldenCards {
 		log.Printf("Processing golden cards: Transforming golden cards to jokers")
 		newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, r)
-		
+
 		// Add new jokers to the game state
 		req.GameState.JokerCards = append(req.GameState.JokerCards, newJokerCards...)
 		req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
 
 		log.Printf("Transformed %d Golden Cards into Joker Cards", len(newJokerCards))
-		
+
 		// CRITICAL: Ensure reels show 'wild' at joker positions immediately
 		for _, joker := range newJokerCards {
 			req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
@@ -253,7 +263,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		}
 
 		log.Printf("✅New joker cards: %v", newJokerCards)
-		
+
 		// Count Super Jokers and update collectors
 		superJokerCount := CountSuperJokers(newJokerCards)
 		log.Printf("✅Super Jokers count: %d", superJokerCount)
@@ -283,11 +293,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// STEP 5: Generate new symbols for the cascade (this now handles joker removal internally)
 	newReels, specialSymbols, remainingJokers := GenerateReelsForCascade(
-		req.GameState.Reels, 
-		winningPositions, 
-		req.GameState.JokerCards, 
-		req.GameState.LastWinDetails, 
-		newlyCreatedJokerPositions, 
+		req.GameState.Reels,
+		winningPositions,
+		req.GameState.JokerCards,
+		req.GameState.LastWinDetails,
+		newlyCreatedJokerPositions,
 		r,
 	)
 
@@ -313,7 +323,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// STEP 8: Call RNG
 	payoutMultiplier := payout / req.GameState.Bet.Amount
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount)
+	// Get IP address and user agent from request
+	ip := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -326,11 +342,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	if rngResp.PrefOutcome == "loss" {
 		log.Printf("RNG determined a loss outcome")
 		newReels, specialSymbols, remainingJokers = GenerateLossForCascade(
-			req.GameState.Reels, 
-			winningPositions, 
-			req.GameState.JokerCards, 
-			req.GameState.LastWinDetails, 
-			newlyCreatedJokerPositions, 
+			req.GameState.Reels,
+			winningPositions,
+			req.GameState.JokerCards,
+			req.GameState.LastWinDetails,
+			newlyCreatedJokerPositions,
 			r,
 		)
 		payout = 0
@@ -350,7 +366,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// STEP 11: Count Target symbols for Free Spins trigger only
 	req.GameState.TargetCount, req.GameState.SpecialSymbols.TargetSymbols = CountTargets(newReels)
-	
+
 	// STEP 12: Check for Free Spins triggering from base game during a cascade
 	if req.GameState.GameMode == "base" && req.GameState.TargetCount >= 3 {
 		log.Printf("Free Spins triggered during cascade: %d target(s)", req.GameState.TargetCount)

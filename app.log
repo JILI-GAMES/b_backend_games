@@ -70,3 +70,147 @@
 2025/05/13 09:54:53 Request validation failed: client_id is required
 2025/05/13 09:55:08 Free Spin options selected: count=8, multiplier=2
 2025/05/13 09:55:26 Free Spin options selected: count=8, multiplier=2
+2025/07/16 15:02:06 Starting server on port 11400
+2025/07/16 15:02:58 Starting server on port 11400
+2025/07/16 15:03:18 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:03:18 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:03:18 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:03:20 ✅IP: 127.0.0.1
+2025/07/16 15:03:20 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:03:20 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":0.39999999999999997,"request_salt":"d7a782f2-3e7d-4653-a5cf-4f92457f5ee7","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:03:20 RNG determined a loss outcome
+2025/07/16 15:03:20 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:03:20 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:03:20 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:03:33 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:03:33 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:03:33 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:03:33 ✅IP: 127.0.0.1
+2025/07/16 15:03:33 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:03:33 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":2,"request_salt":"573aefba-d0a0-4a43-a973-53e6ba93467a","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:03:34 RNG determined a loss outcome
+2025/07/16 15:03:34 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:03:34 Found 2 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:03:34 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=2, hasStageCleared=true, cascading=false
+2025/07/16 15:05:07 Starting server on port 11400
+2025/07/16 15:05:18 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:18 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:18 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:21 ✅IP: 127.0.0.1
+2025/07/16 15:05:21 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:21 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":0.7999999999999999,"request_salt":"46058347-0a9f-4b75-9bc4-f9db42e48e68","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:22 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true
+2025/07/16 15:05:27 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:27 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:27 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:27 ✅IP: 127.0.0.1
+2025/07/16 15:05:27 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:27 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":2,"request_salt":"1f5edae6-3ba2-405e-8954-93ab2e2f1175","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:28 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true
+2025/07/16 15:05:32 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:32 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:32 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:32 ✅IP: 127.0.0.1
+2025/07/16 15:05:32 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:32 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":4,"request_salt":"46a5abff-8f6c-4c93-807f-6b557f944f0a","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:32 RNG determined a loss outcome
+2025/07/16 15:05:32 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:05:32 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:32 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:05:35 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:35 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:35 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:35 ✅IP: 127.0.0.1
+2025/07/16 15:05:35 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:35 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":4,"request_salt":"13653635-7f2a-4bf5-a21c-4f15a32fba53","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:35 RNG determined a loss outcome
+2025/07/16 15:05:35 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:05:35 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:35 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:05:38 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:38 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:38 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:38 ✅IP: 127.0.0.1
+2025/07/16 15:05:38 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:38 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":4,"request_salt":"abcc0899-9338-4e17-8ef6-8dcff547727b","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:39 RNG determined a loss outcome
+2025/07/16 15:05:39 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:05:39 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:39 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:05:43 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:43 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:43 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:44 ✅IP: 127.0.0.1
+2025/07/16 15:05:44 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:44 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":0.7999999999999999,"request_salt":"680c33ed-6a23-4b39-bb44-bf8a9b9999cd","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:45 RNG determined a loss outcome
+2025/07/16 15:05:45 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:05:45 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:45 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:05:47 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:05:47 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:05:47 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:05:47 ✅IP: 127.0.0.1
+2025/07/16 15:05:47 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:05:47 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":1,"request_salt":"cab810b9-abc5-4c03-b27f-ba370f086efc","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:05:48 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true
+2025/07/16 15:06:29 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:06:29 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:06:29 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:06:30 ✅IP: 127.0.0.1
+2025/07/16 15:06:30 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:06:30 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":2,"request_salt":"d73f86d5-fb0e-4cc4-aea4-5f53e8c6bd40","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:06:30 RNG determined a loss outcome
+2025/07/16 15:06:30 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:06:30 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:06:30 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:06:40 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:06:40 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:06:40 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:06:40 ✅IP: 127.0.0.1
+2025/07/16 15:06:40 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:06:40 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":4,"request_salt":"86ea52f6-c911-44a0-9388-3eed23437a17","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:06:40 RNG determined a loss outcome
+2025/07/16 15:06:40 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:06:40 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:06:40 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:06:49 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:06:49 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:06:49 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:06:50 ✅IP: 127.0.0.1
+2025/07/16 15:06:50 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:06:50 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":8,"request_salt":"cd2e525c-468c-4258-aa01-56e7ce41b962","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:06:50 RNG determined a loss outcome
+2025/07/16 15:06:50 Generating loss grid for level 1 with grid size 4x4
+2025/07/16 15:06:50 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:06:50 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=false
+2025/07/16 15:07:03 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:07:03 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:07:03 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:07:03 ✅IP: 127.0.0.1
+2025/07/16 15:07:03 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:07:03 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":0.5,"request_salt":"f03c2be5-6dc0-4b66-b40f-8b9ae2668854","bet_amount":0.3,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:07:04 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true
+2025/07/16 15:08:18 Starting server on port 11400
+2025/07/16 15:08:25 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:08:25 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:08:25 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:08:27 ✅IP: 127.0.0.1
+2025/07/16 15:08:27 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:08:27 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":0.4,"request_salt":"2a83c7f6-2c54-456e-ac70-76d990ecc882","bet_amount":0.3,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:08:27 Free Spins triggered with 4.5x multiplier
+2025/07/16 15:08:27 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true
+2025/07/16 15:08:58 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:08:58 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:08:58 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:08:59 ✅IP: 127.0.0.1
+2025/07/16 15:08:59 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:08:59 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":1,"request_salt":"54013042-f0d6-4aad-b35e-9957675f1d1e","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:08:59 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true
+2025/07/16 15:09:10 Generating grid with win for level 1 with grid size 4x4
+2025/07/16 15:09:10 Found 0 stage-cleared symbols (orange_slice) for level 1
+2025/07/16 15:09:10 Settings request: {"client_id":"279","game_id":"46","player_id":"284"}
+2025/07/16 15:09:10 ✅IP: 127.0.0.1
+2025/07/16 15:09:10 ✅User-Agent: PostmanRuntime/7.44.1
+2025/07/16 15:09:10 RNG request: {"client_id":"279","game_id":"46","player_id":"284","bet_id":"bet111","rtp":0.97,"payout_multiplier":0.7999999999999999,"request_salt":"a761b9cf-b479-4599-820b-40a8c842e972","bet_amount":0.1,"ip_address":"127.0.0.1","user_agent":"PostmanRuntime/7.44.1"}
+2025/07/16 15:09:11 Spin completed: level=1, gridSize=4x4, stageClearedSymbols=0, hasStageCleared=false, cascading=true

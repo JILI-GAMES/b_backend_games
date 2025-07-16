@@ -27,14 +27,54 @@ func WeightedRandomSymbol(level Level, r *rand.Rand) Symbol {
 	return SymbolPurpleOwl // Fallback
 }
 
+// Helper: Checks if SymbolFreeGame is already present in the grid
+func hasFreeGameSymbol(grid [][]string) bool {
+	for y := range grid {
+		for x := range grid[y] {
+			if grid[y][x] == string(SymbolFreeGame) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Modified WeightedRandomSymbol to accept allowFreeGame argument
+func WeightedRandomSymbolWithControl(level Level, r *rand.Rand, allowFreeGame bool) Symbol {
+	weights := GetLevelSpecificWeights(level)
+	if !allowFreeGame {
+		delete(weights, SymbolFreeGame)
+	}
+
+	totalWeight := 0.0
+	for _, weight := range weights {
+		totalWeight += weight
+	}
+
+	roll := r.Float64() * totalWeight
+	currentWeight := 0.0
+	for symbol, weight := range weights {
+		currentWeight += weight
+		if roll <= currentWeight {
+			return symbol
+		}
+	}
+	return SymbolPurpleOwl // Fallback
+}
+
 // GenerateGrid generates a grid of specified size with symbols for the given level
 func GenerateGrid(level Level, r *rand.Rand) [][]string {
 	gridSize := level.GetGridSize()
 	grid := make([][]string, gridSize)
+	freeGamePlaced := false
 	for y := 0; y < gridSize; y++ {
 		grid[y] = make([]string, gridSize)
 		for x := 0; x < gridSize; x++ {
-			symbol := WeightedRandomSymbol(level, r)
+			allowFreeGame := !freeGamePlaced
+			symbol := WeightedRandomSymbolWithControl(level, r, allowFreeGame)
+			if symbol == SymbolFreeGame {
+				freeGamePlaced = true
+			}
 			grid[y][x] = string(symbol)
 		}
 	}
@@ -233,7 +273,8 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
-				grid[y][x] = string(WeightedRandomSymbol(level, r))
+				allowFreeGame := !hasFreeGameSymbol(grid)
+				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, allowFreeGame))
 				log.Printf("Generated new symbol %s at position (%d,%d) after surgical gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
@@ -366,7 +407,8 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
-				grid[y][x] = string(WeightedRandomSymbol(level, r))
+				allowFreeGame := !hasFreeGameSymbol(grid)
+				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, allowFreeGame))
 				log.Printf("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
@@ -599,7 +641,8 @@ func ApplyGravity(grid [][]string, level Level, r *rand.Rand) {
 
 		// Fill empty spaces at the top with new symbols
 		for y := 0; y <= writePos; y++ {
-			grid[y][x] = string(WeightedRandomSymbol(level, r))
+			allowFreeGame := !hasFreeGameSymbol(grid)
+			grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, allowFreeGame))
 		}
 	}
 }

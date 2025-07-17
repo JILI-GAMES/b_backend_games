@@ -28,7 +28,7 @@ var SymbolWeights = map[Symbol]float64{
     SymbolQ:              0.10,
     SymbolJ:              0.10,
     SymbolWild:           0.06,
-    SymbolSilverFlower:   0.05,
+    SymbolSilverFlower:   0.02,
     SymbolGoldFlower:     0.02,
 }
 

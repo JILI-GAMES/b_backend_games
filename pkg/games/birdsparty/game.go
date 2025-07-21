@@ -7,6 +7,11 @@ import (
 	"math/rand"
 )
 
+// round rounds a float64 to two decimal places
+func round(val float64) float64 {
+	return math.Round(val*100) / 100
+}
+
 // WeightedRandomSymbol selects a symbol based on level-specific weights
 func WeightedRandomSymbol(level Level, r *rand.Rand) Symbol {
 	weights := GetLevelSpecificWeights(level)
@@ -599,7 +604,7 @@ func calculatePayout(symbol Symbol, count int, level Level, betMultiplier int) f
 	if payoutMap, exists := paytable[symbol]; exists {
 		if payout, found := payoutMap[count]; found {
 			result := payout * 0.01 * float64(betMultiplier) // Denomination is 0.01
-			return math.Round(result*100) / 100
+			return round(result)
 		}
 	}
 

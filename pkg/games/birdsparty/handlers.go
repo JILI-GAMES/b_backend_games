@@ -67,14 +67,14 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Calculate total winnings
 	totalWinnings := 0.0
 	for i, connection := range connections {
-		multiplier := 1.0
-		if req.GameState.GameMode == "freeSpins" {
-			multiplier = req.GameState.FreeSpins.Multiplier
-		}
-		connections[i].Payout = calculatePayout(connection.Symbol, connection.Count, req.GameState.CurrentLevel, req.GameState.Bet.Multiplier)
-		connections[i].Payout *= multiplier
-		totalWinnings += connections[i].Payout
+		payout := calculatePayout(connection.Symbol, connection.Count, req.GameState.CurrentLevel, req.GameState.Bet.Multiplier)
+		connections[i].Payout = payout // base payout, no multiplier
+		totalWinnings += payout
 	}
+	if req.GameState.GameMode == "freeSpins" {
+		totalWinnings *= req.GameState.FreeSpins.Multiplier
+	}
+	totalWinnings = round(totalWinnings)
 
 	// Get RTP and call RNG for bird symbol connections
 	if len(connections) > 0 {
@@ -95,7 +95,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		log.Printf("✅IP: %v", ip)
 		log.Printf("✅User-Agent: %v", userAgent)
-		
 		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent)
 		if err != nil {
 			log.Printf("Failed to call RNG API: %v", err)
@@ -277,14 +276,14 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 	// Calculate total winnings
 	totalWinnings := 0.0
 	for i, connection := range connections {
-		multiplier := 1.0
-		if req.GameState.GameMode == "freeSpins" {
-			multiplier = req.GameState.FreeSpins.Multiplier
-		}
-		connections[i].Payout = calculatePayout(connection.Symbol, connection.Count, req.GameState.CurrentLevel, req.GameState.Bet.Multiplier)
-		connections[i].Payout *= multiplier
-		totalWinnings += connections[i].Payout
+		payout := calculatePayout(connection.Symbol, connection.Count, req.GameState.CurrentLevel, req.GameState.Bet.Multiplier)
+		connections[i].Payout = payout // base payout, no multiplier
+		totalWinnings += payout
 	}
+	if req.GameState.GameMode == "freeSpins" {
+		totalWinnings *= req.GameState.FreeSpins.Multiplier
+	}
+	totalWinnings = round(totalWinnings)
 
 	// Handle RNG for bird symbol connections (if any) with surgical loss approach
 	rngBypassed := false
@@ -447,15 +446,16 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	}
 
 	// Calculate total winnings
+	totalWinnings = 0.0
 	for i, connection := range connections {
-		multiplier := 1.0
-		if req.GameState.GameMode == "freeSpins" {
-			multiplier = req.GameState.FreeSpins.Multiplier
-		}
-		connections[i].Payout = calculatePayout(connection.Symbol, connection.Count, req.GameState.CurrentLevel, req.GameState.Bet.Multiplier)
-		connections[i].Payout *= multiplier
-		totalWinnings += connections[i].Payout
+		payout := calculatePayout(connection.Symbol, connection.Count, req.GameState.CurrentLevel, req.GameState.Bet.Multiplier)
+		connections[i].Payout = payout // base payout, no multiplier
+		totalWinnings += payout
 	}
+	if req.GameState.GameMode == "freeSpins" {
+		totalWinnings *= req.GameState.FreeSpins.Multiplier
+	}
+	totalWinnings = round(totalWinnings)
 
 	// Handle RNG for bird symbol connections with surgical loss approach
 	rngBypassed := false
@@ -571,14 +571,14 @@ func validateRequest(clientID, gameID, playerID, betID string, betAmount float64
 		return fmt.Errorf("bet_id is required")
 	}
 	if !isValidBetAmount(betAmount) {
-		return fmt.Errorf("invalid bet amount, allowed values are 0.1, 0.2, 0.3, 0.5, 1.0, 2.0,2.5")
+		return fmt.Errorf("invalid bet amount, allowed values are 0.1, 0.2, 0.3, 0.5, 1.0")
 	}
 	return nil
 }
 
 // isValidBetAmount checks if the bet amount is valid
 func isValidBetAmount(amount float64) bool {
-	validAmounts := []float64{0.1, 0.2, 0.3, 0.5, 1.0, 2.0, 2.5}
+	validAmounts := []float64{0.1, 0.2, 0.3, 0.5, 1.0}
 	for _, valid := range validAmounts {
 		if amount == valid {
 			return true

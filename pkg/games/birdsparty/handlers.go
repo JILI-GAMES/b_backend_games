@@ -55,7 +55,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	req.GameState.Bet.Multiplier = BetAmountToMultiplier[req.GameState.Bet.Amount]
 
 	// Generate grid with potential bird symbol connections
-	req.GameState.Grid = GenerateGridWithWin(req.GameState.CurrentLevel, r)
+	forbidFreeGame := req.GameState.GameMode == "freeSpins"
+	req.GameState.Grid = GenerateGridWithWin(req.GameState.CurrentLevel, r, forbidFreeGame)
 
 	// Find stage-cleared symbols (do NOT remove them yet)
 	stageClearedSymbols := FindStageClearedSymbols(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -89,7 +90,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Call RNG
 		payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
-		// Get IP address and user agent from request
 		ip := c.IP()
 		userAgent := c.Get("User-Agent")
 
@@ -107,7 +107,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Adjust outcome based on RNG
 		if rngResp.PrefOutcome == "loss" {
 			log.Printf("RNG determined a loss outcome")
-			req.GameState.Grid = GenerateLossGrid(req.GameState.CurrentLevel, r)
+			forbidFreeGame := req.GameState.GameMode == "freeSpins"
+			req.GameState.Grid = GenerateLossGrid(req.GameState.CurrentLevel, r, forbidFreeGame)
 
 			// Re-find stage-cleared symbols in loss grid
 			stageClearedSymbols = FindStageClearedSymbols(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -239,7 +240,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		// Remove stage-cleared symbols from grid surgically
 		RemoveStageClearedSymbolsSurgical(req.GameState.Grid, stageClearedSymbols)
 		// Apply gravity surgically and get new positions
-		newPositions = ApplyGravitySurgical(req.GameState.Grid, stageClearedSymbols, req.GameState.CurrentLevel, r)
+		newPositions = ApplyGravitySurgical(req.GameState.Grid, stageClearedSymbols, req.GameState.CurrentLevel, r, req.GameState.GameMode == "freeSpins")
 		// Update stage progress
 		req.GameState.StageProgress += len(stageClearedSymbols)
 		log.Printf("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
@@ -249,7 +250,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 			excessProgress := req.GameState.StageProgress - StageProgressTarget
 			UpdateGameStateForLevel(&req.GameState, newLevel)
 			req.GameState.StageProgress = excessProgress
-			req.GameState.Grid = GenerateGrid(newLevel, r)
+			req.GameState.Grid = GenerateGrid(newLevel, r, false) // No free game in new level
 			levelAdvanced = true
 			log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 			// Clear stage-cleared symbols
@@ -299,7 +300,6 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 		// Call RNG
 		payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
-		// Get IP address and user agent from request
 		ip := c.IP()
 		userAgent := c.Get("User-Agent")
 
@@ -427,7 +427,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	if req.GameState.CascadeCount >= 1 && len(req.GameState.LastConnections) > 0 {
 		// SURGICAL: Remove previous connections and apply gravity surgically
 		affectedPositions = RemoveConnectionsSurgical(req.GameState.Grid, req.GameState.LastConnections)
-		newPositions = ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r)
+		newPositions = ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r, req.GameState.GameMode == "freeSpins")
 	} else {
 		// First cascade call - find existing connections
 		connections = FindRegularConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -436,7 +436,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			for _, connection := range connections {
 				affectedPositions = append(affectedPositions, connection.Positions...)
 			}
-			newPositions = ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r)
+			newPositions = ApplyGravitySurgicalForCascade(req.GameState.Grid, affectedPositions, req.GameState.CurrentLevel, r, req.GameState.GameMode == "freeSpins")
 		}
 	}
 
@@ -471,7 +471,6 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		// Call RNG
 		payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
-		// Get IP address and user agent from request
 		ip := c.IP()
 		userAgent := c.Get("User-Agent")
 

@@ -45,9 +45,10 @@ func hasFreeGameSymbol(grid [][]string) bool {
 }
 
 // Modified WeightedRandomSymbol to accept allowFreeGame argument
-func WeightedRandomSymbolWithControl(level Level, r *rand.Rand, allowFreeGame bool) Symbol {
+// WeightedRandomSymbolWithControl now takes a forbidFreeGame argument (true = never allow free_game)
+func WeightedRandomSymbolWithControl(level Level, r *rand.Rand, forbidFreeGame bool) Symbol {
 	weights := GetLevelSpecificWeights(level)
-	if !allowFreeGame {
+	if forbidFreeGame {
 		delete(weights, SymbolFreeGame)
 	}
 
@@ -68,15 +69,16 @@ func WeightedRandomSymbolWithControl(level Level, r *rand.Rand, allowFreeGame bo
 }
 
 // GenerateGrid generates a grid of specified size with symbols for the given level
-func GenerateGrid(level Level, r *rand.Rand) [][]string {
+// If forbidFreeGame is true, free_game symbol will never appear
+func GenerateGrid(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
 	grid := make([][]string, gridSize)
 	freeGamePlaced := false
 	for y := 0; y < gridSize; y++ {
 		grid[y] = make([]string, gridSize)
 		for x := 0; x < gridSize; x++ {
-			allowFreeGame := !freeGamePlaced
-			symbol := WeightedRandomSymbolWithControl(level, r, allowFreeGame)
+			allowFreeGame := !freeGamePlaced && !forbidFreeGame
+			symbol := WeightedRandomSymbolWithControl(level, r, !allowFreeGame)
 			if symbol == SymbolFreeGame {
 				freeGamePlaced = true
 			}
@@ -87,13 +89,14 @@ func GenerateGrid(level Level, r *rand.Rand) [][]string {
 }
 
 // GenerateGridWithWin generates a grid that has potential connections (bird symbols only)
-func GenerateGridWithWin(level Level, r *rand.Rand) [][]string {
+// If forbidFreeGame is true, free_game symbol will never appear
+func GenerateGridWithWin(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
 	log.Printf("Generating grid with win for level %d with grid size %dx%d", level, gridSize, gridSize)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
-		grid := GenerateGrid(level, r)
+		grid := GenerateGrid(level, r, forbidFreeGame)
 		// Check for bird symbol connections (ignore stage-cleared symbols)
 		connections := FindRegularConnections(grid, level)
 		if len(connections) > 0 {
@@ -102,17 +105,18 @@ func GenerateGridWithWin(level Level, r *rand.Rand) [][]string {
 	}
 
 	// If we can't generate a natural win, force one
-	return ForceWinGrid(level, r)
+	return ForceWinGrid(level, r, forbidFreeGame)
 }
 
 // GenerateLossGrid generates a grid with no winning connections (bird symbols)
-func GenerateLossGrid(level Level, r *rand.Rand) [][]string {
+// If forbidFreeGame is true, free_game symbol will never appear
+func GenerateLossGrid(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
 	log.Printf("Generating loss grid for level %d with grid size %dx%d", level, gridSize, gridSize)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
-		grid := GenerateGrid(level, r)
+		grid := GenerateGrid(level, r, forbidFreeGame)
 		// Check for bird symbol connections (ignore stage-cleared symbols)
 		connections := FindRegularConnections(grid, level)
 		if len(connections) == 0 {
@@ -121,13 +125,14 @@ func GenerateLossGrid(level Level, r *rand.Rand) [][]string {
 	}
 
 	// If we can't generate a natural loss, force one
-	return ForceLossGrid(level, r)
+	return ForceLossGrid(level, r, forbidFreeGame)
 }
 
 // ForceWinGrid creates a grid with guaranteed bird symbol connections
-func ForceWinGrid(level Level, r *rand.Rand) [][]string {
+// If forbidFreeGame is true, free_game symbol will never appear
+func ForceWinGrid(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
-	grid := GenerateGrid(level, r)
+	grid := GenerateGrid(level, r, forbidFreeGame)
 	minConnection := level.GetMinConnection()
 
 	// Pick a random bird symbol
@@ -146,7 +151,8 @@ func ForceWinGrid(level Level, r *rand.Rand) [][]string {
 }
 
 // ForceLossGrid creates a grid with no bird symbol connections
-func ForceLossGrid(level Level, r *rand.Rand) [][]string {
+// If forbidFreeGame is true, free_game symbol will never appear
+func ForceLossGrid(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
 	grid := make([][]string, gridSize)
 	birdSymbols := []Symbol{SymbolPurpleOwl, SymbolGreenOwl, SymbolYellowOwl, SymbolBlueOwl, SymbolRedOwl}
@@ -187,6 +193,17 @@ func ForceLossGrid(level Level, r *rand.Rand) [][]string {
 		}
 	}
 
+	// Remove free_game symbol if forbidden
+	if forbidFreeGame {
+		for y := 0; y < gridSize; y++ {
+			for x := 0; x < gridSize; x++ {
+				if grid[y][x] == string(SymbolFreeGame) {
+					grid[y][x] = string(birdSymbols[r.Intn(len(birdSymbols))])
+				}
+			}
+		}
+	}
+
 	return grid
 }
 
@@ -203,7 +220,7 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 	RemoveStageClearedSymbolsSurgical(gameState.Grid, stageClearedSymbols)
 
 	// Apply gravity SURGICALLY - only affects columns with removed symbols
-	ApplyGravitySurgical(gameState.Grid, stageClearedSymbols, level, r)
+	ApplyGravitySurgical(gameState.Grid, stageClearedSymbols, level, r, false)
 
 	// Update stage progress
 	gameState.StageProgress += len(stageClearedSymbols)
@@ -224,7 +241,7 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 		gameState.StageProgress = excessProgress
 
 		// Regenerate grid with new level's size and symbols
-		gameState.Grid = GenerateGrid(newLevel, r)
+		gameState.Grid = GenerateGrid(newLevel, r, false) // No free game in new level
 
 		levelAdvanced = true
 		log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
@@ -247,9 +264,9 @@ func RemoveStageClearedSymbolsSurgical(grid [][]string, stageClearedSymbols []St
 	}
 }
 
-// ApplyGravitySurgical applies gravity only to columns that had stage-cleared symbols removed
-// Returns a slice of Position for newly generated symbols
-func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSymbol, level Level, r *rand.Rand) []Position {
+// ApplyGravitySurgical applies gravity only to columns affected by stage-cleared symbol removal
+// If forbidFreeGame is true, free_game symbol will never appear
+func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSymbol, level Level, r *rand.Rand, forbidFreeGame bool) []Position {
 	gridSize := len(grid)
 	var newPositions []Position
 
@@ -278,8 +295,8 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
-				allowFreeGame := !hasFreeGameSymbol(grid)
-				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, allowFreeGame))
+				allowFreeGame := !hasFreeGameSymbol(grid) && !forbidFreeGame
+				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, !allowFreeGame))
 				log.Printf("Generated new symbol %s at position (%d,%d) after surgical gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
@@ -381,8 +398,8 @@ func RemoveConnectionsSurgical(grid [][]string, connections []Connection) []Posi
 }
 
 // ApplyGravitySurgicalForCascade applies gravity only to columns affected by connection removal
-// Returns a slice of Position for newly generated symbols
-func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Position, level Level, r *rand.Rand) []Position {
+// If forbidFreeGame is true, free_game symbol will never appear
+func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Position, level Level, r *rand.Rand, forbidFreeGame bool) []Position {
 	gridSize := len(grid)
 	var newPositions []Position
 
@@ -412,8 +429,8 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
-				allowFreeGame := !hasFreeGameSymbol(grid)
-				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, allowFreeGame))
+				allowFreeGame := !hasFreeGameSymbol(grid) && !forbidFreeGame
+				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, !allowFreeGame))
 				log.Printf("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
@@ -647,7 +664,7 @@ func ApplyGravity(grid [][]string, level Level, r *rand.Rand) {
 		// Fill empty spaces at the top with new symbols
 		for y := 0; y <= writePos; y++ {
 			allowFreeGame := !hasFreeGameSymbol(grid)
-			grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, allowFreeGame))
+			grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, !allowFreeGame))
 		}
 	}
 }
@@ -753,7 +770,7 @@ func ProcessStageClearedSymbols(gameState *GameState, stageClearedSymbols []Stag
 		gameState.StageProgress = excessProgress
 
 		// Regenerate grid with new level's size and symbols
-		gameState.Grid = GenerateGrid(newLevel, r)
+		gameState.Grid = GenerateGrid(newLevel, r, false) // No free game in new level
 
 		levelAdvanced = true
 		log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)

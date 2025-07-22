@@ -685,7 +685,7 @@ func CountFreeGameSymbols(grid [][]string) int {
 
 // GetRandomFreeSpinMultiplier returns a random multiplier between 1.0 and 5.0
 func GetRandomFreeSpinMultiplier(r *rand.Rand) float64 {
-	multipliers := []float64{1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
+	multipliers := []float64{1.0, 2.0, 3.0, 4.0, 5.0}
 	return multipliers[r.Intn(len(multipliers))]
 }
 

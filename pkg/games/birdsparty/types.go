@@ -78,14 +78,14 @@ type GameState struct {
 		Multiplier int     `json:"multiplier"`
 	} `json:"bet"`
 	CurrentLevel  Level      `json:"currentLevel"`
-	GridSize      int        `json:"gridSize"`      // Current grid dimensions (4, 5, or 6)
-	Grid          [][]string `json:"grid"`          // Dynamic grid size
-	StageProgress int        `json:"stageProgress"` // Accumulated stage-cleared symbols (0-14)
-	GameMode      string     `json:"gameMode"`      // "base" or "freeSpins"
+	GridSize      int        `json:"gridSize"`      
+	Grid          [][]string `json:"grid"`          
+	StageProgress int        `json:"stageProgress"` 
+	GameMode      string     `json:"gameMode"`      
 	FreeSpins     struct {
 		Remaining    int     `json:"remaining"`
 		TotalAwarded int     `json:"totalAwarded"`
-		Multiplier   float64 `json:"multiplier"` // 1.0-5.0x random multiplier
+		Multiplier   float64 `json:"multiplier"` 
 	} `json:"freeSpins"`
 	TotalWin        float64      `json:"totalWin"`
 	Cascading       bool         `json:"cascading"`
@@ -233,8 +233,6 @@ var SymbolWeights = map[Symbol]float64{
 	SymbolStrawberry:  0.0001, // 0.1%
 }
 
-// GetLevelSpecificWeights returns symbol weights for a specific level
-// Stage-cleared symbols only appear on their corresponding level
 func GetLevelSpecificWeights(level Level) map[Symbol]float64 {
 	weights := make(map[Symbol]float64)
 
@@ -244,23 +242,22 @@ func GetLevelSpecificWeights(level Level) map[Symbol]float64 {
 	weights[SymbolYellowOwl] = 0.2475
 	weights[SymbolBlueOwl] = 0.2475
 	weights[SymbolRedOwl] = 0.2475
-	weights[SymbolFreeGame] = 0.1 // much rarer(0.002) for testing 0.1 is okay
+	weights[SymbolFreeGame] = 0.002 // much rarer(0.002) for testing 0.1 is okay
 
 	// Add level-specific stage-cleared symbol
 	switch level {
 	case Level1:
-		weights[SymbolOrangeSlice] = 0.002 // much rarer(0.002) for testing 0.1 is okay
+		weights[SymbolOrangeSlice] = 0.1 // much rarer(0.002) for testing 0.1 is okay
 	case Level2:
-		weights[SymbolHoneyPot] = 0.002 // much rarer(0.002) for testing 0.1 is okay
+		weights[SymbolHoneyPot] = 0.1 // much rarer(0.002) for testing 0.1 is okay
 	case Level3:
-		weights[SymbolStrawberry] = 0.002 // much rarer(0.002) for testing 0.1 is okay
+		weights[SymbolStrawberry] = 0.1 // much rarer(0.002) for testing 0.1 is okay
 	}
 
 	return weights
 }
 
-// Paytables for each level (payouts for Bet Multiplier = 1)
-// Only regular bird symbols have payouts, stage-cleared symbols don't pay
+
 
 // Level 1 Paytable (4x4 grid, supports 4-16 connected symbols)
 var PaytableLevel1 = map[Symbol]map[int]float64{

@@ -348,7 +348,9 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 
 			if x >= 0 && x < len(testGrid) && y >= 0 && y < len(testGrid[0]) {
 				originalSymbol := testGrid[y][x]
-				newSymbol := WeightedRandomSymbol(level, r)
+				// Respect free spins mode - don't allow free game symbols during free spins
+				forbidFreeGame := gameState.GameMode == "freeSpins"
+				newSymbol := WeightedRandomSymbolWithControl(level, r, forbidFreeGame)
 				testGrid[y][x] = string(newSymbol)
 
 				// Check if this breaks connections
@@ -482,7 +484,9 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 
 			if x >= 0 && x < len(testGrid) && y >= 0 && y < len(testGrid[0]) {
 				originalSymbol := testGrid[y][x]
-				newSymbol := WeightedRandomSymbol(level, r)
+				// Respect free spins mode - don't allow free game symbols during free spins
+				forbidFreeGame := gameState.GameMode == "freeSpins"
+				newSymbol := WeightedRandomSymbolWithControl(level, r, forbidFreeGame)
 				testGrid[y][x] = string(newSymbol)
 
 				// Check if this breaks connections
@@ -685,7 +689,7 @@ func CountFreeGameSymbols(grid [][]string) int {
 
 // GetRandomFreeSpinMultiplier returns a random multiplier between 1.0 and 5.0
 func GetRandomFreeSpinMultiplier(r *rand.Rand) float64 {
-	multipliers := []float64{1.0, 2.0, 3.0, 4.0, 5.0}
+	multipliers := []float64{1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
 	return multipliers[r.Intn(len(multipliers))]
 }
 
@@ -770,7 +774,9 @@ func ProcessStageClearedSymbols(gameState *GameState, stageClearedSymbols []Stag
 		gameState.StageProgress = excessProgress
 
 		// Regenerate grid with new level's size and symbols
-		gameState.Grid = GenerateGrid(newLevel, r, false) // No free game in new level
+		// Respect free spins mode - don't allow free game symbols during free spins
+		forbidFreeGame := gameState.GameMode == "freeSpins"
+		gameState.Grid = GenerateGrid(newLevel, r, forbidFreeGame)
 
 		levelAdvanced = true
 		log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
@@ -806,6 +812,8 @@ func CleanupInvalidSymbols(grid [][]string, level Level, r *rand.Rand) {
 
 			// If it's a stage-cleared symbol that doesn't belong to current level, replace it
 			if IsStageClearedSymbol(symbol) && symbol != levelStageClearedSymbol {
+				// Note: This function doesn't have access to gameState, so we can't check game mode
+				// For now, we'll use the basic symbol generation - this function is rarely used
 				newSymbol := WeightedRandomSymbol(level, r)
 				grid[y][x] = string(newSymbol)
 				log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",

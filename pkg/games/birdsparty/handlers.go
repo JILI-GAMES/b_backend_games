@@ -257,7 +257,9 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 			}
 
 			// Generate new grid for the new level
-			req.GameState.Grid = GenerateGrid(newLevel, r, false) // `false` allows free game on first grid of new level
+			// Respect free spins mode - don't allow free game symbols during free spins
+			forbidFreeGame := req.GameState.GameMode == "freeSpins"
+			req.GameState.Grid = GenerateGrid(newLevel, r, forbidFreeGame)
 			levelAdvanced = true
 			log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 

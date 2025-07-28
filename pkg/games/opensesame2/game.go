@@ -40,8 +40,8 @@ var SymbolWeights = map[Symbol]float64{
 	Symbol10:         0.11,
 	Symbol9:          0.11,
 	SymbolWild:       0.05,
-	SymbolScatter:    0.06, //0.3 for testing 0.06 normal 
-	SymbolFreeSpins:  0.5, //50 % for testing 0.05 normal
+	SymbolScatter:    0.06, //0.3 for testing 0.06 normal
+	SymbolFreeSpins:  0.5,  //50 % for testing 0.05 normal
 	SymbolMysteryBox: 0.04, //50 % for testing
 }
 
@@ -164,8 +164,8 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int) []string {
 			if symbol == SymbolFreeSpins || symbol == SymbolMysteryBox || symbol == SymbolScatter {
 				continue
 			}
-			// Wild only appears on reels 2-5
-			if symbol == SymbolWild && reelIndex == 0 {
+			// Wild only appears on reels 2-5 (reel indices 1-4)
+			if symbol == SymbolWild && reelIndex < 1 {
 				continue
 			}
 			availableSymbols[symbol] = weight

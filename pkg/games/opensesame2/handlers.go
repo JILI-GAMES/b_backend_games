@@ -133,16 +133,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Handle free spin retriggering
 	if freeSpinRetriggered {
-		// Add the same number of free spins as initially awarded
-		additionalSpins := 0
-
-		// If this is the first retrigger, use the initial number of spins
-		if req.CurrentFreeSpinIndex > 0 {
-			additionalSpins = req.TotalFreeSpinsAwarded / req.CurrentFreeSpinIndex
-		} else {
-			// Default to a midpoint value if we can't determine the original count
-			additionalSpins = 10
-		}
+		// Add the same number of free spins as initially awarded during the Gold Chest selection
+		additionalSpins := req.TotalFreeSpinsAwarded
 
 		remainingFreeSpins += additionalSpins
 		totalFreeSpinsAwarded += additionalSpins

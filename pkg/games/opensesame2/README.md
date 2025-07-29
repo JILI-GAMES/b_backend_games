@@ -85,6 +85,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   - **Chest**: Reveals free spins (5, 8, 10, or 15)
 - All wins during free spins are multiplied by the revealed multiplier, except 5 of a kind of the Woman symbol
 - Free spins can be retriggered (maximum 250 free spins)
+- **Retriggering Behavior**: When free spins are retriggered, the same number of free spins as originally awarded are added (not the cumulative total)
 
 #### Extra Free Spin Bonus
 - **Trigger**: Free Spin symbols on reels 1 and 2, Mystery Box on reel 3
@@ -95,7 +96,8 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   - **Treasure**: Reveals either extra multiplier (1x-5x) OR extra free spins (2-10)
 - All wins during free spins are multiplied by the combined multipliers, except 5 of a kind of the Woman symbol
 - Free spins can be retriggered (maximum 250 free spins)
-
+- **Retriggering Behavior**: When free spins are retriggered, the same number of free spins as originally awarded are added (not the cumulative total)
+-
 ## API Interaction Flow
 
 ### 1. Base Game Spin
@@ -109,6 +111,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "current_free_spin_index": 0,
   "remaining_free_spins": 0,
   "total_free_spins_awarded": 0,
+  "original_free_spins_awarded": 0,
   "free_spin_multiplier": 0,
   "extra_free_spin_multiplier": 0,
   "client_id": "client_id_here",
@@ -166,6 +169,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "free_spin_multiplier": 0,
   "extra_free_spin_multiplier": 0,
   "total_free_spins_awarded": 0,
+  "original_free_spins_awarded": 0,
   "bet_amount": 0.6,
   "bet_multiplier": 1
 }
@@ -237,6 +241,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "current_free_spin_index": 0,
   "remaining_free_spins": 10,
   "total_free_spins_awarded": 10,
+  "original_free_spins_awarded": 10,
   "free_spin_multiplier": 3,
   "extra_free_spin_multiplier": 0,
   "client_id": "client_id_here",
@@ -289,6 +294,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "free_spin_multiplier": 3,
   "extra_free_spin_multiplier": 0,
   "total_free_spins_awarded": 10,
+  "original_free_spins_awarded": 10,
   "bet_amount": 0.60,
   "bet_multiplier": 1
 }
@@ -303,6 +309,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "current_free_spin_index": 0,
   "remaining_free_spins": 10,
   "total_free_spins_awarded": 10,
+  "original_free_spins_awarded": 10,
   "free_spin_multiplier": 3,
   "extra_free_spin_multiplier": 2,
   "client_id": "client_id_here",
@@ -354,6 +361,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "free_spin_multiplier": 3,
   "extra_free_spin_multiplier": 2,
   "total_free_spins_awarded": 10,
+  "original_free_spins_awarded": 10,
   "bet_amount": 0.60,
   "bet_multiplier": 1
 }
@@ -367,6 +375,7 @@ Free Spin and Mystery Box symbols use a **combination-based payout system**, not
   "free_spin_retriggered": true,
   "remaining_free_spins": 19,
   "total_free_spins_awarded": 20,
+  "original_free_spins_awarded": 10,
   "current_free_spin_index": 5
 }
 ```
@@ -381,7 +390,8 @@ When the last free spin is completed, the response will have:
   "current_free_spin_index": 0,
   "free_spin_multiplier": 0,
   "extra_free_spin_multiplier": 0,
-  "total_free_spins_awarded": 0
+  "total_free_spins_awarded": 0,
+  "original_free_spins_awarded": 0
 }
 ```
 
@@ -411,7 +421,8 @@ When the last free spin is completed, the response will have:
 | current_free_spin_index | int | Current index of free spin (0-based) |
 | free_spin_multiplier | int | Current free spin multiplier |
 | extra_free_spin_multiplier | int | Extra multiplier for extra free spins |
-| total_free_spins_awarded | int | Total number of free spins awarded |
+| total_free_spins_awarded | int | Total number of free spins awarded (includes retriggers) |
+| original_free_spins_awarded | int | Original number of free spins awarded (before retriggers) |
 | bet_amount | float | The bet amount used for this spin |
 | bet_multiplier | int | The bet multiplier derived from bet amount |
 
@@ -455,6 +466,7 @@ if (response.combination_type === "MysteryBoxCombination" && response.extra_free
 - Always use the state values from the most recent response
 - Track combination payouts separately from regular wins
 - Maintain bet amount consistency during free spins
+- **Important**: When free spins are first triggered, set `original_free_spins_awarded` to the number of free spins awarded. This value should remain constant throughout the free spin session and is used for retrigger calculations.
 
 ## Troubleshooting
 
@@ -512,3 +524,9 @@ if (response.combination_type === "MysteryBoxCombination" && response.extra_free
 - **Scatter Wins**: 3 Scatter symbols = 1.20
 - **Combination**: Free Spin combination = 1.20
 - **Total Win**: 0.72 + 1.20 + 1.20 = **3.12**
+
+### Scenario 4: Free Spin Retriggering
+- **Initial Free Spins Awarded**: 10 (set `original_free_spins_awarded = 10`)
+- **First Retrigger**: Adds 10 more spins (total becomes 20, `original_free_spins_awarded` remains 10)
+- **Second Retrigger**: Adds 10 more spins (total becomes 30, `original_free_spins_awarded` remains 10)
+- **Key Point**: Each retrigger always adds the original amount (10), not the cumulative total

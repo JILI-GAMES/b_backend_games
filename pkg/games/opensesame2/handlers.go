@@ -127,6 +127,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Update Free Spin state
 	remainingFreeSpins := req.RemainingFreeSpins
 	totalFreeSpinsAwarded := req.TotalFreeSpinsAwarded
+	originalFreeSpinsAwarded := req.OriginalFreeSpinsAwarded
 	freeSpinMultiplier := req.FreeSpinMultiplier
 	extraFreeSpinMultiplier := req.ExtraFreeSpinMultiplier
 	isExtraFreeSpin := req.IsExtraFreeSpin
@@ -134,7 +135,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Handle free spin retriggering
 	if freeSpinRetriggered {
 		// Add the same number of free spins as initially awarded during the Gold Chest selection
-		additionalSpins := req.TotalFreeSpinsAwarded
+		// Use original free spins awarded to avoid cumulative addition
+		additionalSpins := originalFreeSpinsAwarded
+		if additionalSpins == 0 {
+			// Fallback to total if original is not set (for backward compatibility)
+			additionalSpins = req.TotalFreeSpinsAwarded
+		}
 
 		remainingFreeSpins += additionalSpins
 		totalFreeSpinsAwarded += additionalSpins
@@ -184,29 +190,30 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		totalWinnings, scatterWinAmount, combinationWinAmount, combinationType, totalWinAmount, freeSpinTriggered, extraFreeSpinTriggered, freeSpinRetriggered, isFreeSpin, isExtraFreeSpin)
 
 	return c.JSON(SpinResponse{
-		Reels:                   reels,
-		WinAmount:               totalWinAmount,
-		WinDetails:              winDetails,
-		ScatterCount:            len(scatterPositions),
-		ScatterWinAmount:        scatterWinAmount,
-		ScatterPositions:        scatterPositions,
-		CombinationCount:        combinationCount,
-		CombinationWinAmount:    combinationWinAmount,
-		CombinationType:         combinationType,
-		CombinationPositions:    combinationPositions,
-		CombinationSymbols:      combinationSymbols,
-		FreeSpinTriggered:       freeSpinTriggered,
-		FreeSpinRetriggered:     freeSpinRetriggered,
-		ExtraFreeSpinTriggered:  extraFreeSpinTriggered,
-		IsFreeSpin:              isFreeSpin,
-		IsExtraFreeSpin:         isExtraFreeSpin,
-		RemainingFreeSpins:      remainingFreeSpins,
-		CurrentFreeSpinIndex:    currentFreeSpinIndex,
-		FreeSpinMultiplier:      freeSpinMultiplier,
-		ExtraFreeSpinMultiplier: extraFreeSpinMultiplier,
-		TotalFreeSpinsAwarded:   totalFreeSpinsAwarded,
-		BetAmount:               req.BetAmount,
-		BetMultiplier:           betMultiplier,
+		Reels:                    reels,
+		WinAmount:                totalWinAmount,
+		WinDetails:               winDetails,
+		ScatterCount:             len(scatterPositions),
+		ScatterWinAmount:         scatterWinAmount,
+		ScatterPositions:         scatterPositions,
+		CombinationCount:         combinationCount,
+		CombinationWinAmount:     combinationWinAmount,
+		CombinationType:          combinationType,
+		CombinationPositions:     combinationPositions,
+		CombinationSymbols:       combinationSymbols,
+		FreeSpinTriggered:        freeSpinTriggered,
+		FreeSpinRetriggered:      freeSpinRetriggered,
+		ExtraFreeSpinTriggered:   extraFreeSpinTriggered,
+		IsFreeSpin:               isFreeSpin,
+		IsExtraFreeSpin:          isExtraFreeSpin,
+		RemainingFreeSpins:       remainingFreeSpins,
+		CurrentFreeSpinIndex:     currentFreeSpinIndex,
+		FreeSpinMultiplier:       freeSpinMultiplier,
+		ExtraFreeSpinMultiplier:  extraFreeSpinMultiplier,
+		TotalFreeSpinsAwarded:    totalFreeSpinsAwarded,
+		OriginalFreeSpinsAwarded: originalFreeSpinsAwarded,
+		BetAmount:                req.BetAmount,
+		BetMultiplier:            betMultiplier,
 	})
 }
 

@@ -242,16 +242,16 @@ func GetLevelSpecificWeights(level Level) map[Symbol]float64 {
 	weights[SymbolYellowOwl] = 0.2475
 	weights[SymbolBlueOwl] = 0.2475
 	weights[SymbolRedOwl] = 0.2475
-	weights[SymbolFreeGame] = 0.1 // much rarer(0.002) for testing 0.1 is okay
+	weights[SymbolFreeGame] = 0.002 // much rarer(0.002) for testing 0.1 is okay
 
 	// Add level-specific stage-cleared symbol
 	switch level {
 	case Level1:
-		weights[SymbolOrangeSlice] = 0.1 // much rarer(0.002) for testing 0.1 is okay
+		weights[SymbolOrangeSlice] = 0.002 // much rarer(0.002) for testing 0.1 is okay
 	case Level2:
-		weights[SymbolHoneyPot] = 0.1 // much rarer(0.002) for testing 0.1 is okay
+		weights[SymbolHoneyPot] = 0.002 // much rarer(0.002) for testing 0.1 is okay
 	case Level3:
-		weights[SymbolStrawberry] = 0.1 // much rarer(0.002) for testing 0.1 is okay
+		weights[SymbolStrawberry] = 0.002 // much rarer(0.002) for testing 0.1 is okay
 	}
 
 	return weights

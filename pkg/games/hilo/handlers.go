@@ -38,7 +38,21 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	// Round bet amount to 2 decimal places
 	req.BetAmount = RoundToTwo(req.BetAmount)
 
-	// Generate unique seed and deck
+	// Determine starting card
+	var startingCard string
+	if req.Card != "" {
+		// Use card from Unity frontend
+		startingCard = req.Card
+		log.Printf("Using card from Unity frontend: %s", startingCard)
+	} else {
+		// Generate random card (fallback)
+		seed := GenerateUniqueSeed()
+		deck := GenerateDeck(seed)
+		startingCard = deck[0]
+		log.Printf("Generated random card: %s", startingCard)
+	}
+
+	// Generate unique seed for the game
 	seed := GenerateUniqueSeed()
 	deck := GenerateDeck(seed)
 	deckHash := HashDeck(deck)
@@ -47,14 +61,14 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	gameState := GameState{
 		Seed:           seed,
 		DeckHash:       deckHash,
-		CurrentCard:    deck[0],
+		CurrentCard:    startingCard,
 		Position:       0,
 		AccumulatedWin: 1.00, // Start with 1x multiplier
 		BetAmount:      RoundToTwo(req.BetAmount),
 		SkipsUsed:      0,
 		SkipsRemaining: 5,
 		MaxSkips:       5,
-		GameHistory:    []Card{{Card: deck[0], Value: GetCardValue(deck[0]), Position: 0}},
+		GameHistory:    []Card{{Card: startingCard, Value: GetCardValue(startingCard), Position: 0}},
 		IsGameOver:     false,
 		FinalWin:       0,
 	}
@@ -65,8 +79,12 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	// Generate signature
 	signature := ComputeHMAC(seed, 0, gameState.AccumulatedWin, req.BetAmount)
 
-	log.Printf("Started new Hilo game: seed=%s, currentCard=%s, betAmount=%.2f",
-		seed, gameState.CurrentCard, req.BetAmount)
+	cardSource := "Random"
+	if req.Card != "" {
+		cardSource = "Unity"
+	}
+	log.Printf("Started new Hilo game: seed=%s, currentCard=%s, betAmount=%.2f, cardSource=%s",
+		seed, gameState.CurrentCard, req.BetAmount, cardSource)
 
 	return c.JSON(StartGameResponse{
 		Status:     "success",

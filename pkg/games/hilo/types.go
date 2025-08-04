@@ -2,18 +2,18 @@ package hilo
 
 // GameState represents the current state of the Hilo game
 type GameState struct {
-	Seed            string  `json:"seed"`
-	DeckHash        string  `json:"deck_hash"`
-	CurrentCard     string  `json:"current_card"`
-	Position        int     `json:"position"`
-	AccumulatedWin  float64 `json:"accumulated_win"`
-	BetAmount       float64 `json:"bet_amount"`
-	SkipsUsed       int     `json:"skips_used"`
-	SkipsRemaining  int     `json:"skips_remaining"`
-	MaxSkips        int     `json:"max_skips"`
-	GameHistory     []Card  `json:"game_history"`
-	IsGameOver      bool    `json:"is_game_over"`
-	FinalWin        float64 `json:"final_win"`
+	Seed           string  `json:"seed"`
+	DeckHash       string  `json:"deck_hash"`
+	CurrentCard    string  `json:"current_card"`
+	Position       int     `json:"position"`
+	AccumulatedWin float64 `json:"accumulated_win"`
+	BetAmount      float64 `json:"bet_amount"`
+	SkipsUsed      int     `json:"skips_used"`
+	SkipsRemaining int     `json:"skips_remaining"`
+	MaxSkips       int     `json:"max_skips"`
+	GameHistory    []Card  `json:"game_history"`
+	IsGameOver     bool    `json:"is_game_over"`
+	FinalWin       float64 `json:"final_win"`
 }
 
 // Card represents a playing card
@@ -48,6 +48,7 @@ type StartGameRequest struct {
 	PlayerID  string  `json:"player_id"`
 	BetID     string  `json:"bet_id"`
 	BetAmount float64 `json:"bet_amount"`
+	Card      string  `json:"card,omitempty"` // Optional card from Unity frontend
 }
 
 // StartGameResponse represents the response when starting a new game

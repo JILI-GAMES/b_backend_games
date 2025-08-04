@@ -11,6 +11,8 @@ This is an enhanced implementation of the Hilo card prediction game with pre-cal
 - **Fallback Safety**: Random card generation if no card provided
 - **Consistent Format**: Returns exactly what Unity sends
 - **Logging**: Clear tracking of card source (Unity vs Random)
+- **Deck Consistency**: Proper deck generation for Unity cards
+- **State Verification**: Fixed "Invalid game state" errors
 
 ### ✅ Decimal Precision Control
 - **2 Decimal Places**: All monetary values consistently rounded
@@ -118,6 +120,7 @@ curl -X POST http://localhost:11400/start/hilo \
   "game_state": {
     "seed": "1720000123456_987654321",
     "current_card": "ACE_SPADES",
+    "unity_card": "ACE_SPADES",
     "position": 0,
     "accumulated_win": 1.00,
     "bet_amount": 5.00,
@@ -337,6 +340,12 @@ Cards should be in the format: `"RANK_SUIT"` where:
 - `"TEN_DIAMONDS"`
 - `"JACK_CLUBS"`
 
+### Important Notes
+- ✅ **Fixed**: "Invalid game state" errors when using Unity cards
+- ✅ **Fixed**: Card value parsing for `"RANK_SUIT"` format
+- ✅ **Added**: Unity card tracking in game state
+- ✅ **Enhanced**: Debug logging for troubleshooting
+
 ### Unity C# Example
 ```csharp
 [System.Serializable]
@@ -348,6 +357,24 @@ public class StartGameRequest
     public string bet_id;
     public float bet_amount;
     public string card; // Optional - Unity can specify starting card
+}
+
+[System.Serializable]
+public class GameState
+{
+    public string seed;
+    public string deck_hash;
+    public string current_card;
+    public string unity_card; // Tracks if this was a Unity-specified card
+    public int position;
+    public float accumulated_win;
+    public float bet_amount;
+    public int skips_used;
+    public int skips_remaining;
+    public int max_skips;
+    public Card[] game_history;
+    public bool is_game_over;
+    public float final_win;
 }
 
 [System.Serializable]
@@ -438,6 +465,11 @@ class HiloGame {
     const data = await response.json();
     this.gameState = data.game_state;
     this.signature = data.signature;
+
+    // Log Unity card information for debugging
+    if (data.game_state.unity_card) {
+      console.log(`🎮 Unity card detected: ${data.game_state.unity_card}`);
+    }
 
     // Update UI with betting options
     this.updateBettingButtons(data.bet_options);
@@ -694,8 +726,10 @@ document.getElementById('start_button').onclick = async () => {
   const card = document.getElementById('unity_card').value; // Optional Unity card input
   
   if (card) {
+    console.log(`🎮 Starting game with Unity card: ${card}`);
     await game.startGame('demo_client', 'hilo_001', 'player_123', betAmount, card);
   } else {
+    console.log('🎲 Starting game with random card');
     await game.startGame('demo_client', 'hilo_001', 'player_123', betAmount);
   }
 };
@@ -721,6 +755,10 @@ document.getElementById('verify_button').onclick = () => {
 - Fallback to random generation if no card provided
 - Consistent card format and validation
 - Clear logging of card source
+- **Fixed "Invalid game state" errors** with proper deck generation
+- **Deck consistency** between StartGame and Guess handlers
+- **Unity card tracking** in game state for verification
+- **Enhanced debugging** with detailed logging for troubleshooting
 
 ### 2. **Decimal Precision Control**
 - All monetary values rounded to exactly 2 decimal places
@@ -774,6 +812,24 @@ This ensures:
 - ✅ Business profitability is protected
 - ✅ Complete audit trail with client information
 
+## Recent Fixes & Improvements
+
+### ✅ **Fixed "Invalid Game State" Error**
+- **Problem**: Unity cards caused deck mismatch between StartGame and Guess handlers
+- **Solution**: Added `UnityCard` field to track Unity-specified cards
+- **Result**: Proper deck generation for both Unity and random cards
+
+### ✅ **Enhanced Card Value Parsing**
+- **Problem**: `GetCardValue()` couldn't parse `"RANK_SUIT"` format
+- **Solution**: Updated to use `strings.Split()` for proper parsing
+- **Result**: Correct card values for all betting calculations
+
+### ✅ **Improved Debug Logging**
+- **Added**: Detailed logging for deck generation process
+- **Added**: Unity card tracking in game state
+- **Added**: Verification step logging for troubleshooting
+- **Result**: Easy debugging and monitoring of Unity integration
+
 ## Testing
 
 Run tests with:
@@ -798,4 +854,4 @@ For questions or issues:
 
 ---
 
-**This implementation provides the exact functionality shown in your screenshots while maintaining complete house control through RNG integration, with enhanced Unity support and decimal precision control.**
+**This implementation provides the exact functionality shown in your screenshots while maintaining complete house control through RNG integration, with enhanced Unity support, decimal precision control, and fixed "Invalid game state" errors.**

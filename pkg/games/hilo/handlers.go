@@ -38,30 +38,37 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	// Round bet amount to 2 decimal places
 	req.BetAmount = RoundToTwo(req.BetAmount)
 
-	// Determine starting card
+	// Determine starting card and generate appropriate deck
 	var startingCard string
+	var seed string
+	var deck []string
+	var deckHash string
+
 	if req.Card != "" {
 		// Use card from Unity frontend
 		startingCard = req.Card
 		log.Printf("Using card from Unity frontend: %s", startingCard)
+
+		// Generate a deck that starts with the Unity-specified card
+		seed = GenerateUniqueSeed()
+		deck = GenerateDeckWithFirstCard(seed, startingCard)
+		deckHash = HashDeck(deck)
+		log.Printf("Generated deck with Unity card: firstCard=%s, deck[0]=%s", startingCard, deck[0])
 	} else {
-		// Generate random card (fallback)
-		seed := GenerateUniqueSeed()
-		deck := GenerateDeck(seed)
+		// Generate random card and deck
+		seed = GenerateUniqueSeed()
+		deck = GenerateDeck(seed)
 		startingCard = deck[0]
+		deckHash = HashDeck(deck)
 		log.Printf("Generated random card: %s", startingCard)
 	}
-
-	// Generate unique seed for the game
-	seed := GenerateUniqueSeed()
-	deck := GenerateDeck(seed)
-	deckHash := HashDeck(deck)
 
 	// Initialize game state
 	gameState := GameState{
 		Seed:           seed,
 		DeckHash:       deckHash,
 		CurrentCard:    startingCard,
+		UnityCard:      req.Card, // Track if this was a Unity-specified card
 		Position:       0,
 		AccumulatedWin: 1.00, // Start with 1x multiplier
 		BetAmount:      RoundToTwo(req.BetAmount),
@@ -147,8 +154,21 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	}
 
 	// Regenerate deck and verify current card
-	deck := GenerateDeck(req.GameState.Seed)
+	var deck []string
+	if req.GameState.UnityCard != "" {
+		// Use the same deck generation logic as StartGameHandler for Unity cards
+		deck = GenerateDeckWithFirstCard(req.GameState.Seed, req.GameState.UnityCard)
+		log.Printf("Using Unity deck generation: unityCard=%s", req.GameState.UnityCard)
+	} else {
+		// Use regular deck generation for random cards
+		deck = GenerateDeck(req.GameState.Seed)
+	}
+
+	log.Printf("Verifying game state: position=%d, currentCard=%s, deckCard=%s, deckLength=%d, seed=%s, unityCard=%s",
+		req.GameState.Position, req.GameState.CurrentCard, deck[req.GameState.Position], len(deck), req.GameState.Seed, req.GameState.UnityCard)
+
 	if req.GameState.Position >= len(deck) || deck[req.GameState.Position] != req.GameState.CurrentCard {
+		log.Printf("❌ Game state verification failed: expected=%s, actual=%s", req.GameState.CurrentCard, deck[req.GameState.Position])
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid game state",
@@ -349,7 +369,15 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 	}
 
 	// Regenerate deck and verify
-	deck := GenerateDeck(req.GameState.Seed)
+	var deck []string
+	if req.GameState.UnityCard != "" {
+		// Use the same deck generation logic as StartGameHandler for Unity cards
+		deck = GenerateDeckWithFirstCard(req.GameState.Seed, req.GameState.UnityCard)
+	} else {
+		// Use regular deck generation for random cards
+		deck = GenerateDeck(req.GameState.Seed)
+	}
+
 	if req.GameState.Position >= len(deck) || deck[req.GameState.Position] != req.GameState.CurrentCard {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",

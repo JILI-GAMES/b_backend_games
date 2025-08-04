@@ -5,6 +5,7 @@ type GameState struct {
 	Seed           string  `json:"seed"`
 	DeckHash       string  `json:"deck_hash"`
 	CurrentCard    string  `json:"current_card"`
+	UnityCard      string  `json:"unity_card,omitempty"` // Track if this was a Unity-specified card
 	Position       int     `json:"position"`
 	AccumulatedWin float64 `json:"accumulated_win"`
 	BetAmount      float64 `json:"bet_amount"`

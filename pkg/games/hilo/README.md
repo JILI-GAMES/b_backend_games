@@ -67,6 +67,10 @@ pkg/common/
 
 ## API Endpoints
 
+### Pre-Game Endpoints (NEW)
+- `POST /preview/hilo` - Preview a card with betting options (pre-game phase)
+- `POST /preview-skip/hilo` - Skip to next card in pre-game phase (infinite skips)
+
 ### Main Game Endpoints
 - `POST /start/hilo` - Start a new game (with optional Unity card input)
 - `POST /guess/hilo` - Make a guess (with RNG control)
@@ -327,6 +331,62 @@ curl -X GET http://localhost:11400/status
 }
 ```
 
+### 9. Preview Card (Pre-Game Phase)
+```bash
+curl -X POST http://localhost:11400/preview/hilo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "demo_client",
+    "game_id": "hilo_001",
+    "player_id": "player_123",
+    "bet_amount": 5.00
+  }'
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Card preview ready",
+  "current_card": "ACE_SPADES",
+  "bet_options": [
+    {"id": "higher", "name": "HIGH", "multiplier": 1.85, "is_enabled": true},
+    {"id": "lower", "name": "LOW", "multiplier": 0.00, "is_enabled": false},
+    {"id": "same", "name": "SAME", "multiplier": 16.69, "is_enabled": true},
+    {"id": "higher_or_same", "name": "HIGH OR SAME", "multiplier": 1.79, "is_enabled": true},
+    {"id": "lower_or_same", "name": "LOW OR SAME", "multiplier": 16.69, "is_enabled": true}
+  ]
+}
+```
+
+### 10. Preview Skip (Infinite Skips)
+```bash
+curl -X POST http://localhost:11400/preview-skip/hilo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "demo_client",
+    "game_id": "hilo_001",
+    "player_id": "player_123",
+    "current_card": "ACE_SPADES"
+  }'
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Skipped to next card: KING_HEARTS",
+  "current_card": "KING_HEARTS",
+  "bet_options": [
+    {"id": "higher", "name": "HIGH", "multiplier": 0.00, "is_enabled": false},
+    {"id": "lower", "name": "LOW", "multiplier": 1.04, "is_enabled": true},
+    {"id": "same", "name": "SAME", "multiplier": 16.69, "is_enabled": true},
+    {"id": "higher_or_same", "name": "HIGH OR SAME", "multiplier": 16.69, "is_enabled": true},
+    {"id": "lower_or_same", "name": "LOW OR SAME", "multiplier": 1.03, "is_enabled": true}
+  ]
+}
+```
+
 ## Unity Integration
 
 ### Card Format
@@ -430,6 +490,153 @@ public class HiloGameController : MonoBehaviour
     }
 }
 ```
+
+## Improved Unity Integration Flow (NEW)
+
+### Pre-Game Phase with Infinite Skips
+
+The new endpoints provide a perfect Unity integration flow:
+
+```csharp
+[System.Serializable]
+public class PreviewRequest
+{
+    public string client_id;
+    public string game_id;
+    public string player_id;
+    public float bet_amount;
+    public string card; // Optional Unity card
+}
+
+[System.Serializable]
+public class PreviewResponse
+{
+    public string status;
+    public string message;
+    public string current_card;
+    public BetOption[] bet_options;
+}
+
+[System.Serializable]
+public class PreviewSkipRequest
+{
+    public string client_id;
+    public string game_id;
+    public string player_id;
+    public string current_card;
+}
+
+[System.Serializable]
+public class PreviewSkipResponse
+{
+    public string status;
+    public string message;
+    public string current_card;
+    public BetOption[] bet_options;
+}
+
+public class HiloGameController : MonoBehaviour
+{
+    private string apiUrl = "http://localhost:11400";
+    private string currentPreviewCard;
+
+    // Step 1: Load initial card preview
+    public async Task<PreviewResponse> LoadCardPreview(string clientId, string gameId, string playerId, float betAmount, string card = null)
+    {
+        var request = new PreviewRequest
+        {
+            client_id = clientId,
+            game_id = gameId,
+            player_id = playerId,
+            bet_amount = betAmount,
+            card = card
+        };
+
+        var json = JsonUtility.ToJson(request);
+        var response = await PostRequest($"{apiUrl}/preview/hilo", json);
+        var previewResponse = JsonUtility.FromJson<PreviewResponse>(response);
+        
+        currentPreviewCard = previewResponse.current_card;
+        UpdateUI(previewResponse.current_card, previewResponse.bet_options);
+        
+        return previewResponse;
+    }
+
+    // Step 2: Skip to next card (infinite skips)
+    public async Task<PreviewSkipResponse> SkipCard(string clientId, string gameId, string playerId)
+    {
+        var request = new PreviewSkipRequest
+        {
+            client_id = clientId,
+            game_id = gameId,
+            player_id = playerId,
+            current_card = currentPreviewCard
+        };
+
+        var json = JsonUtility.ToJson(request);
+        var response = await PostRequest($"{apiUrl}/preview-skip/hilo", json);
+        var skipResponse = JsonUtility.FromJson<PreviewSkipResponse>(response);
+        
+        currentPreviewCard = skipResponse.current_card;
+        UpdateUI(skipResponse.current_card, skipResponse.bet_options);
+        
+        return skipResponse;
+    }
+
+    // Step 3: Start game with chosen card
+    public async Task<StartGameResponse> StartGameWithCard(string clientId, string gameId, string playerId, float betAmount)
+    {
+        var request = new StartGameRequest
+        {
+            client_id = clientId,
+            game_id = gameId,
+            player_id = playerId,
+            bet_id = $"bet_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+            bet_amount = betAmount,
+            card = currentPreviewCard // Use the card player chose
+        };
+
+        var json = JsonUtility.ToJson(request);
+        var response = await PostRequest($"{apiUrl}/start/hilo", json);
+        var gameResponse = JsonUtility.FromJson<StartGameResponse>(response);
+        
+        // Game is now officially started
+        Debug.Log($"Game started with chosen card: {gameResponse.game_state.current_card}");
+        
+        return gameResponse;
+    }
+
+    // Example usage flow
+    public async void StartGameFlow()
+    {
+        // Step 1: Load initial preview
+        await LoadCardPreview("demo_client", "hilo_001", "player_123", 5.0f);
+        
+        // Step 2: Player can skip infinitely until satisfied
+        // (This would be triggered by UI skip button)
+        await SkipCard("demo_client", "hilo_001", "player_123");
+        await SkipCard("demo_client", "hilo_001", "player_123");
+        await SkipCard("demo_client", "hilo_001", "player_123");
+        
+        // Step 3: Player clicks Start button
+        await StartGameWithCard("demo_client", "hilo_001", "player_123", 5.0f);
+    }
+
+    private void UpdateUI(string card, BetOption[] options)
+    {
+        // Update Unity UI with card and betting options
+        Debug.Log($"Showing card: {card} with {options.Length} betting options");
+    }
+}
+```
+
+### Key Benefits for Unity Integration:
+
+1. **Perfect Flow Match**: Unity can show cards before game starts
+2. **Infinite Skips**: Players can skip unlimited times in pre-game phase
+3. **Clear Separation**: Pre-game vs post-start phases are distinct
+4. **No Breaking Changes**: Existing Unity code continues working
+5. **Easy Migration**: Unity can gradually adopt new flow
 
 ## Frontend Integration
 

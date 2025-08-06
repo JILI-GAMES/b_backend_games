@@ -542,3 +542,133 @@ func validateRequest(clientID, gameID, playerID, betID string) error {
 	}
 	return nil
 }
+
+// PreviewHandler handles the /preview/hilo endpoint (pre-game phase)
+func (rg *RouteGroup) PreviewHandler(c *fiber.Ctx) error {
+	var req PreviewRequest
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("Failed to parse request body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid request body",
+		})
+	}
+
+	// Validate request (no bet_id required for preview)
+	if req.ClientID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "client_id is required",
+		})
+	}
+	if req.GameID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "game_id is required",
+		})
+	}
+	if req.PlayerID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "player_id is required",
+		})
+	}
+
+	// Validate bet amount
+	if req.BetAmount <= 0 || req.BetAmount > 1000 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid bet amount",
+		})
+	}
+
+	// Round bet amount to 2 decimal places
+	req.BetAmount = RoundToTwo(req.BetAmount)
+
+	// Determine starting card
+	var currentCard string
+
+	if req.Card != "" {
+		// Use card from Unity frontend
+		currentCard = req.Card
+		log.Printf("Preview: Using card from Unity frontend: %s", currentCard)
+	} else {
+		// Generate random card for preview
+		seed := GenerateUniqueSeed()
+		deck := GenerateDeck(seed)
+		currentCard = deck[0]
+		log.Printf("Preview: Generated random card: %s", currentCard)
+	}
+
+	// Generate betting options for the card
+	betOptions := GetHiloOptions(currentCard)
+
+	cardSource := "Random"
+	if req.Card != "" {
+		cardSource = "Unity"
+	}
+	log.Printf("Preview: Showing card %s (source: %s) with bet amount %.2f",
+		currentCard, cardSource, req.BetAmount)
+
+	return c.JSON(PreviewResponse{
+		Status:      "success",
+		Message:     "Card preview ready",
+		CurrentCard: currentCard,
+		BetOptions:  betOptions,
+	})
+}
+
+// PreviewSkipHandler handles the /preview-skip/hilo endpoint (pre-game phase)
+func (rg *RouteGroup) PreviewSkipHandler(c *fiber.Ctx) error {
+	var req PreviewSkipRequest
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("Failed to parse request body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid request body",
+		})
+	}
+
+	// Validate request
+	if req.ClientID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "client_id is required",
+		})
+	}
+	if req.GameID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "game_id is required",
+		})
+	}
+	if req.PlayerID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "player_id is required",
+		})
+	}
+	if req.CurrentCard == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "current_card is required",
+		})
+	}
+
+	// Generate a new random card for preview skip
+	seed := GenerateUniqueSeed()
+	deck := GenerateDeck(seed)
+	nextCard := deck[0]
+
+	// Generate betting options for the new card
+	betOptions := GetHiloOptions(nextCard)
+
+	log.Printf("Preview Skip: Skipped from %s to %s", req.CurrentCard, nextCard)
+
+	return c.JSON(PreviewSkipResponse{
+		Status:      "success",
+		Message:     fmt.Sprintf("Skipped to next card: %s", nextCard),
+		CurrentCard: nextCard,
+		BetOptions:  betOptions,
+	})
+}

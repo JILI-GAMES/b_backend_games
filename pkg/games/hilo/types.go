@@ -131,3 +131,36 @@ type VerifyResponse struct {
 	Deck     []string `json:"deck"`
 	DeckHash string   `json:"deck_hash"`
 }
+
+// PreviewRequest represents the request to preview a card (pre-game)
+type PreviewRequest struct {
+	ClientID  string  `json:"client_id"`
+	GameID    string  `json:"game_id"`
+	PlayerID  string  `json:"player_id"`
+	BetAmount float64 `json:"bet_amount"`
+	Card      string  `json:"card,omitempty"` // Optional card from Unity frontend
+}
+
+// PreviewResponse represents the response for card preview (pre-game)
+type PreviewResponse struct {
+	Status      string      `json:"status"`
+	Message     string      `json:"message"`
+	CurrentCard string      `json:"current_card"`
+	BetOptions  []BetOption `json:"bet_options"`
+}
+
+// PreviewSkipRequest represents the request to skip in pre-game phase
+type PreviewSkipRequest struct {
+	ClientID    string `json:"client_id"`
+	GameID      string `json:"game_id"`
+	PlayerID    string `json:"player_id"`
+	CurrentCard string `json:"current_card"`
+}
+
+// PreviewSkipResponse represents the response for pre-game skip
+type PreviewSkipResponse struct {
+	Status      string      `json:"status"`
+	Message     string      `json:"message"`
+	CurrentCard string      `json:"current_card"`
+	BetOptions  []BetOption `json:"bet_options"`
+}

@@ -1,10 +1,11 @@
 package hilo
 
 import (
+	"strings"
+
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 	"github.com/gofiber/fiber/v2"
-	"strings"
 )
 
 // RouteGroup holds the dependencies for the handlers
@@ -36,13 +37,17 @@ func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings
 
 // Register registers the routes with the Fiber app
 func (rg *RouteGroup) Register(app *fiber.App) {
+	// Pre-game endpoints (NEW)
+	app.Post("/preview/hilo", rg.PreviewHandler)
+	app.Post("/preview-skip/hilo", rg.PreviewSkipHandler)
+
 	// Main game endpoints
 	app.Post("/start/hilo", rg.StartGameHandler)
 	app.Post("/guess/hilo", rg.GuessHandler)
 	app.Post("/skip/hilo", rg.SkipHandler)
 	app.Post("/cashout/hilo", rg.CashoutHandler)
 	app.Post("/verify/hilo", rg.VerifyDeckHandler)
-	
+
 	// Optional utility endpoint for getting current betting options
 	app.Post("/options/hilo", rg.GetOptionsHandler)
 }
@@ -52,27 +57,27 @@ func (rg *RouteGroup) GetOptionsHandler(c *fiber.Ctx) error {
 	var req struct {
 		CurrentCard string `json:"current_card"`
 	}
-	
+
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status": "error", 
+			"status":  "error",
 			"message": "Invalid request",
 		})
 	}
-	
+
 	if req.CurrentCard == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status": "error", 
+			"status":  "error",
 			"message": "Current card is required",
 		})
 	}
-	
+
 	options := GetHiloOptions(req.CurrentCard)
-	
+
 	return c.JSON(fiber.Map{
-		"status": "success",
-		"current_card": req.CurrentCard,
+		"status":        "success",
+		"current_card":  req.CurrentCard,
 		"current_value": GetCardValue(req.CurrentCard),
-		"bet_options": options,
+		"bet_options":   options,
 	})
 }

@@ -1,21 +1,29 @@
 package hilo
 
+// RNGModification represents a card change made by the RNG system
+type RNGModification struct {
+	Position     int    `json:"position"`      // Position where card was changed
+	OriginalCard string `json:"original_card"` // Original card that was supposed to be there
+	ForcedCard   string `json:"forced_card"`   // Card that was forced by RNG
+}
+
 // GameState represents the current state of the Hilo game
 type GameState struct {
-	Seed                      string  `json:"seed"`
-	DeckHash                  string  `json:"deck_hash"`
-	CurrentCard               string  `json:"current_card"`
-	UnityCard                 string  `json:"unity_card,omitempty"` // Track if this was a Unity-specified card
-	Position                  int     `json:"position"`
-	BetAmount                 float64 `json:"bet_amount"`
-	SkipsUsed                 int     `json:"skips_used"`
-	SkipsRemaining            int     `json:"skips_remaining"`
-	MaxSkips                  int     `json:"max_skips"`
-	MultiplierModifier        float64 `json:"multiplier_modifier"`         // JDB: Modifier for current card multipliers
-	PreviousWinningMultiplier float64 `json:"previous_winning_multiplier"` // JDB: Last winning multiplier
-	GameHistory               []Card  `json:"game_history"`
-	IsGameOver                bool    `json:"is_game_over"`
-	FinalWin                  float64 `json:"final_win"`
+	Seed                      string            `json:"seed"`
+	DeckHash                  string            `json:"deck_hash"`
+	CurrentCard               string            `json:"current_card"`
+	UnityCard                 string            `json:"unity_card,omitempty"` // Track if this was a Unity-specified card
+	Position                  int               `json:"position"`
+	BetAmount                 float64           `json:"bet_amount"`
+	SkipsUsed                 int               `json:"skips_used"`
+	SkipsRemaining            int               `json:"skips_remaining"`
+	MaxSkips                  int               `json:"max_skips"`
+	MultiplierModifier        float64           `json:"multiplier_modifier"`         // JDB: Modifier for current card multipliers
+	PreviousWinningMultiplier float64           `json:"previous_winning_multiplier"` // JDB: Last winning multiplier
+	GameHistory               []Card            `json:"game_history"`
+	RNGModifications          []RNGModification `json:"rng_modifications,omitempty"` // Track RNG card modifications
+	IsGameOver                bool              `json:"is_game_over"`
+	FinalWin                  float64           `json:"final_win"`
 }
 
 // Card represents a playing card

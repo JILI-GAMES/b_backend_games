@@ -80,6 +80,25 @@ func GenerateDeckWithFirstCard(seed string, firstCard string) []string {
 	log.Printf("GenerateDeckWithFirstCard: seed=%s, firstCard=%s, result[0]=%s, deckLength=%d\n",
 		seed, firstCard, result[0], len(result))
 
+	// Additional debug: show first few cards
+	if len(result) >= 5 {
+		log.Printf("First 5 cards: %s, %s, %s, %s, %s", result[0], result[1], result[2], result[3], result[4])
+	}
+
+	return result
+}
+
+// ApplyRNGModifications applies RNG modifications to a deck
+func ApplyRNGModifications(deck []string, modifications []RNGModification) []string {
+	result := make([]string, len(deck))
+	copy(result, deck)
+
+	for _, mod := range modifications {
+		if mod.Position < len(result) {
+			result[mod.Position] = mod.ForcedCard
+		}
+	}
+
 	return result
 }
 

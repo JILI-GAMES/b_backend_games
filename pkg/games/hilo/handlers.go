@@ -175,6 +175,23 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		deck = GenerateDeck(req.GameState.Seed)
 	}
 
+	// Apply RNG modifications if any
+	if len(req.GameState.RNGModifications) > 0 {
+		deck = ApplyRNGModifications(deck, req.GameState.RNGModifications)
+		log.Printf("Applied %d RNG modifications to deck", len(req.GameState.RNGModifications))
+	}
+
+	// Verify deck hash matches
+	regeneratedDeckHash := HashDeck(deck)
+	log.Printf("Deck hash verification: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
+	if regeneratedDeckHash != req.GameState.DeckHash {
+		log.Printf("❌ Deck hash verification failed: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid deck hash",
+		})
+	}
+
 	log.Printf("Verifying game state: position=%d, currentCard=%s, deckCard=%s, deckLength=%d, seed=%s, unityCard=%s",
 		req.GameState.Position, req.GameState.CurrentCard, deck[req.GameState.Position], len(deck), req.GameState.Seed, req.GameState.UnityCard)
 
@@ -260,6 +277,8 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		finalCard = forcedCard
 		actualResult = false
 		forced = true
+		// Update deck with forced card
+		deck[req.GameState.Position+1] = forcedCard
 		log.Printf("RNG FORCED LOSS: Natural %s would win, forced %s instead (saving %.2f)",
 			nextCard, forcedCard, totalWinAmount)
 	} else if !naturalResult && rngResp.PrefOutcome == "win" {
@@ -270,6 +289,8 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 			finalCard = forcedCard
 			actualResult = true
 			forced = true
+			// Update deck with forced card
+			deck[req.GameState.Position+1] = forcedCard
 			log.Printf("RNG FORCED WIN: Natural %s would lose, forced %s for retention",
 				nextCard, forcedCard)
 		}
@@ -279,6 +300,19 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	newGameState := req.GameState
 	newGameState.Position++
 	newGameState.CurrentCard = finalCard
+
+	// Update deck hash if deck was modified by RNG
+	if forced {
+		newGameState.DeckHash = HashDeck(deck)
+		// Track RNG modification
+		rngMod := RNGModification{
+			Position:     req.GameState.Position + 1,
+			OriginalCard: nextCard,
+			ForcedCard:   finalCard,
+		}
+		newGameState.RNGModifications = append(req.GameState.RNGModifications, rngMod)
+		log.Printf("Updated deck hash due to RNG modification: %s", newGameState.DeckHash)
+	}
 
 	// Add to history
 	newGameState.GameHistory = append(newGameState.GameHistory, Card{
@@ -441,6 +475,22 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 	} else {
 		// Use regular deck generation for random cards
 		deck = GenerateDeck(req.GameState.Seed)
+	}
+
+	// Apply RNG modifications if any
+	if len(req.GameState.RNGModifications) > 0 {
+		deck = ApplyRNGModifications(deck, req.GameState.RNGModifications)
+		log.Printf("Applied %d RNG modifications to deck", len(req.GameState.RNGModifications))
+	}
+
+	// Verify deck hash matches
+	regeneratedDeckHash := HashDeck(deck)
+	if regeneratedDeckHash != req.GameState.DeckHash {
+		log.Printf("❌ Deck hash verification failed: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid deck hash",
+		})
 	}
 
 	if req.GameState.Position >= len(deck) || deck[req.GameState.Position] != req.GameState.CurrentCard {

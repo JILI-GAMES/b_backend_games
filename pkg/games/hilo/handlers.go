@@ -65,26 +65,28 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 
 	// Initialize game state
 	gameState := GameState{
-		Seed:           seed,
-		DeckHash:       deckHash,
-		CurrentCard:    startingCard,
-		UnityCard:      req.Card, // Track if this was a Unity-specified card
-		Position:       0,
-		AccumulatedWin: 1.00, // Start with 1x multiplier
-		BetAmount:      RoundToTwo(req.BetAmount),
-		SkipsUsed:      0,
-		SkipsRemaining: 5,
-		MaxSkips:       5,
-		GameHistory:    []Card{{Card: startingCard, Value: GetCardValue(startingCard), Position: 0}},
-		IsGameOver:     false,
-		FinalWin:       0,
+		Seed:                      seed,
+		DeckHash:                  deckHash,
+		CurrentCard:               startingCard,
+		UnityCard:                 req.Card, // Track if this was a Unity-specified card
+		Position:                  0,
+		BetAmount:                 RoundToTwo(req.BetAmount),
+		SkipsUsed:                 0,
+		SkipsRemaining:            5,
+		MaxSkips:                  5,
+		MultiplierModifier:        1.0, // Start with 1.0 modifier
+		PreviousWinningMultiplier: 1.0, // Start with 1.0 (no previous win)
+		GameHistory:               []Card{{Card: startingCard, Value: GetCardValue(startingCard), Position: 0}},
+		IsGameOver:                false,
+		FinalWin:                  0,
 	}
 
-	// Generate betting options for the starting card
-	betOptions := GetHiloOptions(gameState.CurrentCard)
+	// Generate betting options for the starting card (base multipliers)
+	betOptions := GetBaseHiloOptions(gameState.CurrentCard)
 
-	// Generate signature
-	signature := ComputeHMAC(seed, 0, gameState.AccumulatedWin, req.BetAmount)
+	// Generate signature (use base multiplier for start)
+	currentMultiplier := GetBaseMultiplierForBet(gameState.CurrentCard, "higher_or_same")
+	signature := ComputeHMAC(seed, 0, currentMultiplier, req.BetAmount)
 
 	cardSource := "Random"
 	if req.Card != "" {
@@ -126,10 +128,19 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 
 	// Ensure monetary values are rounded
 	req.GameState.BetAmount = RoundToTwo(req.GameState.BetAmount)
-	req.GameState.AccumulatedWin = RoundToTwo(req.GameState.AccumulatedWin)
 
 	// Verify signature
-	if !VerifyHMAC(req.GameState.Seed, req.GameState.Position, req.GameState.AccumulatedWin, req.GameState.BetAmount, req.Signature) {
+	// For first guess (no previous wins), use base multiplier
+	// For subsequent guesses, use progressive multiplier (same as what was used to generate the signature)
+	var verificationMultiplier float64
+	if req.GameState.MultiplierModifier == 1.0 && req.GameState.PreviousWinningMultiplier == 1.0 {
+		// First guess - verify with base multiplier
+		verificationMultiplier = GetBaseMultiplierForBet(req.GameState.CurrentCard, "higher_or_same")
+	} else {
+		// Subsequent guesses - verify with progressive multiplier (same as what generated the signature)
+		verificationMultiplier = GetMultiplierForBet(req.GameState.CurrentCard, "higher_or_same", req.GameState.MultiplierModifier, req.GameState.PreviousWinningMultiplier)
+	}
+	if !VerifyHMAC(req.GameState.Seed, req.GameState.Position, verificationMultiplier, req.GameState.BetAmount, req.Signature) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid signature",
@@ -183,8 +194,17 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get pre-calculated multiplier for this bet
-	payoutMultiplier := GetMultiplierForBet(currentValue, req.BetChoice)
+	// Get multiplier for this bet
+	// For first guess (no previous wins), use base multiplier
+	// For subsequent guesses, use JDB progressive formula
+	var payoutMultiplier float64
+	if req.GameState.MultiplierModifier == 1.0 && req.GameState.PreviousWinningMultiplier == 1.0 {
+		// First guess - use base multiplier
+		payoutMultiplier = GetBaseMultiplierForBet(req.GameState.CurrentCard, req.BetChoice)
+	} else {
+		// Subsequent guesses - use JDB progressive formula
+		payoutMultiplier = GetMultiplierForBet(req.GameState.CurrentCard, req.BetChoice, req.GameState.MultiplierModifier, req.GameState.PreviousWinningMultiplier)
+	}
 	if payoutMultiplier == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -192,9 +212,8 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Calculate potential win amount for RNG decision
-	newAccumulated := RoundToTwo(req.GameState.AccumulatedWin * payoutMultiplier)
-	totalWinAmount := RoundToTwo(newAccumulated * req.GameState.BetAmount)
+	// Calculate potential win amount for RNG decision (JDB style: current multiplier × bet amount)
+	totalWinAmount := RoundToTwo(payoutMultiplier * req.GameState.BetAmount)
 	rngPayoutMultiplier := RoundToTwo(totalWinAmount / req.GameState.BetAmount)
 
 	// Get RTP settings
@@ -272,6 +291,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		NextCard:       finalCard,
 		NextValue:      GetCardValue(finalCard),
 		PayoutMultiple: payoutMultiplier,
+		TotalWinAmount: totalWinAmount, // Total amount player would win if they cash out now
 		WasCorrect:     actualResult,
 		Forced:         forced,
 	}
@@ -280,25 +300,61 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	var betOptions []BetOption
 
 	if actualResult {
-		// WIN: Update accumulated win
-		newGameState.AccumulatedWin = RoundToTwo(newAccumulated)
-		newSignature = ComputeHMAC(newGameState.Seed, newGameState.Position, newGameState.AccumulatedWin, newGameState.BetAmount)
-		guessResult.Success = true
+		// WIN: Update JDB multipliers
+		newGameState.PreviousWinningMultiplier = payoutMultiplier // Store current winning multiplier
+		newGameState.MultiplierModifier = payoutMultiplier        // Update modifier for next card
 
-		// Generate betting options for next round
-		betOptions = GetHiloOptions(newGameState.CurrentCard)
+		// Check for automatic cashout at 1000x or higher
+		if newGameState.MultiplierModifier >= 1000.0 {
+			// AUTOMATIC CASHOUT: Cap at 1000x and end game
+			newGameState.MultiplierModifier = 1000.0 // Cap at 1000x
+			newGameState.IsGameOver = true
+			newGameState.FinalWin = RoundToTwo(1000.0 * req.GameState.BetAmount) // 1000x * bet amount
 
-		log.Printf("Player WON: accumulated=%.2f, multiplier=%.2f", newGameState.AccumulatedWin, payoutMultiplier)
+			// Update guess result for automatic cashout
+			guessResult.Success = true
+			guessResult.TotalWinAmount = newGameState.FinalWin
+
+			// No betting options for next round since game is over
+			betOptions = []BetOption{}
+			newSignature = ""
+
+			log.Printf("AUTOMATIC CASHOUT: Multiplier reached %.2f, capped at 1000x, final win=%.2f", payoutMultiplier, newGameState.FinalWin)
+		} else {
+			// Normal win - continue game
+			// Generate signature using the same logic as verification
+			var signatureMultiplier float64
+			if newGameState.MultiplierModifier == 1.0 && newGameState.PreviousWinningMultiplier == 1.0 {
+				// First guess - use base multiplier for signature
+				signatureMultiplier = GetBaseMultiplierForBet(newGameState.CurrentCard, "higher_or_same")
+			} else {
+				// Subsequent guesses - use progressive multiplier for signature
+				signatureMultiplier = GetMultiplierForBet(newGameState.CurrentCard, "higher_or_same", newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
+			}
+			newSignature = ComputeHMAC(newGameState.Seed, newGameState.Position, signatureMultiplier, newGameState.BetAmount)
+			guessResult.Success = true
+
+			// Generate betting options for next round with JDB multipliers
+			betOptions = GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
+
+			log.Printf("Player WON: current multiplier=%.2f, previous winning=%.2f", payoutMultiplier, newGameState.PreviousWinningMultiplier)
+		}
 	} else {
-		// LOSS: Game over
-		newGameState.AccumulatedWin = 0
+		// LOSS: Game over, reset multipliers but show next card with base multipliers
+		newGameState.PreviousWinningMultiplier = 1.0 // Reset to base
+		newGameState.MultiplierModifier = 1.0        // Reset to base
 		newGameState.IsGameOver = true
 		newGameState.FinalWin = 0
-		newSignature = ""
 		guessResult.Success = false
-		betOptions = []BetOption{} // No options when game is over
+		guessResult.TotalWinAmount = 0.0 // Player loses, so total win amount is 0
 
-		log.Printf("Player LOST: game over")
+		// Show next card with base multipliers for next game
+		betOptions = GetBaseHiloOptions(newGameState.CurrentCard)
+		newSignature = ""
+		// Generate signature for next game (using base multipliers)
+		// newSignature = ComputeHMAC(newGameState.Seed, newGameState.Position, GetBaseMultiplierForBet(newGameState.CurrentCard, "higher_or_same"), newGameState.BetAmount)
+
+		log.Printf("Player LOST: game over, showing next card with base multipliers for new game")
 	}
 
 	return c.JSON(GuessResponse{
@@ -333,10 +389,19 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 
 	// Ensure monetary values are rounded
 	req.GameState.BetAmount = RoundToTwo(req.GameState.BetAmount)
-	req.GameState.AccumulatedWin = RoundToTwo(req.GameState.AccumulatedWin)
 
 	// Verify signature
-	if !VerifyHMAC(req.GameState.Seed, req.GameState.Position, req.GameState.AccumulatedWin, req.GameState.BetAmount, req.Signature) {
+	// For first guess (no previous wins), use base multiplier
+	// For subsequent guesses, use progressive multiplier (same as what was used to generate the signature)
+	var verificationMultiplier float64
+	if req.GameState.MultiplierModifier == 1.0 && req.GameState.PreviousWinningMultiplier == 1.0 {
+		// First guess - verify with base multiplier
+		verificationMultiplier = GetBaseMultiplierForBet(req.GameState.CurrentCard, "higher_or_same")
+	} else {
+		// Subsequent guesses - verify with progressive multiplier (same as what generated the signature)
+		verificationMultiplier = GetMultiplierForBet(req.GameState.CurrentCard, "higher_or_same", req.GameState.MultiplierModifier, req.GameState.PreviousWinningMultiplier)
+	}
+	if !VerifyHMAC(req.GameState.Seed, req.GameState.Position, verificationMultiplier, req.GameState.BetAmount, req.Signature) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid signature",
@@ -414,11 +479,12 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 		Position: newGameState.Position,
 	})
 
-	// Generate betting options for the new card
-	betOptions := GetHiloOptions(newGameState.CurrentCard)
+	// Generate betting options for the new card (maintain JDB multipliers)
+	betOptions := GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
 
-	// Generate new signature
-	newSignature := ComputeHMAC(newGameState.Seed, newGameState.Position, newGameState.AccumulatedWin, newGameState.BetAmount)
+	// Generate new signature (JDB: use current multiplier)
+	newCurrentMultiplier := GetMultiplierForBet(newGameState.CurrentCard, "higher_or_same", newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
+	newSignature := ComputeHMAC(newGameState.Seed, newGameState.Position, newCurrentMultiplier, newGameState.BetAmount)
 
 	log.Printf("Player skipped: newCard=%s, skipsRemaining=%d", nextCard, newGameState.SkipsRemaining)
 
@@ -453,10 +519,19 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 
 	// Ensure monetary values are rounded
 	req.GameState.BetAmount = RoundToTwo(req.GameState.BetAmount)
-	req.GameState.AccumulatedWin = RoundToTwo(req.GameState.AccumulatedWin)
 
 	// Verify signature
-	if !VerifyHMAC(req.GameState.Seed, req.GameState.Position, req.GameState.AccumulatedWin, req.GameState.BetAmount, req.Signature) {
+	// For first guess (no previous wins), use base multiplier
+	// For subsequent guesses, use progressive multiplier (same as what was used to generate the signature)
+	var verificationMultiplier float64
+	if req.GameState.MultiplierModifier == 1.0 && req.GameState.PreviousWinningMultiplier == 1.0 {
+		// First guess - verify with base multiplier
+		verificationMultiplier = GetBaseMultiplierForBet(req.GameState.CurrentCard, "higher_or_same")
+	} else {
+		// Subsequent guesses - verify with progressive multiplier (same as what generated the signature)
+		verificationMultiplier = GetMultiplierForBet(req.GameState.CurrentCard, "higher_or_same", req.GameState.MultiplierModifier, req.GameState.PreviousWinningMultiplier)
+	}
+	if !VerifyHMAC(req.GameState.Seed, req.GameState.Position, verificationMultiplier, req.GameState.BetAmount, req.Signature) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid signature",
@@ -478,15 +553,15 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Calculate final win amount
-	finalWin := RoundToTwo(req.GameState.AccumulatedWin * req.GameState.BetAmount)
+	// Calculate final win amount (JDB: use multiplier_modifier × bet amount)
+	finalWin := RoundToTwo(req.GameState.MultiplierModifier * req.GameState.BetAmount)
 
 	// Update game state
 	newGameState := req.GameState
 	newGameState.IsGameOver = true
 	newGameState.FinalWin = finalWin
 
-	log.Printf("Player cashed out: finalWin=%.2f, multiplier=%.2f", finalWin, req.GameState.AccumulatedWin)
+	log.Printf("Player cashed out: finalWin=%.2f, multiplier=%.2f", finalWin, verificationMultiplier)
 
 	return c.JSON(CashoutResponse{
 		Status:    "success",
@@ -600,8 +675,8 @@ func (rg *RouteGroup) PreviewHandler(c *fiber.Ctx) error {
 		log.Printf("Preview: Generated random card: %s", currentCard)
 	}
 
-	// Generate betting options for the card
-	betOptions := GetHiloOptions(currentCard)
+	// Generate betting options for the card (base multipliers for preview)
+	betOptions := GetBaseHiloOptions(currentCard)
 
 	cardSource := "Random"
 	if req.Card != "" {
@@ -660,8 +735,8 @@ func (rg *RouteGroup) PreviewSkipHandler(c *fiber.Ctx) error {
 	deck := GenerateDeck(seed)
 	nextCard := deck[0]
 
-	// Generate betting options for the new card
-	betOptions := GetHiloOptions(nextCard)
+	// Generate betting options for the new card (base multipliers for preview skip)
+	betOptions := GetBaseHiloOptions(nextCard)
 
 	log.Printf("Preview Skip: Skipped from %s to %s", req.CurrentCard, nextCard)
 

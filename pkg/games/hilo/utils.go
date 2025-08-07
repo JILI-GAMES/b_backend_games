@@ -21,47 +21,49 @@ func GetCardDisplayName(card string) string {
 }
 
 // GetProbabilityForBet returns the win probability for a bet choice
-func GetProbabilityForBet(currentValue int, betChoice string) float64 {
+func GetProbabilityForBet(currentValue int, betChoice string, position int) float64 {
+	remainingCards := 52.0 - float64(position) - 1.0
+
 	switch betChoice {
 	case "higher":
 		if currentValue >= 13 {
 			return 0
 		}
 		higherCards := float64((13 - currentValue) * 4)
-		return higherCards / RemainingCards
-		
+		return higherCards / remainingCards
+
 	case "lower":
 		if currentValue <= 1 {
 			return 0
 		}
 		lowerCards := float64((currentValue - 1) * 4)
-		return lowerCards / RemainingCards
-		
+		return lowerCards / remainingCards
+
 	case "same":
-		return 3.0 / RemainingCards
-		
+		return 3.0 / remainingCards
+
 	case "higher_or_same":
 		higherOrSameCards := 3.0 // Same cards
 		if currentValue < 13 {
 			higherOrSameCards += float64((13 - currentValue) * 4)
 		}
-		return higherOrSameCards / RemainingCards
-		
+		return higherOrSameCards / remainingCards
+
 	case "lower_or_same":
 		lowerOrSameCards := 3.0 // Same cards
 		if currentValue > 1 {
 			lowerOrSameCards += float64((currentValue - 1) * 4)
 		}
-		return lowerOrSameCards / RemainingCards
-		
+		return lowerOrSameCards / remainingCards
+
 	default:
 		return 0
 	}
 }
 
 // GetProbabilityText returns human-readable probability text
-func GetProbabilityText(currentValue int, betChoice string) string {
-	probability := GetProbabilityForBet(currentValue, betChoice)
+func GetProbabilityText(currentValue int, betChoice string, position int) string {
+	probability := GetProbabilityForBet(currentValue, betChoice, position)
 	if probability == 0 {
 		return "Impossible"
 	}
@@ -81,7 +83,7 @@ func IsGameWinnable(gameState GameState) bool {
 	if gameState.IsGameOver {
 		return false
 	}
-	
+
 	// Check if we have cards remaining
 	deck := GenerateDeck(gameState.Seed)
 	return gameState.Position < len(deck)-1
@@ -93,7 +95,7 @@ func GetGameProgress(gameState GameState) (int, int, float64) {
 	totalCards := len(deck)
 	currentPosition := gameState.Position
 	progressPercent := float64(currentPosition) / float64(totalCards) * 100
-	
+
 	return currentPosition, totalCards, progressPercent
 }
 

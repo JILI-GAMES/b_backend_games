@@ -2,19 +2,20 @@ package hilo
 
 // GameState represents the current state of the Hilo game
 type GameState struct {
-	Seed           string  `json:"seed"`
-	DeckHash       string  `json:"deck_hash"`
-	CurrentCard    string  `json:"current_card"`
-	UnityCard      string  `json:"unity_card,omitempty"` // Track if this was a Unity-specified card
-	Position       int     `json:"position"`
-	AccumulatedWin float64 `json:"accumulated_win"`
-	BetAmount      float64 `json:"bet_amount"`
-	SkipsUsed      int     `json:"skips_used"`
-	SkipsRemaining int     `json:"skips_remaining"`
-	MaxSkips       int     `json:"max_skips"`
-	GameHistory    []Card  `json:"game_history"`
-	IsGameOver     bool    `json:"is_game_over"`
-	FinalWin       float64 `json:"final_win"`
+	Seed                      string  `json:"seed"`
+	DeckHash                  string  `json:"deck_hash"`
+	CurrentCard               string  `json:"current_card"`
+	UnityCard                 string  `json:"unity_card,omitempty"` // Track if this was a Unity-specified card
+	Position                  int     `json:"position"`
+	BetAmount                 float64 `json:"bet_amount"`
+	SkipsUsed                 int     `json:"skips_used"`
+	SkipsRemaining            int     `json:"skips_remaining"`
+	MaxSkips                  int     `json:"max_skips"`
+	MultiplierModifier        float64 `json:"multiplier_modifier"`         // JDB: Modifier for current card multipliers
+	PreviousWinningMultiplier float64 `json:"previous_winning_multiplier"` // JDB: Last winning multiplier
+	GameHistory               []Card  `json:"game_history"`
+	IsGameOver                bool    `json:"is_game_over"`
+	FinalWin                  float64 `json:"final_win"`
 }
 
 // Card represents a playing card
@@ -38,6 +39,7 @@ type GuessResult struct {
 	NextCard       string  `json:"next_card"`
 	NextValue      int     `json:"next_value"`
 	PayoutMultiple float64 `json:"payout_multiple"`
+	TotalWinAmount float64 `json:"total_win_amount"` // Total amount player would win if they cash out now
 	WasCorrect     bool    `json:"was_correct"`
 	Forced         bool    `json:"forced"`
 }

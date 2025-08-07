@@ -72,7 +72,7 @@ func (rg *RouteGroup) GetOptionsHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	options := GetHiloOptions(req.CurrentCard)
+	options := GetBaseHiloOptions(req.CurrentCard) // Base multipliers for utility endpoint
 
 	return c.JSON(fiber.Map{
 		"status":        "success",

@@ -587,6 +587,7 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 
 	// Calculate final win amount (JDB: use multiplier_modifier × bet amount)
 	// Apply 1000x cap for cashout
+	
 	multiplier := req.GameState.MultiplierModifier
 	if multiplier > 1000.0 {
 		multiplier = 1000.0
@@ -599,6 +600,8 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 	newGameState := req.GameState
 	newGameState.IsGameOver = true
 	newGameState.FinalWin = finalWin
+	newGameState.MultiplierModifier = multiplier
+	newGameState.PreviousWinningMultiplier = multiplier
 
 	log.Printf("Player cashed out: finalWin=%.2f, multiplier=%.2f (capped from %.2f)", finalWin, multiplier, req.GameState.MultiplierModifier)
 

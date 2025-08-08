@@ -592,6 +592,8 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 	if multiplier > 1000.0 {
 		multiplier = 1000.0
 		log.Printf("CASHOUT CAP APPLIED: Original multiplier %.2f capped at 1000x", req.GameState.MultiplierModifier)
+	} else {
+		multiplier = req.GameState.MultiplierModifier
 	}
 
 	finalWin := RoundToTwo(multiplier * req.GameState.BetAmount)

@@ -338,60 +338,23 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		newGameState.PreviousWinningMultiplier = payoutMultiplier // Store current winning multiplier
 		newGameState.MultiplierModifier = payoutMultiplier        // Update modifier for next card
 
-		// Check for automatic cashout by calculating the next card's multipliers
-		// We need to check if ANY of the next card's multipliers would exceed 1000x
-		nextCardMultipliers := GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
-
-		// Check if any multiplier exceeds 1000x
-		shouldAutoCashout := false
-		highestMultiplier := 0.0
-		for _, option := range nextCardMultipliers {
-			if option.Multiplier > highestMultiplier {
-				highestMultiplier = option.Multiplier
-			}
-			if option.Multiplier >= 1000.0 {
-				shouldAutoCashout = true
-				log.Printf("AUTOMATIC CASHOUT TRIGGERED: %s multiplier %.2f >= 1000.0", option.Name, option.Multiplier)
-			}
-		}
-
-		log.Printf("Next card multipliers check: highest=%.2f, shouldAutoCashout=%v", highestMultiplier, shouldAutoCashout)
-
-		if shouldAutoCashout {
-			// AUTOMATIC CASHOUT: Cap at 1000x and end game
-			newGameState.MultiplierModifier = 1000.0 // Cap at 1000x
-			newGameState.IsGameOver = true
-			newGameState.FinalWin = RoundToTwo(1000.0 * req.GameState.BetAmount) // 1000x * bet amount
-
-			// Update guess result for automatic cashout
-			guessResult.Success = true
-			guessResult.TotalWinAmount = newGameState.FinalWin
-
-			// No betting options for next round since game is over
-			betOptions = []BetOption{}
-			newSignature = ""
-
-			log.Printf("AUTOMATIC CASHOUT: Next card multipliers would exceed 1000x (highest: %.2f), capped at 1000x, final win=%.2f",
-				highestMultiplier, newGameState.FinalWin)
+		// Normal win - continue game
+		// Generate signature using the same logic as verification
+		var signatureMultiplier float64
+		if newGameState.MultiplierModifier == 1.0 && newGameState.PreviousWinningMultiplier == 1.0 {
+			// First guess - use base multiplier for signature
+			signatureMultiplier = GetBaseMultiplierForBet(newGameState.CurrentCard, "higher_or_same")
 		} else {
-			// Normal win - continue game
-			// Generate signature using the same logic as verification
-			var signatureMultiplier float64
-			if newGameState.MultiplierModifier == 1.0 && newGameState.PreviousWinningMultiplier == 1.0 {
-				// First guess - use base multiplier for signature
-				signatureMultiplier = GetBaseMultiplierForBet(newGameState.CurrentCard, "higher_or_same")
-			} else {
-				// Subsequent guesses - use progressive multiplier for signature
-				signatureMultiplier = GetMultiplierForBet(newGameState.CurrentCard, "higher_or_same", newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
-			}
-			newSignature = ComputeHMAC(newGameState.Seed, newGameState.Position, signatureMultiplier, newGameState.BetAmount)
-			guessResult.Success = true
-
-			// Generate betting options for next round with JDB multipliers
-			betOptions = GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
-
-			log.Printf("Player WON: current multiplier=%.2f, previous winning=%.2f", payoutMultiplier, newGameState.PreviousWinningMultiplier)
+			// Subsequent guesses - use progressive multiplier for signature
+			signatureMultiplier = GetMultiplierForBet(newGameState.CurrentCard, "higher_or_same", newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
 		}
+		newSignature = ComputeHMAC(newGameState.Seed, newGameState.Position, signatureMultiplier, newGameState.BetAmount)
+		guessResult.Success = true
+
+		// Generate betting options for next round with JDB multipliers
+		betOptions = GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
+
+		log.Printf("Player WON: current multiplier=%.2f, previous winning=%.2f", payoutMultiplier, newGameState.PreviousWinningMultiplier)
 	} else {
 		// LOSS: Game over, reset multipliers but show next card with base multipliers
 		newGameState.PreviousWinningMultiplier = 1.0 // Reset to base
@@ -623,14 +586,21 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 	}
 
 	// Calculate final win amount (JDB: use multiplier_modifier × bet amount)
-	finalWin := RoundToTwo(req.GameState.MultiplierModifier * req.GameState.BetAmount)
+	// Apply 1000x cap for cashout
+	multiplier := req.GameState.MultiplierModifier
+	if multiplier > 1000.0 {
+		multiplier = 1000.0
+		log.Printf("CASHOUT CAP APPLIED: Original multiplier %.2f capped at 1000x", req.GameState.MultiplierModifier)
+	}
+
+	finalWin := RoundToTwo(multiplier * req.GameState.BetAmount)
 
 	// Update game state
 	newGameState := req.GameState
 	newGameState.IsGameOver = true
 	newGameState.FinalWin = finalWin
 
-	log.Printf("Player cashed out: finalWin=%.2f, multiplier=%.2f", finalWin, verificationMultiplier)
+	log.Printf("Player cashed out: finalWin=%.2f, multiplier=%.2f (capped from %.2f)", finalWin, multiplier, req.GameState.MultiplierModifier)
 
 	return c.JSON(CashoutResponse{
 		Status:    "success",

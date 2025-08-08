@@ -338,8 +338,26 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		newGameState.PreviousWinningMultiplier = payoutMultiplier // Store current winning multiplier
 		newGameState.MultiplierModifier = payoutMultiplier        // Update modifier for next card
 
-		// Check for automatic cashout at 1000x or higher
-		if newGameState.MultiplierModifier >= 1000.0 {
+		// Check for automatic cashout by calculating the next card's multipliers
+		// We need to check if ANY of the next card's multipliers would exceed 1000x
+		nextCardMultipliers := GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
+
+		// Check if any multiplier exceeds 1000x
+		shouldAutoCashout := false
+		highestMultiplier := 0.0
+		for _, option := range nextCardMultipliers {
+			if option.Multiplier > highestMultiplier {
+				highestMultiplier = option.Multiplier
+			}
+			if option.Multiplier >= 1000.0 {
+				shouldAutoCashout = true
+				log.Printf("AUTOMATIC CASHOUT TRIGGERED: %s multiplier %.2f >= 1000.0", option.Name, option.Multiplier)
+			}
+		}
+
+		log.Printf("Next card multipliers check: highest=%.2f, shouldAutoCashout=%v", highestMultiplier, shouldAutoCashout)
+
+		if shouldAutoCashout {
 			// AUTOMATIC CASHOUT: Cap at 1000x and end game
 			newGameState.MultiplierModifier = 1000.0 // Cap at 1000x
 			newGameState.IsGameOver = true
@@ -353,7 +371,8 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 			betOptions = []BetOption{}
 			newSignature = ""
 
-			log.Printf("AUTOMATIC CASHOUT: Multiplier reached %.2f, capped at 1000x, final win=%.2f", payoutMultiplier, newGameState.FinalWin)
+			log.Printf("AUTOMATIC CASHOUT: Next card multipliers would exceed 1000x (highest: %.2f), capped at 1000x, final win=%.2f",
+				highestMultiplier, newGameState.FinalWin)
 		} else {
 			// Normal win - continue game
 			// Generate signature using the same logic as verification

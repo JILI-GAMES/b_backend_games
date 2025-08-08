@@ -119,3 +119,14 @@ func GetCardString(value int) string {
 	}
 	return ranks[value-1] + "♠" // Default to spades for value conversion
 }
+
+// getHighestMultiplier returns the highest multiplier from a slice of BetOptions
+func getHighestMultiplier(options []BetOption) float64 {
+	highest := 0.0
+	for _, option := range options {
+		if option.Multiplier > highest {
+			highest = option.Multiplier
+		}
+	}
+	return highest
+}

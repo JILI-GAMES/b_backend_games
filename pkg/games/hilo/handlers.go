@@ -587,11 +587,11 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 
 	// Calculate final win amount (JDB: use multiplier_modifier × bet amount)
 	// Apply 1000x cap for cashout
-	
+
 	multiplier := req.GameState.MultiplierModifier
-	if multiplier > 1000.0 {
-		multiplier = 1000.0
-		log.Printf("CASHOUT CAP APPLIED: Original multiplier %.2f capped at 1000x", req.GameState.MultiplierModifier)
+	if multiplier > MaxMultiplier {
+		multiplier = MaxMultiplier
+		log.Printf("CASHOUT CAP APPLIED: Original multiplier %.2f capped at %.0fx", req.GameState.MultiplierModifier, MaxMultiplier)
 	} else {
 		multiplier = req.GameState.MultiplierModifier
 	}

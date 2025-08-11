@@ -1,6 +1,7 @@
 package hilo
 
 import (
+	"log"
 	"math"
 )
 
@@ -432,7 +433,8 @@ func getJDBMultipliers(card string, multiplierModifier float64, previousWinningM
 	// JDB Formula:
 	// Bonus Streak = 1 + (Current Card Base Multiplier × 0.00588)
 	// New Multiplier = Previous Winning Multiplier × Current Card Base Multiplier × Bonus Streak
-
+	// CAP: Maximum multiplier is 1000x
+	log.Printf("Base multipliers: %v", baseMultipliers)
 	for betType, baseMultiplier := range baseMultipliers {
 		if baseMultiplier > 0 { // Only apply to enabled bets
 			// Calculate bonus streak
@@ -440,6 +442,9 @@ func getJDBMultipliers(card string, multiplierModifier float64, previousWinningM
 
 			// Calculate new multiplier using JDB formula
 			newMultiplier := previousWinningMultiplier * baseMultiplier * bonusStreak
+
+			// Apply 1000x cap
+			newMultiplier = applyMultiplierCap(newMultiplier)
 
 			jdbMultipliers[betType] = roundToTwo(newMultiplier)
 		} else {
@@ -451,7 +456,8 @@ func getJDBMultipliers(card string, multiplierModifier float64, previousWinningM
 }
 
 const (
-	HouseEdge = 0.95
+	HouseEdge     = 0.95
+	MaxMultiplier = 1000.0 // Maximum allowed multiplier (1000x cap)
 )
 
 // GetHiloOptions generates all betting options for the current card
@@ -621,6 +627,14 @@ func FindWinningCard(currentValue int, betChoice string, remainingCards []string
 		}
 	}
 	return "" // No winning card available
+}
+
+// applyMultiplierCap applies the maximum multiplier cap
+func applyMultiplierCap(multiplier float64) float64 {
+	if multiplier > MaxMultiplier {
+		return MaxMultiplier
+	}
+	return multiplier
 }
 
 func roundToTwo(val float64) float64 {

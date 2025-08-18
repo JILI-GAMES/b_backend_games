@@ -22,6 +22,8 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/hilo"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/crazykingkong"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/funkykingkong"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdspartydeluxe"
+
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -122,6 +124,9 @@ func main() {
 	funkyKingKongRoutes := funkykingkong.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	funkyKingKongRoutes.Register(app)
 
+	birdsPartyDeluxeRoutes := birdspartydeluxe.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	birdsPartyDeluxeRoutes.Register(app)
+
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -141,6 +146,7 @@ func main() {
 				"hilo",
 				"crazykingkong",
 				"funkykingkong",
+				"birdspartydeluxe",
 			},
 		})
 	})

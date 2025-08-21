@@ -47,8 +47,8 @@ var BetAmountToMultiplier = map[float64]int{
     10.0: 1,
     50.0: 2,
     100.0: 3,
-    500.0: 5,
-    1000.0: 10,
+    200.0: 5,
+    500.0: 10,
 }
 
 // FreeSpinOptions defines the Free Spin Bonus options

@@ -242,7 +242,7 @@ func GetLevelSpecificWeights(level Level) map[Symbol]float64 {
 	switch level {
 	case Level1:
 		weights[SymbolClover] = 0.20       // Level 1: 25% chance
-		weights[SymbolOrangeSlice] = 0.002 // For testing -0.05, for production-0.005
+		weights[SymbolOrangeSlice] = 0.05 // For testing -0.05, for production-0.005
 	case Level2:
 		weights[SymbolClover] = 0.30   // Level 2: 30% chance (increased)
 		weights[SymbolHoneyPot] = 0.05 // For testing -0.05, for production-0.005

@@ -619,6 +619,12 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		}
 	}
 
+	// IMPORTANT: Recombine processed clover and bird connections for lastConnections and response
+	// (Only if not already done by surgical loss)
+	if len(allConnections) == 0 && len(cloverConnections) > 0 || len(birdConnections) > 0 {
+		allConnections = append(cloverConnections, birdConnections...)
+	}
+
 	// IMPORTANT: After all processing, check for stage-cleared symbols that may have appeared
 	stageClearedSymbols := FindStageClearedSymbols(req.GameState.Grid, req.GameState.CurrentLevel)
 	hasStageCleared := len(stageClearedSymbols) > 0

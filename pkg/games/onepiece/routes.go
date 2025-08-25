@@ -31,9 +31,11 @@ func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *
 func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
 	origin := c.Get("Origin")
 	log.Printf("Origin: %s\n", origin)
-	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) {
+	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) || origin=="" {
 		return rg.RNGTest, rg.SettingsTest
 	}
+
+
 	return rg.RNGProd, rg.SettingsProd
 }
 

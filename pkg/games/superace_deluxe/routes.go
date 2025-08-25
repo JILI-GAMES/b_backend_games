@@ -1,7 +1,7 @@
 package superace_deluxe
 
 import (
-	"fmt"
+	"log"
 	"strings"
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
@@ -29,8 +29,8 @@ func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *
 // Helper to select the correct clients per request
 func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
 	origin := c.Get("Origin")
-	fmt.Printf("Origin: %s\n", origin)
-	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) {
+	log.Printf("Origin: %s\n", origin)
+	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) || origin == "" {
 		return rg.RNGTest, rg.SettingsTest
 	}
 	return rg.RNGProd, rg.SettingsProd

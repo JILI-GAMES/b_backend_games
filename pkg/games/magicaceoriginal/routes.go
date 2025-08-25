@@ -1,10 +1,12 @@
 package magicaceoriginal
 
 import (
+	"log"
+	"strings"
+
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 	"github.com/gofiber/fiber/v2"
-	"strings"
 )
 
 // RouteGroup holds the dependencies for the handlers
@@ -28,7 +30,8 @@ func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *
 // Helper to select the correct clients per request
 func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
 	origin := c.Get("Origin")
-	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) {
+	log.Printf("Origin: %s\n", origin)
+	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) || origin == "" {
 		return rg.RNGTest, rg.SettingsTest
 	}
 	return rg.RNGProd, rg.SettingsProd

@@ -18,15 +18,15 @@ const (
 
 // Symbol weights for random generation
 var SymbolWeights = map[Symbol]float64{
-    SymbolAirplane:   0.1,
-    SymbolYacht:      0.1,
-    SymbolCar:        0.1,
-    SymbolMotorcycle: 0.1,
-    SymbolA:          0.1,
-    SymbolK:          0.1,
-    SymbolQ:          0.1,
-    SymbolJ:          0.1,
-    SymbolWild:       0.08,
+    SymbolAirplane:   0.04,
+    SymbolYacht:      0.05,
+    SymbolCar:        0.06,
+    SymbolMotorcycle: 0.07,
+    SymbolA:          0.13,
+    SymbolK:          0.14,
+    SymbolQ:          0.16,
+    SymbolJ:          0.3,
+    SymbolWild:       0.03,
     SymbolScatter:    0.02,
 }
 

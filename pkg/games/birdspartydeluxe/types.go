@@ -242,13 +242,13 @@ func GetLevelSpecificWeights(level Level) map[Symbol]float64 {
 	switch level {
 	case Level1:
 		weights[SymbolClover] = 0.20       // Level 1: 25% chance
-		weights[SymbolOrangeSlice] = 0.5 // For testing -0.05, for production-0.005
+		weights[SymbolOrangeSlice] = 0.05 // For testing -0.05, for production-0.005
 	case Level2:
 		weights[SymbolClover] = 0.30   // Level 2: 30% chance (increased)
-		weights[SymbolHoneyPot] = 0.5 // For testing -0.05, for production-0.005
+		weights[SymbolHoneyPot] = 0.05 // For testing -0.05, for production-0.005
 	case Level3:
 		weights[SymbolClover] = 0.35     // Level 3: 35% chance (highest)
-		weights[SymbolStrawberry] = 0.5 // For testing -0.05, for production-0.005
+		weights[SymbolStrawberry] = 0.05 // For testing -0.05, for production-0.005
 	}
 
 	// DELUXE: Only rainbow egg is special symbol with low weight

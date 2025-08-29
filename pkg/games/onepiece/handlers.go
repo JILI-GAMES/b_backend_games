@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-var featureBuy bool
+var featureBuy bool = false
 
 // / SpinHandler handles the /spin/onepiece endpoint
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {

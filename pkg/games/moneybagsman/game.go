@@ -30,7 +30,7 @@ var SymbolWeights = map[Symbol]float64{
     SymbolQ:          0.1,
     SymbolJ:          0.1,
     SymbolWild:       0.08,
-    SymbolScatter:    0.5, // 10% chance of a Scatter
+    SymbolScatter:    0.1, // 10% chance of a Scatter
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

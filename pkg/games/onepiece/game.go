@@ -27,7 +27,7 @@ var SymbolWeights = map[Symbol]float64{
     SymbolQ:          0.16,
     SymbolJ:          0.3,
     SymbolWild:       0.03,
-    SymbolScatter:    0.02,
+    SymbolScatter:    0.1,
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

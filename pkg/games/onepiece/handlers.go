@@ -39,18 +39,21 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Calculate multiplier for free spins, including the extra bonus multiplier effect
 	effectiveMultiplier := req.FreeSpinMultiplier
 
+	
+
+	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
+		// Apply the extra bonus multiplier to the free spin multiplier
+		effectiveMultiplier *= (req.ExtraBonusMultiplier)
+		featureBuy = true
+		log.Printf("Applied extra bonus multiplier: base=%d, extra=%d, effective=%d",
+			req.FreeSpinMultiplier, req.ExtraBonusMultiplier, effectiveMultiplier)
+	}
+
 	if req.IsFreeSpin {
 		featureBuy = true
 	}
 
 	log.Printf("Feature Buy✅✅✅: %v", featureBuy)
-
-	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
-		// Apply the extra bonus multiplier to the free spin multiplier
-		effectiveMultiplier *= (req.ExtraBonusMultiplier)
-		log.Printf("Applied extra bonus multiplier: base=%d, extra=%d, effective=%d",
-			req.FreeSpinMultiplier, req.ExtraBonusMultiplier, effectiveMultiplier)
-	}
 
 	// Calculate winnings using the effective multiplier
 	totalWinnings, winDetails := CalculateWins(reels, betMultiplier, effectiveMultiplier, req.IsFreeSpin)

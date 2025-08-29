@@ -244,8 +244,11 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 
 		UpdateGameStateForLevel(gameState, newLevel)
 
-		// Carry over excess progress to new level
-		gameState.StageProgress = excessProgress
+		if oldLevel == Level3 {
+			gameState.StageProgress = 0 // Reset progress when looping from level 3 to 1
+		} else {
+			gameState.StageProgress = excessProgress // Carry over excess progress otherwise
+		}
 
 		// Regenerate grid with new level's size and symbols
 		gameState.Grid = GenerateGrid(newLevel, r, gameState.GameMode)

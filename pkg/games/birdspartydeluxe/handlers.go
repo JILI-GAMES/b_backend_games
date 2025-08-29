@@ -662,7 +662,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	log.Printf(logMessage)
+	log.Printf("%s", logMessage)
 
 	return c.JSON(CascadeResponse{
 		Status:              "success",

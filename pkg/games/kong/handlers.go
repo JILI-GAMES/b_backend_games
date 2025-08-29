@@ -120,7 +120,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	log.Printf("✅IP: %v", ip)
 	log.Printf("✅User-Agent: %v", userAgent)
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, betAmountForPayout, ip, userAgent)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, betAmountForPayout, ip, userAgent, false)
 	if err != nil {
 		log.Printf("Error retrieving RNG outcome: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(SpinResponse{

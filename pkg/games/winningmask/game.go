@@ -762,6 +762,7 @@ func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Clie
 			req.ClientID, req.GameID, req.PlayerID, req.BetID,
 			rtp, payoutMultiplier, req.BetAmount,
 			"ip", "userAgent",
+			false,
 		)
 		if err != nil {
 			log.Printf("RNG call failed for combined scenario (total: %v): %v", scenario.TotalWin, err)

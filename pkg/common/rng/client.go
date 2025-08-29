@@ -32,7 +32,8 @@ type Request struct {
 	RequestSalt      string  `json:"request_salt"`
 	BetAmount        float64 `json:"bet_amount"`
 	IPAddress        string  `json:"ip_address"`
-    UserAgent        string  `json:"user_agent"`
+	UserAgent        string  `json:"user_agent"`
+	FeatureBuy       bool    `json:"feature_buy,omitempty"`
 }
 
 type Response struct {
@@ -42,7 +43,7 @@ type Response struct {
 }
 
 // GetOutcome calls the RNG service and returns the outcome
-func (c *Client) GetOutcome(clientID, gameID, playerID, betID string, rtp, payoutMultiplier, betAmount float64, ipAddress string, userAgent string) (Response, error) {
+func (c *Client) GetOutcome(clientID, gameID, playerID, betID string, rtp, payoutMultiplier, betAmount float64, ipAddress string, userAgent string, featureBuy bool) (Response, error) {
 	reqBody, err := json.Marshal(Request{
 		ClientID:         clientID,
 		GameID:           gameID,
@@ -54,6 +55,7 @@ func (c *Client) GetOutcome(clientID, gameID, playerID, betID string, rtp, payou
 		BetAmount:        betAmount,
 		IPAddress:        ipAddress,
 		UserAgent:        userAgent,
+		FeatureBuy:       featureBuy,
 	})
 	if err != nil {
 		log.Printf("Error marshaling RNG request: %v", err)

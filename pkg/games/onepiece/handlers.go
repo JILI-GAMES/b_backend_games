@@ -8,6 +8,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+var featureBuy bool
+
 // / SpinHandler handles the /spin/onepiece endpoint
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	var req SpinRequest
@@ -36,6 +38,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Calculate multiplier for free spins, including the extra bonus multiplier effect
 	effectiveMultiplier := req.FreeSpinMultiplier
+
+	if req.IsFreeSpin {
+		featureBuy = true
+	}
+
+	log.Printf("Feature Buy✅✅✅: %v", featureBuy)
+
 	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
 		// Apply the extra bonus multiplier to the free spin multiplier
 		effectiveMultiplier *= (req.ExtraBonusMultiplier)
@@ -75,9 +84,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	log.Printf("✅IP: %v", ip)
 	log.Printf("✅User-Agent: %v", userAgent)
+	log.Printf("✅Feature Buy: %v", featureBuy)
 
 	// Call RNG
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, featureBuy)
 	if err != nil {
 		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

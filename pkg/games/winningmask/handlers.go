@@ -139,7 +139,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		log.Printf("✅User-Agent: %v", userAgent)
 
 		// Call RNG for base game
-		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent)
+		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 		if err != nil {
 			log.Printf("Failed to call RNG API: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -327,7 +327,7 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 	log.Printf("✅User-Agent: %v", userAgent)	
 
 	// Call RNG to determine if we can award the full multiplier
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent)
+	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 	if err != nil {
 		log.Printf("Failed to call RNG API for mask bonus: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

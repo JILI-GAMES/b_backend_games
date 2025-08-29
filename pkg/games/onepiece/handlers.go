@@ -87,7 +87,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	log.Printf("✅IP: %v", ip)
 	log.Printf("✅User-Agent: %v", userAgent)
-	log.Printf("✅Feature Buy: %v", featureBuy)
 
 	// Call RNG
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, featureBuy)

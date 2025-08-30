@@ -18,16 +18,16 @@ const (
 
 // Symbol weights for random generation
 var SymbolWeights = map[Symbol]float64{
-    SymbolAirplane:   0.04,
-    SymbolYacht:      0.05,
-    SymbolCar:        0.06,
-    SymbolMotorcycle: 0.07,
-    SymbolA:          0.13,
+    SymbolAirplane:   0.025,  // Highest payout -> lowest probability
+    SymbolYacht:      0.035,
+    SymbolCar:        0.045,
+    SymbolMotorcycle: 0.055,
+    SymbolA:          0.12,
     SymbolK:          0.14,
     SymbolQ:          0.16,
-    SymbolJ:          0.3,
-    SymbolWild:       0.03,
-    SymbolScatter:    0.02,
+    SymbolJ:          0.18,
+    SymbolWild:       0.02,   // Special symbol - keep low probability
+    SymbolScatter:    0.015,  // Special symbol - keep low probability
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

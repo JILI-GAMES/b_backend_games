@@ -90,7 +90,8 @@ func GenerateGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 		grid[y] = make([]string, gridSize)
 		for x := 0; x < gridSize; x++ {
 			// DELUXE: Allow multiple clovers, but limit free game symbols to one per grid
-			allowFreeGameSymbols := !freeGameSymbolPlaced
+			// IMPORTANT: Never allow free game symbols during free spins mode
+			allowFreeGameSymbols := !freeGameSymbolPlaced && gameMode != "freeSpins"
 			symbol := WeightedRandomSymbolWithControl(level, r, !allowFreeGameSymbols)
 			if symbol == SymbolFreeGame {
 				freeGameSymbolPlaced = true
@@ -104,7 +105,7 @@ func GenerateGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 // DELUXE: GenerateGridWithWin - Modified to allow connection-forming symbols (birds + clovers)
 func GenerateGridWithWin(level Level, r *rand.Rand, gameMode string) [][]string {
 	gridSize := level.GetGridSize()
-	log.Printf("Generating grid with win for level %d with grid size %dx%d", level, gridSize, gridSize)
+	log.Printf("Generating grid with win for level %d with grid size %dx%d, gameMode: %s", level, gridSize, gridSize, gameMode)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -123,7 +124,7 @@ func GenerateGridWithWin(level Level, r *rand.Rand, gameMode string) [][]string 
 // DELUXE: GenerateLossGrid - Modified to prevent connection-forming symbol connections
 func GenerateLossGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 	gridSize := level.GetGridSize()
-	log.Printf("Generating loss grid for level %d with grid size %dx%d", level, gridSize, gridSize)
+	log.Printf("Generating loss grid for level %d with grid size %dx%d, gameMode: %s", level, gridSize, gridSize, gameMode)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -154,6 +155,7 @@ func ForceWinGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 		log.Printf("Forcing clover connection for Booming Reels feature")
 	} else {
 		// Pick a random connection-forming symbol (birds or clover)
+		// IMPORTANT: Never use free game symbols during free spins mode
 		connectionSymbols := []Symbol{SymbolPurpleOwl, SymbolGreenOwl, SymbolYellowOwl, SymbolBlueOwl, SymbolRedOwl, SymbolClover}
 		targetSymbol = connectionSymbols[r.Intn(len(connectionSymbols))]
 	}
@@ -173,6 +175,7 @@ func ForceWinGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 func ForceLossGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 	gridSize := level.GetGridSize()
 	grid := make([][]string, gridSize)
+	// IMPORTANT: Never use free game symbols during free spins mode
 	connectionSymbols := []Symbol{SymbolPurpleOwl, SymbolGreenOwl, SymbolYellowOwl, SymbolBlueOwl, SymbolRedOwl, SymbolClover}
 
 	for y := 0; y < gridSize; y++ {
@@ -304,7 +307,8 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
-				allowFreeGameSymbols := !hasFreeGameSymbol(grid)
+				// IMPORTANT: Never allow free game symbols during free spins mode
+				allowFreeGameSymbols := !hasFreeGameSymbol(grid) && gameMode != "freeSpins"
 
 				// INCREASED CLOVER APPEARANCE: 30% chance to force clover during gravity for Booming Reels
 				forceClover := r.Float64() < 0.3
@@ -449,7 +453,8 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 
 			// Fill empty spaces at the top with new symbols
 			for y := 0; y <= writePos; y++ {
-				allowFreeGameSymbols := !hasFreeGameSymbol(grid)
+				// IMPORTANT: Never allow free game symbols during free spins mode
+				allowFreeGameSymbols := !hasFreeGameSymbol(grid) && gameMode != "freeSpins"
 
 				// INCREASED CLOVER APPEARANCE: 50% chance to force clover during cascades for Booming Reels
 				forceClover := r.Float64() < 0.5
@@ -755,10 +760,19 @@ func CleanupInvalidSymbols(grid [][]string, level Level, r *rand.Rand, gameMode 
 
 			// If it's a stage-cleared symbol that doesn't belong to current level, replace it
 			if IsStageClearedSymbol(symbol) && symbol != levelStageClearedSymbol {
-				newSymbol := WeightedRandomSymbol(level, r)
-				grid[y][x] = string(newSymbol)
-				log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",
-					symbol, newSymbol, x, y)
+				// IMPORTANT: Never allow free game symbols during free spins mode
+				if gameMode == "freeSpins" {
+					// Use WeightedRandomSymbolWithControl to exclude free game symbols
+					newSymbol := WeightedRandomSymbolWithControl(level, r, true)
+					grid[y][x] = string(newSymbol)
+					log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d) during free spins (no free game symbols)",
+						symbol, newSymbol, x, y)
+				} else {
+					newSymbol := WeightedRandomSymbol(level, r)
+					grid[y][x] = string(newSymbol)
+					log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",
+						symbol, newSymbol, x, y)
+				}
 			}
 		}
 	}

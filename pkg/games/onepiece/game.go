@@ -11,7 +11,7 @@ import (
 )
 
 const (
-    Denomination = 0.5 // Denomination for payouts, used in calculations
+    Denomination = 0.01 // Denomination for payouts, used in calculations
     Reels       = 5
     Rows        = 3
 )
@@ -253,7 +253,7 @@ func CalculateWins(reels [][]string, betMultiplier float64, freeSpinMultiplier i
                     }
                     
                     // payout := payoutValue * float64(betMultiplier) * float64(effectiveMultiplier) * Denomination
-                    payout := payoutValue * betMultiplier * float64(effectiveMultiplier)
+                    payout := payoutValue * betMultiplier * float64(effectiveMultiplier) * Denomination
                     payout = math.Round(payout*100) / 100 
                     win := WinDetail{
                         Symbol:    firstSymbol,

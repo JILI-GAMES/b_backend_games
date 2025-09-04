@@ -11,7 +11,7 @@ import (
 )
 
 const (
-    Denomination = 0.01 // Denomination for payouts, used in calculations
+    Denomination = 0.1 // Denomination for payouts, used in calculations
     Reels       = 5
     Rows        = 3
 )

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-    Denomination = 0.1 // Denomination for payouts, used in calculations
+    Denomination = 0.5 // Denomination for payouts, used in calculations
     Reels       = 5
     Rows        = 3
 )
@@ -27,7 +27,7 @@ var SymbolWeights = map[Symbol]float64{
     SymbolQ:          0.16,
     SymbolJ:          0.3,
     SymbolWild:       0.03,
-    SymbolScatter:    0.02,
+    SymbolScatter:    0.2,
 }
 
 // Paytable (payouts for Bet Multiplier = 1)

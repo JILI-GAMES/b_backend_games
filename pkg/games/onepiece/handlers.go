@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -40,8 +41,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Calculate multiplier for free spins, including the extra bonus multiplier effect
 	effectiveMultiplier := req.FreeSpinMultiplier
 
-	
-
 	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
 		// Apply the extra bonus multiplier to the free spin multiplier
 		effectiveMultiplier *= (req.ExtraBonusMultiplier)
@@ -72,15 +71,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
 	// Get RTP
-	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
-	if err != nil {
-		log.Printf("Failed to get RTP: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to retrieve game settings",
-		})
+	rtp, settingsErr := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	if settingsErr != nil {
+		log.Printf("Failed to get RTP: %v", settingsErr)
 	}
-	log.Printf("RTP retrieved: %v", rtp)
 
 	// Get IP address and user agent from request
 	ip := c.IP()
@@ -90,14 +84,56 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("✅User-Agent: %v", userAgent)
 
 	// Call RNG
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, featureBuy)
-	if err != nil {
-		log.Printf("Failed to call RNG API: %v", err)
+	var rngResp rng.Response
+	var rngErr error
+	if settingsErr == nil {
+		// Only call RNG if settings API succeeded
+		rngResp, rngErr = rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, featureBuy)
+		if rngErr != nil {
+			log.Printf("Failed to call RNG API: %v", rngErr)
+		}
+	} else {
+		// If settings failed, we can't call RNG with proper RTP
+		rngErr = fmt.Errorf("RNG call skipped due to settings API failure")
+		log.Printf("Skipping RNG call due to settings API failure")
+	}
+
+	// Check if both APIs failed and send Telegram notification
+	if settingsErr != nil && rngErr != nil {
+		log.Printf("Both Settings and RNG APIs failed - sending Telegram notification")
+		if rg.Telegram != nil {
+			if telegramErr := rg.Telegram.SendErrorNotification(
+				req.GameID, req.ClientID, req.PlayerID, req.BetID,
+				settingsErr, rngErr,
+			); telegramErr != nil {
+				log.Printf("Failed to send Telegram notification: %v", telegramErr)
+			}
+		} else {
+			log.Printf("Telegram client not configured - cannot send notification")
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Critical services unavailable - both settings and RNG APIs failed",
+		})
+	}
+
+	// Handle individual API failures
+	if settingsErr != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve game settings",
+		})
+	}
+
+	if rngErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
 		})
 	}
+
+	log.Printf("RTP retrieved: %v", rtp)
 	log.Printf("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
@@ -274,7 +310,7 @@ func validateRequest(clientID, gameID, playerID, betID string, betAmount float64
 	if betID == "" {
 		return fmt.Errorf("bet_id is required")
 	}
-	if !isFreeSpin && betAmount == 0.0{
+	if !isFreeSpin && betAmount == 0.0 {
 		return fmt.Errorf("invalid bet amount")
 	}
 	if isFreeSpin {
@@ -328,19 +364,6 @@ func validateSelectFreeSpinOptionRequest(clientID, gameID, playerID string, opti
 // 	return false
 // }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 // package onepiece
 
 // import (
@@ -381,8 +404,6 @@ func validateSelectFreeSpinOptionRequest(clientID, gameID, playerID string, opti
 
 // 	// Calculate multiplier for free spins, including the extra bonus multiplier effect
 // 	effectiveMultiplier := req.FreeSpinMultiplier
-
-	
 
 // 	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
 // 		// Apply the extra bonus multiplier to the free spin multiplier

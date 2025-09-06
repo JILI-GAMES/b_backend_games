@@ -13,6 +13,8 @@ type Config struct {
 	SettingsServiceURL string
 	ServerPort         string
 	LogFile            string
+	TelegramBotToken   string
+	TelegramChatID     string
 }
 
 // Load loads configuration from environment variables
@@ -27,6 +29,8 @@ func Load() Config {
 		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
+		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
 	}
 }
 
@@ -51,12 +55,16 @@ func LoadAll() (prod Config, test Config) {
 		SettingsServiceURL: getEnv("PROD_SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
+		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
 	}
 	test = Config{
 		RNGServiceURL:      getEnv("TEST_RNG_API_URL", "http://test-rng-url"),
 		SettingsServiceURL: getEnv("TEST_SETTINGS_API_URL", "https://test-settings-url"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
+		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
 	}
 	return
 }

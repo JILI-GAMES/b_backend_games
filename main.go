@@ -7,26 +7,24 @@ import (
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/config"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/telegram"
 
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdsparty"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdspartydeluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/blossomsofwealth"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/crazykingkong"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/funkykingkong"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/hilo"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/kong"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicace"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicaceoriginal"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/onepiece"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame1"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame2"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/winningmask"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdsparty"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicaceoriginal"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/hilo"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/crazykingkong"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/funkykingkong"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdspartydeluxe"
-	"github.com/JILI-GAMES/b_backend_games/pkg/games/onepiece"
-
-
-
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -59,6 +57,9 @@ func main() {
 
 	rngClientTest := rng.NewClient(testCfg.RNGServiceURL)
 	settingsClientTest := settings.NewClient(testCfg.SettingsServiceURL)
+
+	// Create Telegram client (use prod config for credentials)
+	telegramClient := telegram.NewClient(prodCfg.TelegramBotToken, prodCfg.TelegramChatID)
 
 	// Create fiber app
 	app := fiber.New(fiber.Config{
@@ -114,7 +115,7 @@ func main() {
 
 	birdspartyRoutes := birdsparty.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	birdspartyRoutes.Register(app)
-	
+
 	magicAceOriginalRoutes := magicaceoriginal.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	magicAceOriginalRoutes.Register(app)
 
@@ -130,7 +131,7 @@ func main() {
 	birdsPartyDeluxeRoutes := birdspartydeluxe.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	birdsPartyDeluxeRoutes.Register(app)
 
-	onepieceRoutes := onepiece.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	onepieceRoutes := onepiece.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest, telegramClient)
 	onepieceRoutes.Register(app)
 
 	// Add a simple status endpoint

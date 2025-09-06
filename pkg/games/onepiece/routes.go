@@ -6,6 +6,7 @@ import (
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/telegram"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -15,15 +16,17 @@ type RouteGroup struct {
 	SettingsProd *settings.Client
 	RNGTest      *rng.Client
 	SettingsTest *settings.Client
+	Telegram     *telegram.Client
 }
 
 // NewRouteGroup creates a new RouteGroup
-func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *rng.Client, settingsTest *settings.Client) *RouteGroup {
+func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *rng.Client, settingsTest *settings.Client, telegram *telegram.Client) *RouteGroup {
 	return &RouteGroup{
 		RNGProd:      rngProd,
 		SettingsProd: settingsProd,
 		RNGTest:      rngTest,
 		SettingsTest: settingsTest,
+		Telegram:     telegram,
 	}
 }
 
@@ -31,10 +34,9 @@ func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *
 func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
 	origin := c.Get("Origin")
 	log.Printf("Origin: %s\n", origin)
-	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) || origin=="" {
+	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) || origin == "" {
 		return rg.RNGTest, rg.SettingsTest
 	}
-
 
 	return rg.RNGProd, rg.SettingsProd
 }

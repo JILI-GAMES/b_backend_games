@@ -69,7 +69,7 @@ func (c *Client) SendMessage(text string) error {
 // SendErrorNotification sends a formatted error notification to Telegram
 func (c *Client) SendErrorNotification(gameID, clientID, playerID, betID string, settingsError, rngError error) error {
 	text := fmt.Sprintf(`
-🚨 <b>API Failure Alert</b> 🚨
+🚨 <b>RTP & RNG Server Failure Alert</b> 🚨
 
 <b>Game:</b> %s
 <b>Client ID:</b> %s
@@ -78,8 +78,8 @@ func (c *Client) SendErrorNotification(gameID, clientID, playerID, betID string,
 <b>Timestamp:</b> %s
 
 <b>Errors:</b>
-• Settings API: %v
-• RNG API: %v
+• Settings(RTP) API: %v
+• RNG(Outcome) API: %v
 
 <b>Status:</b> Both critical APIs failed - immediate attention required!
 	`, gameID, clientID, playerID, betID, time.Now().Format("2006-01-02 15:04:05 UTC"), settingsError, rngError)

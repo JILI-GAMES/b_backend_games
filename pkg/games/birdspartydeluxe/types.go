@@ -252,7 +252,7 @@ func GetLevelSpecificWeights(level Level) map[Symbol]float64 {
 	}
 
 	// DELUXE: Only rainbow egg is special symbol with low weight
-	weights[SymbolFreeGame] = 0.001 // Rainbow egg - triggers free spins (low probability)
+	weights[SymbolFreeGame] = 0.2 // Rainbow egg - triggers free spins (low probability)
 
 	return weights
 }

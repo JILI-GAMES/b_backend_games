@@ -111,7 +111,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// If settings failed, force a loss outcome
 		rngResp = rng.Response{PrefOutcome: "loss"}
 		rngErr = nil
-		log.Printf("Forcing loss outcome due to settings API failure")
+		log.Printf("‼️‼️‼️Forcing loss outcome due to settings API failure")
 	}
 
 	// Check if RNG API failed and send Telegram notification

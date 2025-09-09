@@ -1,9 +1,12 @@
 package onepiece
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"time"
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
@@ -78,6 +81,41 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Use default RTP when settings API fails
 		rtp = 0.9 // Default RTP value
 		log.Printf("Using default RTP: %v", rtp)
+
+		//send to joe  notification.
+		go func() {
+			joePayload := map[string]interface{}{
+				"endpoint":     "https://t2.ibibe.africa/get-game-settings",
+				"label":        "settings",
+				"status":       "fail",
+				"other_status": "settings api fail",
+				"source":       "one-piece",
+				"time":         time.Now().Format("2006-01-02T15:04"),
+			}
+
+			jsonData, err := json.Marshal(joePayload)
+			if err != nil {
+				log.Printf("Error marshaling Joe notification payload: %v", err)
+				return
+			}
+
+			client := &http.Client{
+				Timeout: 10 * time.Second,
+			}
+
+			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending notification to Joe's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent notification to Joe's endpoint")
+			}
+		}()
 
 		// Send telegram notification
 		if rg.Telegram != nil {

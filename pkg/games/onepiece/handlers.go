@@ -167,21 +167,69 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Check if RNG API failed and send Telegram notification
 	if rngErr != nil {
 		log.Printf("RNG API failed - sending Telegram notification")
+
+		//send to joe notification for RNG failure
+		go func() {
+			joePayload := map[string]interface{}{
+				"endpoint":     "https://rngr2.ibibe.africa",
+				"label":        "rng",
+				"status":       "fail",
+				"other_status": "rng api fail",
+				"source":       "one-piece",
+				"time":         time.Now().Format("2006-01-02T15:04"),
+			}
+
+			jsonData, err := json.Marshal(joePayload)
+			if err != nil {
+				log.Printf("Error marshaling Joe notification payload: %v", err)
+				return
+			}
+
+			client := &http.Client{
+				Timeout: 10 * time.Second,
+			}
+
+			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending notification to Joe's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent notification to Joe's endpoint")
+			}
+		}()
+
+		// Send telegram notification for RNG failure
 		if rg.Telegram != nil {
-			if telegramErr := rg.Telegram.SendErrorNotification(
-				req.GameID, req.ClientID, req.PlayerID, req.BetID,
-				settingsErr, rngErr,
-			); telegramErr != nil {
+			notificationText := fmt.Sprintf(`
+🚨 <b>RNG API Failure Alert</b> 🚨
+
+<b>Game:</b> %s
+<b>Client ID:</b> %s
+<b>Player ID:</b> %s
+<b>Bet ID:</b> %s
+<b>Timestamp:</b> %s
+
+<b>Error:</b> RNG(Outcome) API failed: %v
+
+<b>Action Taken:</b> Forcing loss outcome to continue game
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), rngErr)
+
+			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
 				log.Printf("Failed to send Telegram notification: %v", telegramErr)
 			}
 		} else {
 			log.Printf("Telegram client not configured - cannot send notification")
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to determine outcome",
-		})
+		// Force loss outcome when RNG API fails
+		rngResp = rng.Response{PrefOutcome: "loss"}
+		rngErr = nil
+		log.Printf("‼️‼️‼️Forcing loss outcome due to RNG API failure")
 	}
 
 	log.Printf("RTP retrieved: %v", rtp)

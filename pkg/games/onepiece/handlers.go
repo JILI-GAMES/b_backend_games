@@ -75,7 +75,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	if settingsErr != nil {
 		log.Printf("Failed to get RTP: %v", settingsErr)
 		// Use default RTP when settings API fails
-		rtp = 0.95 // Default RTP value
+		rtp = 0.9 // Default RTP value
 		log.Printf("Using default RTP: %v", rtp)
 
 		// Send telegram notification

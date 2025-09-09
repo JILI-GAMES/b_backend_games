@@ -74,6 +74,21 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	rtp, settingsErr := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if settingsErr != nil {
 		log.Printf("Failed to get RTP: %v", settingsErr)
+		// Use default RTP when settings API fails
+		rtp = 0.95 // Default RTP value
+		log.Printf("Using default RTP: %v", rtp)
+
+		// Send telegram notification
+		if rg.Telegram != nil {
+			if telegramErr := rg.Telegram.SendErrorNotification(
+				req.GameID, req.ClientID, req.PlayerID, req.BetID,
+				settingsErr, nil,
+			); telegramErr != nil {
+				log.Printf("Failed to send Telegram notification: %v", telegramErr)
+			}
+		} else {
+			log.Printf("Telegram client not configured - cannot send notification")
+		}
 	}
 
 	// Get IP address and user agent from request
@@ -93,14 +108,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			log.Printf("Failed to call RNG API: %v", rngErr)
 		}
 	} else {
-		// If settings failed, we can't call RNG with proper RTP
-		rngErr = fmt.Errorf("RNG call skipped due to settings API failure")
-		log.Printf("Skipping RNG call due to settings API failure")
+		// If settings failed, force a loss outcome
+		rngResp = rng.Response{PrefOutcome: "loss"}
+		rngErr = nil
+		log.Printf("Forcing loss outcome due to settings API failure")
 	}
 
-	// Check if both APIs failed and send Telegram notification
-	if settingsErr != nil && rngErr != nil {
-		log.Printf("Both Settings and RNG APIs failed - sending Telegram notification")
+	// Check if RNG API failed and send Telegram notification
+	if rngErr != nil {
+		log.Printf("RNG API failed - sending Telegram notification")
 		if rg.Telegram != nil {
 			if telegramErr := rg.Telegram.SendErrorNotification(
 				req.GameID, req.ClientID, req.PlayerID, req.BetID,
@@ -112,21 +128,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			log.Printf("Telegram client not configured - cannot send notification")
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Critical services unavailable - both settings and RNG APIs failed",
-		})
-	}
-
-	// Handle individual API failures
-	if settingsErr != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to retrieve game settings",
-		})
-	}
-
-	if rngErr != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",

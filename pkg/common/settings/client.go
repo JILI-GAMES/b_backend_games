@@ -182,7 +182,7 @@ func (c *Client) tryService(serviceIndex int, clientID, gameID, playerID string)
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Settings API service %d (%s) returned non-200 status: %d", serviceIndex, service.URL, resp.StatusCode)
-		return 0, errors.New("Settings API call failed")
+		return 0, errors.New("settings API call failed")
 	}
 
 	var settingsResp Response
@@ -210,24 +210,37 @@ func (c *Client) failoverToNext(currentIndex int, lastErr error, clientID, gameI
 	if currentIndex < len(c.States) {
 		c.States[currentIndex] = FAILED
 		log.Printf("Marked Settings service %d as FAILED due to error: %v", currentIndex, lastErr)
+		// Send individual service failure notification
+		c.sendIndividualServiceFailureNotification(currentIndex, lastErr)
 	}
 
-	// Try next available service
+	// Try next available service - attempt all services regardless of current state
 	for i := 1; i < len(c.Services); i++ {
 		nextIndex := (currentIndex + i) % len(c.Services)
 
-		if c.States[nextIndex] == HEALTHY || c.States[nextIndex] == DEGRADED {
-			// Switch to next service
-			c.CurrentIndex = nextIndex
+		// Switch to next service and try it
+		c.CurrentIndex = nextIndex
 
-			// Send Telegram notification
-			c.sendFailoverNotification(currentIndex, nextIndex, lastErr)
+		// Send Telegram notification
+		c.sendFailoverNotification(currentIndex, nextIndex, lastErr)
 
-			log.Printf("Switching Settings from service %d to service %d", currentIndex, nextIndex)
+		log.Printf("Switching Settings from service %d to service %d (state: %v)", currentIndex, nextIndex, c.States[nextIndex])
 
-			// Try the new service
-			return c.tryService(nextIndex, clientID, gameID, playerID)
+		// Try the new service
+		rtp, err := c.tryService(nextIndex, clientID, gameID, playerID)
+		if err == nil {
+			// Success! Mark this service as healthy
+			c.States[nextIndex] = HEALTHY
+			log.Printf("Settings service %d is now working, marked as HEALTHY", nextIndex)
+			return rtp, nil
 		}
+
+		// This service also failed, mark it as failed and continue to next
+		c.States[nextIndex] = FAILED
+		log.Printf("Settings service %d also failed: %v", nextIndex, err)
+		// Send individual service failure notification
+		c.sendIndividualServiceFailureNotification(nextIndex, err)
+		lastErr = err
 	}
 
 	// All services failed
@@ -349,6 +362,34 @@ Recovered: S%d
 Time: %s
 Status: Service is healthy again
 		`, serviceIndex+1, time.Now().Format("2006-01-02 15:04:05 UTC"))
+
+		if telegramErr := sendMsg.SendMessage(message); telegramErr != nil {
+			log.Printf("Failed to send Telegram notification: %v", telegramErr)
+		}
+	}
+}
+
+// sendIndividualServiceFailureNotification sends a Telegram notification for a specific service failure
+func (c *Client) sendIndividualServiceFailureNotification(serviceIndex int, err error) {
+	if c.TelegramClient == nil {
+		return
+	}
+
+	// Use reflection to call SendMessage method
+	if sendMsg, ok := c.TelegramClient.(interface{ SendMessage(string) error }); ok {
+		serviceURL := "Unknown"
+		if serviceIndex < len(c.Services) {
+			serviceURL = c.Services[serviceIndex].URL
+		}
+
+		message := fmt.Sprintf(`
+⚠️ Settings Service Failure Alert
+
+Failed Service: S%d (%s)
+Error: %v
+Time: %s
+Status: Service marked as FAILED
+		`, serviceIndex+1, serviceURL, err, time.Now().Format("2006-01-02 15:04:05 UTC"))
 
 		if telegramErr := sendMsg.SendMessage(message); telegramErr != nil {
 			log.Printf("Failed to send Telegram notification: %v", telegramErr)

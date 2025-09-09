@@ -15,12 +15,6 @@ type Config struct {
 	LogFile            string
 	TelegramBotToken   string
 	TelegramChatID     string
-
-	// Failover service URLs
-	RNG2ServiceURL      string
-	RNG3ServiceURL      string
-	Settings2ServiceURL string
-	Settings3ServiceURL string
 }
 
 // Load loads configuration from environment variables
@@ -37,12 +31,6 @@ func Load() Config {
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
-
-		// Failover service URLs
-		RNG2ServiceURL:      getEnv("PROD_RNG2_API_URL", ""),
-		RNG3ServiceURL:      getEnv("PROD_RNG3_API_URL", ""),
-		Settings2ServiceURL: getEnv("PROD_SETTINGS2_API_URL", ""),
-		Settings3ServiceURL: getEnv("PROD_SETTINGS3_API_URL", ""),
 	}
 }
 
@@ -69,12 +57,6 @@ func LoadAll() (prod Config, test Config) {
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
-
-		// Failover service URLs
-		RNG2ServiceURL:      getEnv("PROD_RNG2_API_URL", ""),
-		RNG3ServiceURL:      getEnv("PROD_RNG3_API_URL", ""),
-		Settings2ServiceURL: getEnv("PROD_SETTINGS2_API_URL", ""),
-		Settings3ServiceURL: getEnv("PROD_SETTINGS3_API_URL", ""),
 	}
 	test = Config{
 		RNGServiceURL:      getEnv("TEST_RNG_API_URL", "http://test-rng-url"),
@@ -83,12 +65,6 @@ func LoadAll() (prod Config, test Config) {
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
-
-		// Failover service URLs (test environment typically doesn't need failover)
-		RNG2ServiceURL:      getEnv("TEST_RNG2_API_URL", ""),
-		RNG3ServiceURL:      getEnv("TEST_RNG3_API_URL", ""),
-		Settings2ServiceURL: getEnv("TEST_SETTINGS2_API_URL", ""),
-		Settings3ServiceURL: getEnv("TEST_SETTINGS3_API_URL", ""),
 	}
 	return
 }

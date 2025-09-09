@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"time"
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/gofiber/fiber/v2"
@@ -80,10 +81,21 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Send telegram notification
 		if rg.Telegram != nil {
-			if telegramErr := rg.Telegram.SendErrorNotification(
-				req.GameID, req.ClientID, req.PlayerID, req.BetID,
-				settingsErr, nil,
-			); telegramErr != nil {
+			notificationText := fmt.Sprintf(`
+🚨 <b>Settings API Failure Alert</b> 🚨
+
+<b>Game:</b> %s
+<b>Client ID:</b> %s
+<b>Player ID:</b> %s
+<b>Bet ID:</b> %s
+<b>Timestamp:</b> %s
+
+<b>Error:</b> Settings(RTP) API failed: %v
+
+<b>Action Taken:</b> Using default RTP (0.9) and forcing loss outcome
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), settingsErr)
+
+			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
 				log.Printf("Failed to send Telegram notification: %v", telegramErr)
 			}
 		} else {

@@ -39,10 +39,10 @@ func Load() Config {
 		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
 
 		// Failover service URLs
-		RNG2ServiceURL:      getEnv("RNG2_API_URL", ""),
-		RNG3ServiceURL:      getEnv("RNG3_API_URL", ""),
-		Settings2ServiceURL: getEnv("SETTINGS2_API_URL", ""),
-		Settings3ServiceURL: getEnv("SETTINGS3_API_URL", ""),
+		RNG2ServiceURL:      getEnv("PROD_RNG2_API_URL", ""),
+		RNG3ServiceURL:      getEnv("PROD_RNG3_API_URL", ""),
+		Settings2ServiceURL: getEnv("PROD_SETTINGS2_API_URL", ""),
+		Settings3ServiceURL: getEnv("PROD_SETTINGS3_API_URL", ""),
 	}
 }
 

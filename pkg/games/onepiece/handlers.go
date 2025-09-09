@@ -171,7 +171,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		//send to joe notification for RNG failure
 		go func() {
 			joePayload := map[string]interface{}{
-				"endpoint":     "https://rngr2.ibibe.africa",
+				"endpoint":     "http://159.89.235.166:17003/api/proxy/rng/1",
 				"label":        "rng",
 				"status":       "fail",
 				"other_status": "rng api fail",

@@ -86,7 +86,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		go func() {
 			joePayload := map[string]interface{}{
 				"endpoint":     "https://t2.ibibe.africa/get-game-settings",
-				"label":        "settings",
+				"label":        "rng",
 				"status":       "fail",
 				"other_status": "settings api fail",
 				"source":       "one-piece",

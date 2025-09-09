@@ -51,15 +51,15 @@ func main() {
 		LocalTime: true, // use local time for file names
 	})
 
-	// Create both prod and test clients
-	rngClientProd := rng.NewClient(prodCfg.RNGServiceURL)
-	settingsClientProd := settings.NewClient(prodCfg.SettingsServiceURL)
-
-	rngClientTest := rng.NewClient(testCfg.RNGServiceURL)
-	settingsClientTest := settings.NewClient(testCfg.SettingsServiceURL)
-
 	// Create Telegram client (use prod config for credentials)
 	telegramClient := telegram.NewClient(prodCfg.TelegramBotToken, prodCfg.TelegramChatID)
+
+	// Create enhanced clients with failover support
+	rngClientProd := rng.NewFailoverClient(prodCfg, telegramClient)
+	settingsClientProd := settings.NewFailoverClient(prodCfg, telegramClient)
+
+	rngClientTest := rng.NewFailoverClient(testCfg, telegramClient)
+	settingsClientTest := settings.NewFailoverClient(testCfg, telegramClient)
 
 	// Create fiber app
 	app := fiber.New(fiber.Config{

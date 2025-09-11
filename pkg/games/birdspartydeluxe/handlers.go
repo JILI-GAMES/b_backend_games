@@ -669,8 +669,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		Message:             "",
 		GameState:           req.GameState,
 		Connections:         allConnections,
-		StageClearedSymbols: stageClearedSymbols, // Include detected stage-cleared symbols
-		HasStageCleared:     hasStageCleared,     // Flag to indicate stage-cleared symbols found
+		StageClearedSymbols: stageClearedSymbols, 
+		HasStageCleared:     hasStageCleared,     
 		TotalCost:           0,
 	})
 }

@@ -384,8 +384,8 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 
 	initialMultiplier := option.InitialMultiplier
 
-	log.Printf("Free Spin Bonus option selected: option=%d, totalSpins=%d, initialMultiplier=%d, extraBonusMultiplier=%d",
-		req.Option, totalSpins, initialMultiplier, req.ExtraBonusMultiplier)
+	log.Printf("Free Spin Bonus option selected: playeID=%s, option=%d, totalSpins=%d, initialMultiplier=%d, extraBonusMultiplier=%d",
+		req.PlayerID, req.Option, totalSpins, initialMultiplier, req.ExtraBonusMultiplier)
 
 	return c.JSON(SelectFreeSpinOptionResponse{
 		TotalFreeSpins:       totalSpins,

@@ -55,9 +55,9 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	if req.IsFreeSpin {
 		featureBuy = true
+		log.Printf("Feature Buy✅✅✅: %v", featureBuy)
 	}
 
-	log.Printf("Feature Buy✅✅✅: %v", featureBuy)
 
 	// Calculate winnings using the effective multiplier
 	totalWinnings, winDetails := CalculateWins(reels, betAmount, effectiveMultiplier, req.IsFreeSpin)

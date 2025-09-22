@@ -45,19 +45,21 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Calculate multiplier for free spins, including the extra bonus multiplier effect
 	effectiveMultiplier := req.FreeSpinMultiplier
 
-	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
-		// Apply the extra bonus multiplier to the free spin multiplier
-		effectiveMultiplier *= (req.ExtraBonusMultiplier)
-		featureBuy = true
-		log.Printf("Applied extra bonus multiplier: base=%d, extra=%d, effective=%d",
-			req.FreeSpinMultiplier, req.ExtraBonusMultiplier, effectiveMultiplier)
-	}
-
+	// Set featureBuy based on free spin status
 	if req.IsFreeSpin {
 		featureBuy = true
-		log.Printf("Feature Buy✅✅✅: %v", featureBuy)
-	}
+		log.Printf("Feature Buy✅✅✅: %v (Free Spin Active)", featureBuy)
 
+		if req.ExtraBonusMultiplier > 0 {
+			// Apply the extra bonus multiplier to the free spin multiplier
+			effectiveMultiplier *= (req.ExtraBonusMultiplier)
+			log.Printf("Applied extra bonus multiplier: base=%d, extra=%d, effective=%d",
+				req.FreeSpinMultiplier, req.ExtraBonusMultiplier, effectiveMultiplier)
+		}
+	} else {
+		featureBuy = false
+		log.Printf("Feature Buy❌❌❌: %v (Not Free Spin)", featureBuy)
+	}
 
 	// Calculate winnings using the effective multiplier
 	totalWinnings, winDetails := CalculateWins(reels, betAmount, effectiveMultiplier, req.IsFreeSpin)
@@ -462,10 +464,6 @@ func validateSelectFreeSpinOptionRequest(clientID, gameID, playerID string, opti
 // 	}
 // 	return false
 // }
-
-
-
-
 
 // package onepiece
 

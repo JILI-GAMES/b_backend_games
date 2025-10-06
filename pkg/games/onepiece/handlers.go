@@ -270,6 +270,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 			if resp.StatusCode != http.StatusOK {
 				log.Printf("Mosomis endpoint returned non-200 status: %d", resp.StatusCode)
+				log.Println("MOSOMIIIIIIIIIII",resp.Body)
 			} else {
 				log.Printf("Successfully sent loss update to Mosomis endpoint")
 			}

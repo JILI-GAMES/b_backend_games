@@ -261,7 +261,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				Timeout: 10 * time.Second,
 			}
 
-			resp, err := client.Post("https://admin-api3.ibibe.africa/api/v1/update_loss", "application/json", bytes.NewBuffer(jsonData))
+			resp, err := client.Post("https://admin-api.ibibe.africa/api/v1/update_loss", "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
 				log.Printf("Error sending loss update to Mosomis endpoint: %v", err)
 				return

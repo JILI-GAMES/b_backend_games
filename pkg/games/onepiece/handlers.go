@@ -248,7 +248,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		go func() {
 			lossPayload := map[string]interface{}{
 				"bet_id":    req.BetID,
-				"status":    "lost",
+				"bet_status":    "lost",
 				"client_id": req.ClientID,
 			}
 			jsonData, err := json.Marshal(lossPayload)

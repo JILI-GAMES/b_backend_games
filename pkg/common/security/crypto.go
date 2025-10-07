@@ -32,7 +32,7 @@ var (
 	AESKey  []byte
 	HMACKey []byte
 	// RequestExpirationWindow is the time window in milliseconds for request expiration
-	RequestExpirationWindow int64 = 30000 // 30 seconds default
+	RequestExpirationWindow int64 = 60000 // 60 seconds default
 )
 
 // Initialize loads keys from environment variables

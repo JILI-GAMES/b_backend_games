@@ -29,8 +29,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Try to decrypt request - this will fail for unencrypted requests
-	decryptedBody, nonce, err := security.DecryptRequest(body)
+	// Decrypt request using Unity's CBC approach
+	decryptedBody, err := security.DecryptRequestCBC(body)
 	if err != nil {
 		log.Printf("Decryption failed: %v", err)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
@@ -40,7 +40,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	var req SpinRequest
-	// CHANGE: Parse decrypted body
 	if err := json.Unmarshal(decryptedBody, &req); err != nil {
 		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -49,7 +48,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// ALL YOUR EXISTING CODE STAYS EXACTLY THE SAME
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.BetAmount, req.IsFreeSpin, req.FreeSpinOption, req.CurrentFreeSpinIndex, req.RemainingFreeSpins, req.FreeSpinMultiplier, req.ExtraBonusMultiplier); err != nil {
 		log.Printf("Request validation failed: %v", err)
@@ -460,8 +458,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		WalletBalance:         walletBalance,
 	}
 
-	// ADD: Encrypt response
-	encryptedResponse, err := security.EncryptResponse(response, nonce)
+	// Encrypt response using Unity's CBC approach
+	encryptedResponse, err := security.EncryptResponseCBC(response)
 	if err != nil {
 		log.Printf("Encryption failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -470,7 +468,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Send(encryptedResponse)
-	// DELETE: return c.JSON(response)
 }
 
 func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
@@ -484,8 +481,8 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// Try to decrypt request - this will fail for unencrypted requests
-	decryptedBody, nonce, err := security.DecryptRequest(body)
+	// Decrypt request using Unity's CBC approach
+	decryptedBody, err := security.DecryptRequestCBC(body)
 	if err != nil {
 		log.Printf("Decryption failed: %v", err)
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
@@ -495,7 +492,6 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 	}
 
 	var req SelectFreeSpinOptionRequest
-	// CHANGE: Parse decrypted body
 	if err := json.Unmarshal(decryptedBody, &req); err != nil {
 		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -504,7 +500,6 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	// ALL YOUR EXISTING LOGIC UNCHANGED
 	if err := validateSelectFreeSpinOptionRequest(req.ClientID, req.GameID, req.PlayerID, req.Option, req.ExtraBonusMultiplier); err != nil {
 		log.Printf("Request validation failed: %v", err)
 		if req.Option < 1 || req.Option > 5 {
@@ -540,8 +535,8 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 		ExtraBonusMultiplier: req.ExtraBonusMultiplier,
 	}
 
-	// ADD: Encrypt response
-	encryptedResponse, err := security.EncryptResponse(response, nonce)
+	// Encrypt response using Unity's CBC approach
+	encryptedResponse, err := security.EncryptResponseCBC(response)
 	if err != nil {
 		log.Printf("Encryption failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -550,7 +545,6 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Send(encryptedResponse)
-	// DELETE: return c.JSON(response)
 }
 
 // validateRequest validates the /spin request fields

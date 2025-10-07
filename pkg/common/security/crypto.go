@@ -3,177 +3,149 @@ package security
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"os"
-	"strconv"
-	"time"
 )
 
-type SecurePackage struct {
-	Data      string `json:"data"`
-	Signature string `json:"signature"`
-}
-
-type SecureEnvelope struct {
-	Timestamp int64  `json:"timestamp"`
-	Nonce     string `json:"nonce"`
-	Payload   string `json:"payload"`
-}
-
+// Unity CBC encryption keys loaded from environment variables
+// WARNING: Fixed IV is a security vulnerability - should be random for each encryption
 var (
-	AESKey  []byte
-	HMACKey []byte
-	// RequestExpirationWindow is the time window in milliseconds for request expiration
-	RequestExpirationWindow int64 = 60000 // 60 seconds default
+	encryptionKey []byte
+	encryptionIV  []byte
 )
 
-// Initialize loads keys from environment variables
+// Initialize loads Unity CBC encryption keys from environment variables
 func Initialize() error {
-	aesKeyB64 := os.Getenv("ENCRYPTION_AES_KEY")
-	hmacKeyB64 := os.Getenv("ENCRYPTION_HMAC_KEY")
-	expirationWindow := os.Getenv("ENCRYPTION_EXPIRATION_WINDOW")
+	// Load Unity CBC encryption key from environment
+	keyStr := os.Getenv("UNITY_CBC_ENCRYPTION_KEY")
+	if keyStr == "" {
+		return errors.New("UNITY_CBC_ENCRYPTION_KEY environment variable not set")
+	}
+	encryptionKey = []byte(keyStr)
 
-	if aesKeyB64 == "" || hmacKeyB64 == "" {
-		return errors.New("encryption keys not found in environment")
+	// Load Unity CBC encryption IV from environment
+	ivStr := os.Getenv("UNITY_CBC_ENCRYPTION_IV")
+	if ivStr == "" {
+		return errors.New("UNITY_CBC_ENCRYPTION_IV environment variable not set")
+	}
+	encryptionIV = []byte(ivStr)
+
+	// Validate key and IV lengths
+	if len(encryptionKey) != 16 {
+		return errors.New("Unity CBC encryption key must be 16 bytes")
+	}
+	if len(encryptionIV) != 16 {
+		return errors.New("Unity CBC encryption IV must be 16 bytes")
 	}
 
-	// Set custom expiration window if provided
-	if expirationWindow != "" {
-		if window, err := strconv.ParseInt(expirationWindow, 10, 64); err == nil {
-			RequestExpirationWindow = window
-		}
-	}
-
-	var err error
-	AESKey, err = base64.StdEncoding.DecodeString(aesKeyB64)
-	if err != nil {
-		return err
-	}
-
-	HMACKey, err = base64.StdEncoding.DecodeString(hmacKeyB64)
-	if err != nil {
-		return err
-	}
-
-	if len(AESKey) != 32 || len(HMACKey) != 32 {
-		return errors.New("keys must be 32 bytes")
-	}
-
-	log.Println("Encryption keys loaded successfully")
+	log.Println("Unity CBC encryption system initialized with environment variables")
 	return nil
 }
 
-func EncryptAESGCM(plaintext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(AESKey)
+// =============================================================================
+// UNITY TEAM CBC IMPLEMENTATION (as requested)
+// WARNING: This implementation has security vulnerabilities:
+// 1. Fixed IV allows pattern analysis attacks
+// 2. No integrity protection - data can be tampered with
+// 3. No authentication - no way to verify data origin
+// 4. No replay protection - old requests can be replayed
+// 5. CBC mode is malleable - attackers can modify ciphertext
+// =============================================================================
+
+// EncryptToken encrypts a token using AES-CBC with fixed IV (Unity team's approach)
+// WARNING: This is INSECURE due to fixed IV and lack of integrity protection
+func EncryptToken(token string) (string, error) {
+	// Create AES cipher block
+	block, err := aes.NewCipher(encryptionKey)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
+	// Pad the token to a multiple of the block size
+	padding := aes.BlockSize - (len(token) % aes.BlockSize)
+	padtext := make([]byte, len(token)+padding)
+	copy(padtext, token)
+	for i := len(token); i < len(padtext); i++ {
+		padtext[i] = byte(padding)
 	}
 
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
+	// Encrypt the padded token
+	ciphertext := make([]byte, len(padtext))
+	mode := cipher.NewCBCEncrypter(block, encryptionIV)
+	mode.CryptBlocks(ciphertext, padtext)
 
-	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+	// Encode the ciphertext in Base64
+	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
+
+	return encodedCiphertext, nil
 }
 
-func DecryptAESGCM(ciphertext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(AESKey)
+// DecryptToken decrypts a token that was encrypted with EncryptToken
+// WARNING: This is INSECURE due to fixed IV and lack of integrity protection
+func DecryptToken(encryptedToken string) (string, error) {
+	// Decode Base64 ciphertext
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedToken)
+	if err != nil {
+		return "", errors.New("failed to decode ciphertext")
+	}
+
+	// Create AES cipher block
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Decrypt the ciphertext
+	mode := cipher.NewCBCDecrypter(block, encryptionIV)
+	plaintext := make([]byte, len(ciphertext))
+	mode.CryptBlocks(plaintext, ciphertext)
+
+	// Remove padding
+	padding := int(plaintext[len(plaintext)-1])
+	if padding < 1 || padding > aes.BlockSize {
+		return "", errors.New("invalid padding")
+	}
+
+	return string(plaintext[:len(plaintext)-padding]), nil
+}
+
+// =============================================================================
+// SIMPLE CBC REQUEST/RESPONSE FUNCTIONS (Unity-compatible)
+// These functions use the Unity team's CBC approach for full request/response
+// =============================================================================
+
+// DecryptRequestCBC decrypts a request using Unity's CBC approach
+// WARNING: This bypasses all security features (HMAC, timestamp, nonce)
+func DecryptRequestCBC(body []byte) ([]byte, error) {
+	// For Unity's simple approach, we expect just the encrypted JSON directly
+	// No SecurePackage wrapper, no HMAC, no timestamp validation
+
+	decryptedData, err := DecryptToken(string(body))
 	if err != nil {
 		return nil, err
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	return []byte(decryptedData), nil
+}
+
+// EncryptResponseCBC encrypts a response using Unity's CBC approach
+// WARNING: This bypasses all security features (HMAC, timestamp, nonce)
+func EncryptResponseCBC(data interface{}) ([]byte, error) {
+	// Convert response to JSON
+	responseJSON, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
-	nonceSize := gcm.NonceSize()
-	if len(ciphertext) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	return gcm.Open(nil, nonce, ciphertext, nil)
-}
-
-func CreateHMAC(data []byte) string {
-	h := hmac.New(sha256.New, HMACKey)
-	h.Write(data)
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
-}
-
-func VerifyHMAC(data []byte, signature string) bool {
-	expected := CreateHMAC(data)
-	return subtle.ConstantTimeCompare([]byte(expected), []byte(signature)) == 1
-}
-
-func DecryptRequest(body []byte) ([]byte, string, error) {
-	var pkg SecurePackage
-	if err := json.Unmarshal(body, &pkg); err != nil {
-		return nil, "", err
-	}
-
-	encryptedData, err := base64.StdEncoding.DecodeString(pkg.Data)
-	if err != nil {
-		return nil, "", err
-	}
-
-	if !VerifyHMAC(encryptedData, pkg.Signature) {
-		return nil, "", errors.New("HMAC verification failed")
-	}
-
-	decryptedData, err := DecryptAESGCM(encryptedData)
-	if err != nil {
-		return nil, "", err
-	}
-
-	var envelope SecureEnvelope
-	if err := json.Unmarshal(decryptedData, &envelope); err != nil {
-		return nil, "", err
-	}
-
-	if time.Now().UnixMilli()-envelope.Timestamp > RequestExpirationWindow {
-		return nil, "", errors.New("request expired")
-	}
-
-	return []byte(envelope.Payload), envelope.Nonce, nil
-}
-
-func EncryptResponse(data interface{}, nonce string) ([]byte, error) {
-	responseJSON, _ := json.Marshal(data)
-
-	envelope := SecureEnvelope{
-		Timestamp: time.Now().UnixMilli(),
-		Nonce:     nonce,
-		Payload:   string(responseJSON),
-	}
-
-	envelopeJSON, _ := json.Marshal(envelope)
-	encryptedData, err := EncryptAESGCM(envelopeJSON)
+	// Encrypt using Unity's CBC approach
+	encryptedData, err := EncryptToken(string(responseJSON))
 	if err != nil {
 		return nil, err
 	}
 
-	signature := CreateHMAC(encryptedData)
-
-	pkg := SecurePackage{
-		Data:      base64.StdEncoding.EncodeToString(encryptedData),
-		Signature: signature,
-	}
-
-	return json.Marshal(pkg)
+	// Return as plain string (no SecurePackage wrapper)
+	return []byte(encryptedData), nil
 }

@@ -93,10 +93,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		rtp = 0.9
 		log.Printf("Using default RTP: %v", rtp)
 
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
 		// Send to Joe's endpoint with environment-aware label
 		go func() {
-			origin := c.Get("Origin")
-			log.Printf("🫠🫠Origin received: %v", origin)
 			label := "rng"
 			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
 				label = "rng-test"
@@ -176,10 +178,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	if rngErr != nil {
 		log.Printf("RNG API failed - sending Telegram notification")
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
 		// Send to Joe's endpoint with environment-aware label
 		go func() {
-			origin := c.Get("Origin")
-			log.Printf("🫠🫠Origin received: %v", origin)
 			label := "rng"
 			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
 				label = "rng-test"
@@ -253,10 +258,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		totalWinnings = 0
 		winDetails = nil
 
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
 		// Send loss update to Mosomi's endpoint with environment-aware URL
 		go func() {
-			origin := c.Get("Origin")
-			log.Printf("🫠🫠Origin received: %v", origin)
 			mosomiEndpoint := "https://admin-api.ibibe.africa/api/v1/update_loss"
 			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
 				mosomiEndpoint = "https://admin-api3.ibibe.africa/api/v1/update_loss"

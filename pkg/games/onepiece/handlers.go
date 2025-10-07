@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -389,6 +390,31 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			} else {
 				defer resp.Body.Close()
 
+				// Read entire response body once for logging/decoding
+				bodyBytes, readErr := io.ReadAll(resp.Body)
+				if readErr != nil {
+					log.Printf("Error reading bet update response body: %v", readErr)
+				}
+
+				contentType := resp.Header.Get("Content-Type")
+				statusCode := resp.StatusCode
+
+				if statusCode != http.StatusOK {
+					preview := string(bodyBytes)
+					if len(preview) > 300 {
+						preview = preview[:300] + "..."
+					}
+					log.Printf("Mosomi bet update non-200 status: %d, Content-Type: %s, Body: %s", statusCode, contentType, preview)
+				}
+
+				if !strings.Contains(strings.ToLower(contentType), "application/json") {
+					preview := string(bodyBytes)
+					if len(preview) > 300 {
+						preview = preview[:300] + "..."
+					}
+					log.Printf("Mosomi bet update returned non-JSON response. Content-Type: %s, Body: %s", contentType, preview)
+				}
+
 				// Parse the response to get the new wallet balance
 				var betUpdateResponse struct {
 					StatusCode       int     `json:"status_code"`
@@ -399,8 +425,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 					Status           string  `json:"status"`
 				}
 
-				if err := json.NewDecoder(resp.Body).Decode(&betUpdateResponse); err != nil {
-					log.Printf("Error decoding bet update response: %v", err)
+				if err := json.Unmarshal(bodyBytes, &betUpdateResponse); err != nil {
+					preview := string(bodyBytes)
+					if len(preview) > 300 {
+						preview = preview[:300] + "..."
+					}
+					log.Printf("Error decoding bet update response: %v. Body: %s", err, preview)
 				} else {
 					walletBalance = betUpdateResponse.NewWalletBalance
 					log.Printf("Bet update successful. New wallet balance: %v", walletBalance)

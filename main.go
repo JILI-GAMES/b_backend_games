@@ -6,6 +6,7 @@ import (
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/config"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/security"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/telegram"
 
@@ -37,6 +38,11 @@ import (
 func main() {
 	// Load both production and test configs
 	prodCfg, testCfg := config.LoadAll()
+
+	// Initialize encryption keys
+	if err := security.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize encryption: %v", err)
+	}
 
 	// Set up logging with lumberjack for daily rotation and 1 day retention (use prod config for log file)
 	log.SetOutput(&lumberjack.Logger{

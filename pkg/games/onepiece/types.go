@@ -62,6 +62,7 @@ type SpinResponse struct {
 	FreeSpinMultiplier    int         `json:"free_spin_multiplier"`
 	TotalFreeSpinsAwarded int         `json:"total_free_spins_awarded"`
 	FreeSpinOption        int         `json:"free_spin_option"`
+	WalletBalance         float64     `json:"wallet_balance"`
 }
 
 // SelectFreeSpinOptionRequest represents the request body for the /select-free-spin-option endpoint

@@ -10,8 +10,6 @@ import (
 	"os"
 )
 
-// Unity CBC encryption keys loaded from environment variables
-// WARNING: Fixed IV is a security vulnerability - should be random for each encryption
 var (
 	encryptionKey []byte
 	encryptionIV  []byte
@@ -45,18 +43,7 @@ func Initialize() error {
 	return nil
 }
 
-// =============================================================================
-// UNITY TEAM CBC IMPLEMENTATION (as requested)
-// WARNING: This implementation has security vulnerabilities:
-// 1. Fixed IV allows pattern analysis attacks
-// 2. No integrity protection - data can be tampered with
-// 3. No authentication - no way to verify data origin
-// 4. No replay protection - old requests can be replayed
-// 5. CBC mode is malleable - attackers can modify ciphertext
-// =============================================================================
-
-// EncryptToken encrypts a token using AES-CBC with fixed IV (Unity team's approach)
-// WARNING: This is INSECURE due to fixed IV and lack of integrity protection
+// EncryptToken encrypts a token using AES-CBC with fixed IV
 func EncryptToken(token string) (string, error) {
 	// Create AES cipher block
 	block, err := aes.NewCipher(encryptionKey)
@@ -84,7 +71,6 @@ func EncryptToken(token string) (string, error) {
 }
 
 // DecryptToken decrypts a token that was encrypted with EncryptToken
-// WARNING: This is INSECURE due to fixed IV and lack of integrity protection
 func DecryptToken(encryptedToken string) (string, error) {
 	// Decode Base64 ciphertext
 	ciphertext, err := base64.StdEncoding.DecodeString(encryptedToken)
@@ -112,17 +98,8 @@ func DecryptToken(encryptedToken string) (string, error) {
 	return string(plaintext[:len(plaintext)-padding]), nil
 }
 
-// =============================================================================
-// SIMPLE CBC REQUEST/RESPONSE FUNCTIONS (Unity-compatible)
-// These functions use the Unity team's CBC approach for full request/response
-// =============================================================================
-
 // DecryptRequestCBC decrypts a request using Unity's CBC approach
-// WARNING: This bypasses all security features (HMAC, timestamp, nonce)
 func DecryptRequestCBC(body []byte) ([]byte, error) {
-	// For Unity's simple approach, we expect just the encrypted JSON directly
-	// No SecurePackage wrapper, no HMAC, no timestamp validation
-
 	decryptedData, err := DecryptToken(string(body))
 	if err != nil {
 		return nil, err
@@ -132,7 +109,6 @@ func DecryptRequestCBC(body []byte) ([]byte, error) {
 }
 
 // EncryptResponseCBC encrypts a response using Unity's CBC approach
-// WARNING: This bypasses all security features (HMAC, timestamp, nonce)
 func EncryptResponseCBC(data interface{}) ([]byte, error) {
 	// Convert response to JSON
 	responseJSON, err := json.Marshal(data)
@@ -146,6 +122,6 @@ func EncryptResponseCBC(data interface{}) ([]byte, error) {
 		return nil, err
 	}
 
-	// Return as plain string (no SecurePackage wrapper)
+	// Return as plain string
 	return []byte(encryptedData), nil
 }

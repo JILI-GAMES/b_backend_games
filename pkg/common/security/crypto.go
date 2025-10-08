@@ -33,10 +33,10 @@ func Initialize() error {
 
 	// Validate key and IV lengths
 	if len(encryptionKey) != 16 {
-		return errors.New("Unity CBC encryption key must be 16 bytes")
+		return errors.New("unity CBC encryption key must be 16 bytes")
 	}
 	if len(encryptionIV) != 16 {
-		return errors.New("Unity CBC encryption IV must be 16 bytes")
+		return errors.New("unity CBC encryption IV must be 16 bytes")
 	}
 
 	log.Println("Unity CBC encryption system initialized with environment variables")

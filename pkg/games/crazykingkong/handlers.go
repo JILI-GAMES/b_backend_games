@@ -201,6 +201,8 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 			Message: "Failed to retrieve RNG outcome: " + err.Error(),
 		})
 	}
+	// print full rng response 
+	log.Printf("RNG outcome: %+v", rngResp)
 
 	// Apply the RNG outcome for bonus game
 	winAmount := potentialWin

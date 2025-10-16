@@ -101,7 +101,7 @@ func main() {
 	magicAceRoutes := magicace.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	magicAceRoutes.Register(app)
 
-	moneyBagsMan2Routes := moneybagsman2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	moneyBagsMan2Routes := moneybagsman2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest, telegramClient)
 	moneyBagsMan2Routes.Register(app)
 
 	moneyBagsManRoutes := moneybagsman.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)

@@ -1,10 +1,16 @@
 package moneybagsman2
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
+	"net/http"
+	"strings"
+	"time"
 
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -59,15 +65,75 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
 	// Get RTP
-	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
-	if err != nil {
-		log.Printf("Failed to get RTP: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to retrieve game settings",
-		})
+	rtp, settingsErr := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	if settingsErr != nil {
+		log.Printf("Failed to get RTP: %v", settingsErr)
+		rtp = 0.9
+		log.Printf("Using default RTP: %v", rtp)
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
+		// Send to Joe's endpoint with environment-aware label
+		go func() {
+			label := "rng"
+			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
+				label = "rng-test"
+			}
+
+			joePayload := map[string]interface{}{
+				"endpoint":     "https://t2.ibibe.africa/get-game-settings",
+				"label":        label,
+				"status":       "fail",
+				"other_status": "settings api fail",
+				"source":       "moneybagsman2",
+				"time":         time.Now().Format("2006-01-02T15:04"),
+			}
+
+			jsonData, err := json.Marshal(joePayload)
+			if err != nil {
+				log.Printf("Error marshaling Joe notification payload: %v", err)
+				return
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending notification to Joe's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent notification to Joe's endpoint")
+			}
+		}()
+
+		if rg.Telegram != nil {
+			notificationText := fmt.Sprintf(`
+🚨 <b>Settings API Failure Alert Money Bags Man 2</b> 🚨
+
+<b>Game:</b> %s
+<b>Client ID:</b> %s
+<b>Player ID:</b> %s
+<b>Bet ID:</b> %s
+<b>Timestamp:</b> %s
+
+<b>Error:</b> Settings(RTP) API failed: %v
+
+<b>Action Taken:</b> Using default RTP (0.9) and forcing loss outcome
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), settingsErr)
+
+			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
+				log.Printf("Failed to send Telegram notification: %v", telegramErr)
+			}
+		} else {
+			log.Printf("Telegram client not configured - cannot send notification")
+		}
 	}
-	log.Printf("RTP retrieved: %v", rtp)
 
 	// Get IP address and user agent from request
 	ip := c.IP()
@@ -77,14 +143,93 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	log.Printf("✅User-Agent: %v", userAgent)
 
 	// Call RNG
-	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
-	if err != nil {
-		log.Printf("Failed to call RNG API: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to determine outcome",
-		})
+	var rngResp rng.Response
+	var rngErr error
+	if settingsErr == nil {
+		rngResp, rngErr = rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
+		if rngErr != nil {
+			log.Printf("Failed to call RNG API: %v", rngErr)
+		}
+	} else {
+		rngResp = rng.Response{PrefOutcome: "loss"}
+		rngErr = nil
+		log.Printf("‼️‼️‼️Forcing loss outcome due to settings API failure")
 	}
+
+	if rngErr != nil {
+		log.Printf("RNG API failed - sending Joe notification")
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
+		// Send to Joe's endpoint with environment-aware label
+		go func() {
+			label := "rng"
+			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
+				label = "rng-test"
+			}
+
+			log.Printf("Joe endpoint: %v", label)
+
+			joePayload := map[string]interface{}{
+				"endpoint":     "http://159.89.235.166:17003/api/proxy/rng/1",
+				"label":        label,
+				"status":       "fail",
+				"other_status": "rng api fail",
+				"source":       "moneybagsman2",
+				"time":         time.Now().Format("2006-01-02T15:04"),
+			}
+
+			jsonData, err := json.Marshal(joePayload)
+			if err != nil {
+				log.Printf("Error marshaling Joe notification payload: %v", err)
+				return
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending notification to Joe's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent notification to Joe's endpoint")
+			}
+		}()
+
+		if rg.Telegram != nil {
+			notificationText := fmt.Sprintf(`
+🚨 <b>RNG API Failure Alert Money Bags Man 2</b> 🚨
+
+<b>Game:</b> %s
+<b>Client ID:</b> %s
+<b>Player ID:</b> %s
+<b>Bet ID:</b> %s
+<b>Timestamp:</b> %s
+
+<b>Error:</b> RNG(Outcome) API failed: %v
+
+<b>Action Taken:</b> Forcing loss outcome to continue game
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), rngErr)
+
+			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
+				log.Printf("Failed to send Telegram notification: %v", telegramErr)
+			}
+		} else {
+			log.Printf("Telegram client not configured - cannot send notification")
+		}
+
+		rngResp = rng.Response{PrefOutcome: "loss"}
+		rngErr = nil
+		log.Printf("‼️‼️‼️Forcing loss outcome due to RNG API failure")
+	}
+
+	log.Printf("RTP retrieved: %v", rtp)
 	log.Printf("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
@@ -93,6 +238,45 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		reels = GenerateLossReels()
 		totalWinnings = 0
 		winDetails = nil
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
+		// Send loss update to Mosomi's endpoint with environment-aware URL
+		go func() {
+			mosomiEndpoint := "https://admin-api.ibibe.africa/api/v1/update_loss"
+			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
+				mosomiEndpoint = "https://admin-api3.ibibe.africa/api/v1/update_loss"
+			}
+
+			log.Printf("Mosomi endpoint: %v", mosomiEndpoint)
+
+			lossPayload := map[string]interface{}{
+				"bet_id":     req.BetID,
+				"bet_status": "lost",
+				"client_id":  req.ClientID,
+			}
+			jsonData, err := json.Marshal(lossPayload)
+			if err != nil {
+				log.Printf("Error marshaling loss payload: %v", err)
+				return
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Post(mosomiEndpoint, "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending loss update to Mosomi's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Mosomi's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent loss update to Mosomi's endpoint")
+			}
+		}()
 	}
 
 	// Count Scatters and check for Free Spin Bonus trigger/retrigger

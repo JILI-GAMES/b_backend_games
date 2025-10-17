@@ -11,7 +11,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 	// Parse the request
 	var req CrushRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Info("Error parsing request body: %v", err)
+		rg.GameLogger.Debug("Error parsing request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(CrushResponse{
 			Status:  "error",
 			Message: "Invalid request body",
@@ -20,7 +20,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 
 	// Validate the request
 	if req.ClientID == "" || req.PlayerID == "" || req.BetID == "" || req.GameID == "" {
-		rg.GameLogger.Info("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
+		rg.GameLogger.Debug("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
 		return c.Status(fiber.StatusBadRequest).JSON(CrushResponse{
 			Status:  "error",
 			Message: "ClientID, PlayerID, BetID, GameID must not be empty",
@@ -28,7 +28,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 	}
 
 	if !ValidateBetAmount(req.BetAmount) {
-		rg.GameLogger.Info("Validation error: Invalid bet amount %f", req.BetAmount)
+		rg.GameLogger.Debug("Validation error: Invalid bet amount %f", req.BetAmount)
 		return c.Status(fiber.StatusBadRequest).JSON(CrushResponse{
 			Status:  "error",
 			Message: "Invalid bet amount, allowed values are 0.5, 1, 2, 4, 5, 10, 20, 25, 50, 100",
@@ -36,7 +36,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 	}
 
 	if !ValidateBoulderType(req.BoulderType) {
-		rg.GameLogger.Info("Validation error: Invalid boulder type %s", req.BoulderType)
+		rg.GameLogger.Debug("Validation error: Invalid boulder type %s", req.BoulderType)
 		return c.Status(fiber.StatusBadRequest).JSON(CrushResponse{
 			Status:  "error",
 			Message: "Invalid boulder type, allowed values are gold, blue, red, white",
@@ -49,13 +49,13 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 	// Call the Settings API to get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Error retrieving game settings: %v", err)
+		rg.GameLogger.Debug("Error retrieving game settings: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(CrushResponse{
 			Status:  "error",
 			Message: "Failed to retrieve game settings: " + err.Error(),
 		})
 	}
-	rg.GameLogger.Info("Retrieved RTP: %f", rtp)
+	rg.GameLogger.Debug("Retrieved RTP: %f", rtp)
 
 	// Generate potential multiplier for the chosen boulder
 	multiplier := GenerateBoulderMultiplier(req.BoulderType)
@@ -74,7 +74,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Info("Error retrieving RNG outcome: %v", err)
+		rg.GameLogger.Debug("Error retrieving RNG outcome: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(CrushResponse{
 			Status:  "error",
 			Message: "Failed to retrieve RNG outcome: " + err.Error(),
@@ -100,10 +100,10 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 		if bonusTriggered {
 			availableStones = GenerateAvailableStones()
 			responseMessage = "Boulder crushed! Bonus game triggered - choose a stone!"
-			rg.GameLogger.Info("Bonus game triggered! Available stones: %v", availableStones)
+			rg.GameLogger.Debug("Bonus game triggered! Available stones: %v", availableStones)
 		}
 
-		rg.GameLogger.Info("Boulder broken! Multiplier: %f, Win amount: %f", multiplier, winAmount)
+		rg.GameLogger.Debug("Boulder broken! Multiplier: %f, Win amount: %f", multiplier, winAmount)
 	} else {
 		// Boulder doesn't break - player loses bet
 		boulderBroken = false
@@ -113,7 +113,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 		bonusTriggered = false
 		availableStones = nil
 
-		rg.GameLogger.Info("Boulder didn't break - no win")
+		rg.GameLogger.Debug("Boulder didn't break - no win")
 	}
 
 	// Build the response
@@ -136,7 +136,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 	// Parse the request
 	var req BonusGameRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Info("Error parsing request body: %v", err)
+		rg.GameLogger.Debug("Error parsing request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(BonusGameResponse{
 			Status:  "error",
 			Message: "Invalid request body",
@@ -145,7 +145,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 
 	// Validate the request
 	if req.ClientID == "" || req.PlayerID == "" || req.BetID == "" || req.GameID == "" {
-		rg.GameLogger.Info("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
+		rg.GameLogger.Debug("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
 		return c.Status(fiber.StatusBadRequest).JSON(BonusGameResponse{
 			Status:  "error",
 			Message: "ClientID, PlayerID, BetID, GameID must not be empty",
@@ -153,7 +153,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 	}
 
 	if !ValidateBetAmount(req.BetAmount) {
-		rg.GameLogger.Info("Validation error: Invalid bet amount %f", req.BetAmount)
+		rg.GameLogger.Debug("Validation error: Invalid bet amount %f", req.BetAmount)
 		return c.Status(fiber.StatusBadRequest).JSON(BonusGameResponse{
 			Status:  "error",
 			Message: "Invalid bet amount, allowed values are 0.5, 1, 2, 4, 5, 10, 20, 25, 50, 100",
@@ -161,7 +161,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 	}
 
 	if !ValidateStoneType(req.StoneType) {
-		rg.GameLogger.Info("Validation error: Invalid stone type %s", req.StoneType)
+		rg.GameLogger.Debug("Validation error: Invalid stone type %s", req.StoneType)
 		return c.Status(fiber.StatusBadRequest).JSON(BonusGameResponse{
 			Status:  "error",
 			Message: "Invalid stone type, allowed values are gold, silver, bronze",
@@ -174,7 +174,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 	// Call the Settings API to get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Error retrieving game settings: %v", err)
+		rg.GameLogger.Debug("Error retrieving game settings: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(BonusGameResponse{
 			Status:  "error",
 			Message: "Failed to retrieve game settings: " + err.Error(),
@@ -195,7 +195,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Info("Error retrieving RNG outcome: %v", err)
+		rg.GameLogger.Debug("Error retrieving RNG outcome: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(BonusGameResponse{
 			Status:  "error",
 			Message: "Failed to retrieve RNG outcome: " + err.Error(),
@@ -211,9 +211,9 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 		multiplierRange := StoneMultipliers[req.StoneType]
 		multiplier = multiplierRange.Min
 		winAmount = req.BetAmount * multiplier
-		rg.GameLogger.Info("Bonus game loss - reduced to minimum multiplier: %f", multiplier)
+		rg.GameLogger.Debug("Bonus game loss - reduced to minimum multiplier: %f", multiplier)
 	} else {
-		rg.GameLogger.Info("Bonus game win - full multiplier: %f", multiplier)
+		rg.GameLogger.Debug("Bonus game win - full multiplier: %f", multiplier)
 
 	}
 

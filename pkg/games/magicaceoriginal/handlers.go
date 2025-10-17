@@ -76,7 +76,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Failed to get RTP: %v", err)
+		rg.GameLogger.Debug("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
@@ -95,7 +95,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Info("Failed to call RNG API: %v", err)
+		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
@@ -104,7 +104,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Info("RNG determined a loss outcome")
+		rg.GameLogger.Debug("RNG determined a loss outcome")
 		reels, specialSymbols = GenerateLossReels(req.GameState.JokerCards, r)
 		totalWinnings = 0
 		winDetails = nil
@@ -120,8 +120,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Update collector rounds if there are wins (BEFORE RNG call, only for initial spin wins)
 	hasWins := len(winDetails) > 0
-	rg.GameLogger.Info("✅Has wins: %v", hasWins)
-	rg.GameLogger.Info("✅Game mode: %v", req.GameState.GameMode)
+	rg.GameLogger.Debug("✅Has wins: %v", hasWins)
+	rg.GameLogger.Debug("✅Game mode: %v", req.GameState.GameMode)
 	if hasWins && req.GameState.GameMode == "base" {
 		UpdateBaseGameCollectorRounds(&req.GameState.BaseGameCollector, true)
 	}
@@ -131,7 +131,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Check for Free Spins trigger (3+ targets)
 	if req.GameState.GameMode == "base" && req.GameState.TargetCount >= 3 {
-		rg.GameLogger.Info("Free Spins triggered: %d target(s)", req.GameState.TargetCount)
+		rg.GameLogger.Debug("Free Spins triggered: %d target(s)", req.GameState.TargetCount)
 		req.GameState.GameMode = "freeSpins"
 		req.GameState.FreeSpins.Remaining = 10
 		req.GameState.FreeSpins.TotalAwarded = 10
@@ -143,7 +143,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	if req.GameState.GameMode == "freeSpins" {
 		req.GameState.FreeSpins.Remaining--
 		if req.GameState.FreeSpins.Remaining <= 0 {
-			rg.GameLogger.Info("Free Spins ended")
+			rg.GameLogger.Debug("Free Spins ended")
 			req.GameState.GameMode = "base"
 			req.GameState.FreeSpins = struct {
 				Remaining    int `json:"remaining"`
@@ -166,7 +166,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	rg.GameLogger.Info("Spin completed: totalWin=%v, cascading=%v, gameMode=%s, totalCost=%v", totalWinnings, req.GameState.Cascading, req.GameState.GameMode, totalCost)
+	rg.GameLogger.Debug("Spin completed: totalWin=%v, cascading=%v, gameMode=%s, totalCost=%v", totalWinnings, req.GameState.Cascading, req.GameState.GameMode, totalCost)
 
 	return c.JSON(SpinResponse{
 		Status:     "success",
@@ -201,7 +201,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Validate reels
 	if len(req.GameState.Reels) != Reels || len(req.GameState.Reels[0]) != Rows {
-		rg.GameLogger.Info("Invalid reels dimensions")
+		rg.GameLogger.Debug("Invalid reels dimensions")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid reels",
@@ -219,7 +219,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		req.GameState.FreeSpinsCollector,
 	)
 
-	rg.GameLogger.Info("Updated Booming Multiplier: %d (Cascade %d)", req.GameState.BoomingMultiplier, req.GameState.CascadeCount)
+	rg.GameLogger.Debug("Updated Booming Multiplier: %d (Cascade %d)", req.GameState.BoomingMultiplier, req.GameState.CascadeCount)
 
 	// Create a single rand.Rand instance for this request
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -246,26 +246,26 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// STEP 3: Transform Golden Cards if present in the last win
 	if hasGoldenCards {
-		rg.GameLogger.Info("Processing golden cards: Transforming golden cards to jokers")
+		rg.GameLogger.Debug("Processing golden cards: Transforming golden cards to jokers")
 		newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, r)
 
 		// Add new jokers to the game state
 		req.GameState.JokerCards = append(req.GameState.JokerCards, newJokerCards...)
 		req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
 
-		rg.GameLogger.Info("Transformed %d Golden Cards into Joker Cards", len(newJokerCards))
+		rg.GameLogger.Debug("Transformed %d Golden Cards into Joker Cards", len(newJokerCards))
 
 		// CRITICAL: Ensure reels show 'wild' at joker positions immediately
 		for _, joker := range newJokerCards {
 			req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
-			rg.GameLogger.Info("Set position %d,%d to 'wild' for new joker", joker.Position.Reel, joker.Position.Row)
+			rg.GameLogger.Debug("Set position %d,%d to 'wild' for new joker", joker.Position.Reel, joker.Position.Row)
 		}
 
-		rg.GameLogger.Info("✅New joker cards: %v", newJokerCards)
+		rg.GameLogger.Debug("✅New joker cards: %v", newJokerCards)
 
 		// Count Super Jokers and update collectors
 		superJokerCount := CountSuperJokers(newJokerCards)
-		rg.GameLogger.Info("✅Super Jokers count: %d", superJokerCount)
+		rg.GameLogger.Debug("✅Super Jokers count: %d", superJokerCount)
 		if superJokerCount > 0 {
 			if req.GameState.GameMode == "base" {
 				UpdateBaseGameCollector(&req.GameState.BaseGameCollector, superJokerCount)
@@ -281,14 +281,14 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	for _, win := range req.GameState.LastWinDetails {
 		for i, pos := range win.Payline {
 			if !seenPositions[pos] {
-				rg.GameLogger.Info("Symbol to replace: %s at position %d,%d", win.Symbols[i], pos.Reel, pos.Row)
+				rg.GameLogger.Debug("Symbol to replace: %s at position %d,%d", win.Symbols[i], pos.Reel, pos.Row)
 				winningPositions[pos] = true
 				seenPositions[pos] = true
 			}
 		}
 	}
 
-	rg.GameLogger.Info("Winning positions before generation: %v", winningPositions)
+	rg.GameLogger.Debug("Winning positions before generation: %v", winningPositions)
 
 	// STEP 5: Generate new symbols for the cascade (this now handles joker removal internally)
 	newReels, specialSymbols, remainingJokers := GenerateReelsForCascade(
@@ -300,20 +300,20 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		r,
 	)
 
-	rg.GameLogger.Info("New reels after generation: %v", newReels)
-	rg.GameLogger.Info("Remaining jokers after generation: %v", remainingJokers)
+	rg.GameLogger.Debug("New reels after generation: %v", newReels)
+	rg.GameLogger.Debug("Remaining jokers after generation: %v", remainingJokers)
 
 	// STEP 6: Calculate new wins using the UPDATED joker array and reels
 	payout, winDetails := CalculateWins(newReels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, remainingJokers)
 
-	rg.GameLogger.Info("Calculated payout: %v, winDetails: %v", payout, winDetails)
+	rg.GameLogger.Debug("Calculated payout: %v, winDetails: %v", payout, winDetails)
 
 	// NOTE: Do NOT update collector rounds during cascades - only on initial spin wins
 
 	// STEP 7: Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Failed to get RTP: %v", err)
+		rg.GameLogger.Debug("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
@@ -330,7 +330,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	rg.GameLogger.Debug("User-Agent: %v", userAgent)
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Info("Failed to call RNG API: %v", err)
+		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
@@ -339,7 +339,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// STEP 9: Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Info("RNG determined a loss outcome")
+		rg.GameLogger.Debug("RNG determined a loss outcome")
 		newReels, specialSymbols, remainingJokers = GenerateLossForCascade(
 			req.GameState.Reels,
 			winningPositions,
@@ -350,8 +350,8 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		)
 		payout = 0
 		winDetails = nil
-		rg.GameLogger.Info("Loss reels: %v", newReels)
-		rg.GameLogger.Info("Loss remaining jokers: %v", remainingJokers)
+		rg.GameLogger.Debug("Loss reels: %v", newReels)
+		rg.GameLogger.Debug("Loss remaining jokers: %v", remainingJokers)
 	}
 
 	// STEP 10: Update game state with final values
@@ -368,7 +368,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// STEP 12: Check for Free Spins triggering from base game during a cascade
 	if req.GameState.GameMode == "base" && req.GameState.TargetCount >= 3 {
-		rg.GameLogger.Info("Free Spins triggered during cascade: %d target(s)", req.GameState.TargetCount)
+		rg.GameLogger.Debug("Free Spins triggered during cascade: %d target(s)", req.GameState.TargetCount)
 		req.GameState.GameMode = "freeSpins"
 		req.GameState.FreeSpins.Remaining = 10
 		req.GameState.FreeSpins.TotalAwarded = 10
@@ -381,10 +381,10 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		req.GameState.FreeSpins.Remaining += additionalSpins
 		req.GameState.FreeSpins.TotalAwarded += additionalSpins
 		req.GameState.FreeSpins.Retriggers++
-		rg.GameLogger.Info("Free Spins retriggered in cascade: %d target(s), %d additional spins", req.GameState.TargetCount, additionalSpins)
+		rg.GameLogger.Debug("Free Spins retriggered in cascade: %d target(s), %d additional spins", req.GameState.TargetCount, additionalSpins)
 	}
 
-	rg.GameLogger.Info("Cascade completed: totalWin=%v, cascading=%v, gameMode=%s",
+	rg.GameLogger.Debug("Cascade completed: totalWin=%v, cascading=%v, gameMode=%s",
 		req.GameState.TotalWin, req.GameState.Cascading, req.GameState.GameMode)
 
 	return c.JSON(CascadeResponse{
@@ -472,7 +472,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 	req.GameState.Cascading = false
 	req.GameState.LastWinDetails = []WinDetail{}
 
-	rg.GameLogger.Info("Feature Buy completed: cost=%.2f", cost)
+	rg.GameLogger.Debug("Feature Buy completed: cost=%.2f", cost)
 
 	return c.JSON(FeatureBuyResponse{
 		Status:     "success",

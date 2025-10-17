@@ -9,7 +9,7 @@ import (
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	var rowReq RowBasedSpinRequest
 	if err := c.BodyParser(&rowReq); err != nil {
-		rg.GameLogger.Info("Error parsing row-based request: %v", err)
+		rg.GameLogger.Debug("Error parsing row-based request: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  400,
 			"message": "Invalid request format",
@@ -98,7 +98,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	maxPayout := rowReq.BetAmount * 10000
 	if gs.AmountWon > maxPayout {
 		gs.AmountWon = maxPayout
-		rg.GameLogger.Info("Max payout reached: %v", maxPayout)
+		rg.GameLogger.Debug("Max payout reached: %v", maxPayout)
 	}
 
 	// Convert the internal reel-based game state to row-based for response

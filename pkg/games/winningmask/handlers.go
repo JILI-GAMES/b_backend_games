@@ -23,7 +23,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Get bet multiplier from bet amount
 	betMultiplier, err := getBetMultiplierFromAmount(req.BetAmount)
 	if err != nil {
-		rg.GameLogger.Info("Invalid bet amount: %v", err)
+		rg.GameLogger.Debug("Invalid bet amount: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -45,23 +45,23 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Failed to get RTP: %v", err)
+		rg.GameLogger.Debug("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
 		})
 	}
-	rg.GameLogger.Info("RTP retrieved: %v", rtp)
+	rg.GameLogger.Debug("RTP retrieved: %v", rtp)
 
 	var response SpinResponse
 
 	if req.IsFreeSpin {
-		rg.GameLogger.Info("Processing free spin %d with two-stage mask transformation logic", req.CurrentFreeSpinIndex+1)
+		rg.GameLogger.Debug("Processing free spin %d with two-stage mask transformation logic", req.CurrentFreeSpinIndex+1)
 
 		// Handle two-stage mask transformation for free spins
 		selectedScenario, err := HandleTwoStageMaskTransformation(betMultiplier, req, rngClient, rtp)
 		if err != nil {
-			rg.GameLogger.Info("Error in two-stage mask transformation: %v", err)
+			rg.GameLogger.Debug("Error in two-stage mask transformation: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to process mask transformation",
@@ -109,27 +109,27 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			}
 		}
 
-		rg.GameLogger.Info("Free spin result: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
+		rg.GameLogger.Debug("Free spin result: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
 			selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin,
 			selectedScenario.HasTransform, selectedScenario.MaskType)
 
 	} else {
-		rg.GameLogger.Info("Processing regular base game spin")
+		rg.GameLogger.Debug("Processing regular base game spin")
 
 		// Generate reels with a guaranteed win for base game
 		reels := GenerateReelsWithWin(false)
 
 		// Calculate winnings for base game (no mask transformation in base game)
 		totalWinnings, winDetails, _, _, _ := CalculateWins(reels, betMultiplier, false)
-		rg.GameLogger.Info("Base game calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
+		rg.GameLogger.Debug("Base game calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
 
 		// Calculate payout multiplier (total_win / bet_amount)
 		payoutMultiplier := totalWinnings / req.BetAmount
 		if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
 			payoutMultiplier = 0
-			rg.GameLogger.Info("Payout multiplier is NaN or Inf, setting to 0")
+			rg.GameLogger.Debug("Payout multiplier is NaN or Inf, setting to 0")
 		}
-		rg.GameLogger.Info("Payout multiplier: %v", payoutMultiplier)
+		rg.GameLogger.Debug("Payout multiplier: %v", payoutMultiplier)
 
 		// Get IP address and user agent from request
 		ip := c.IP()
@@ -141,17 +141,17 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Call RNG for base game
 		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 		if err != nil {
-			rg.GameLogger.Info("Failed to call RNG API: %v", err)
+			rg.GameLogger.Debug("Failed to call RNG API: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to determine outcome",
 			})
 		}
-		rg.GameLogger.Info("RNG response: %v", rngResp)
+		rg.GameLogger.Debug("RNG response: %v", rngResp)
 
 		// Adjust outcome based on RNG for base game
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome")
+			rg.GameLogger.Debug("RNG determined a loss outcome")
 			reels = GenerateLossReels(false)
 			totalWinnings = 0
 			winDetails = nil
@@ -191,10 +191,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	if HasBonusOnFirstThreeReels(response.Stage1Reels) {
 		if !req.IsFreeSpin {
 			freeSpinTriggered = true
-			rg.GameLogger.Info("Free Spin Bonus triggered")
+			rg.GameLogger.Debug("Free Spin Bonus triggered")
 		} else {
 			freeSpinRetriggered = true
-			rg.GameLogger.Info("Free Spin Bonus retriggered")
+			rg.GameLogger.Debug("Free Spin Bonus retriggered")
 		}
 	}
 
@@ -202,7 +202,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Note: Mask Reel Bonus does not appear in Free Spin Bonus
 	if !req.IsFreeSpin && HasMaskReelOnLastThreeReels(response.Stage1Reels) {
 		maskReelTriggered = true
-		rg.GameLogger.Info("Mask Reel Bonus triggered")
+		rg.GameLogger.Debug("Mask Reel Bonus triggered")
 	}
 
 	// Calculate bonus payout from Stage1 reels
@@ -212,7 +212,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
 		bonusWinAmount = bonusPayValue * totalBetAmount
 		bonusWinAmount = math.Round(bonusWinAmount*100) / 100
-		rg.GameLogger.Info("Bonus payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+		rg.GameLogger.Debug("Bonus payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
 			len(bonusPositions), bonusPayValue, betMultiplier, totalBetAmount, bonusWinAmount)
 	}
 
@@ -251,7 +251,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		currentFreeSpinIndex = 0
 		remainingFreeSpins = 0
 		totalFreeSpinsAwarded = 0
-		rg.GameLogger.Info("Free Spin Bonus ended")
+		rg.GameLogger.Debug("Free Spin Bonus ended")
 	}
 
 	// Complete the response with bonus and state information
@@ -268,7 +268,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	response.CurrentFreeSpinIndex = currentFreeSpinIndex
 	response.TotalFreeSpinsAwarded = totalFreeSpinsAwarded
 
-	rg.GameLogger.Info("Spin completed: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, maskReelTriggered=%v",
+	rg.GameLogger.Debug("Spin completed: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, maskReelTriggered=%v",
 		response.Stage1WinAmount, response.Stage2WinAmount, response.TotalWinAmount, response.MaskTransformationUsed,
 		freeSpinTriggered, freeSpinRetriggered, maskReelTriggered)
 
@@ -301,7 +301,7 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 	// Get RTP for mask bonus
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Failed to get RTP for mask bonus: %v", err)
+		rg.GameLogger.Debug("Failed to get RTP for mask bonus: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
@@ -316,7 +316,7 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 	// Calculate payout multiplier for RNG
 	payoutMultiplier := potentialWinAmount / req.BetAmount
 
-	rg.GameLogger.Info("Mask Reel Bonus RNG call: potentialMultiplier=%d, potentialWin=%v, payoutMultiplier=%v",
+	rg.GameLogger.Debug("Mask Reel Bonus RNG call: potentialMultiplier=%d, potentialWin=%v, payoutMultiplier=%v",
 		potentialMultiplier, potentialWinAmount, payoutMultiplier)
 
 	// Get IP address and user agent from request
@@ -329,14 +329,14 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 	// Call RNG to determine if we can award the full multiplier
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Info("Failed to call RNG API for mask bonus: %v", err)
+		rg.GameLogger.Debug("Failed to call RNG API for mask bonus: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine mask bonus outcome",
 		})
 	}
 
-	rg.GameLogger.Info("Mask Bonus RNG response: %v", rngResp)
+	rg.GameLogger.Debug("Mask Bonus RNG response: %v", rngResp)
 
 	var actualMultiplier int
 	var actualWinAmount float64
@@ -345,14 +345,14 @@ func (rg *RouteGroup) MaskReelBonusHandler(c *fiber.Ctx) error {
 		// Award the full potential multiplier
 		actualMultiplier = potentialMultiplier
 		actualWinAmount = potentialWinAmount
-		rg.GameLogger.Info("RNG approved full mask bonus: multiplier=%d, winAmount=%v", actualMultiplier, actualWinAmount)
+		rg.GameLogger.Debug("RNG approved full mask bonus: multiplier=%d, winAmount=%v", actualMultiplier, actualWinAmount)
 	} else {
 		// Award minimum multiplier (5x or 10x)
 		minMultipliers := []int{5, 10}
 		actualMultiplier = minMultipliers[rand.Intn(len(minMultipliers))]
 		actualWinAmount = float64(actualMultiplier) * req.BetAmount
 		actualWinAmount = math.Round(actualWinAmount*100) / 100
-		rg.GameLogger.Info("RNG declined full bonus, awarding minimum: multiplier=%d, winAmount=%v", actualMultiplier, actualWinAmount)
+		rg.GameLogger.Debug("RNG declined full bonus, awarding minimum: multiplier=%d, winAmount=%v", actualMultiplier, actualWinAmount)
 	}
 
 	return c.JSON(MaskReelBonusResponse{

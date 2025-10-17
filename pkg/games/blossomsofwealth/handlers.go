@@ -50,14 +50,14 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Check for free spin trigger - Silver Flowers on reels 0, 1, and 2
 	freeSpinTriggered := HasSilverFlowerOnEachFirstReel(reels)
 	if freeSpinTriggered {
-		rg.GameLogger.Info("Free Spin Bonus triggered: %d silver flowers", silverFlowerCount)
+		rg.GameLogger.Debug("Free Spin Bonus triggered: %d silver flowers", silverFlowerCount)
 	}
 
 	// Check for bonus multiplier - requires free spins triggered AND Gold Flower on reel 3
 	bonusMultiplier := 0
 	if !req.IsFreeSpin && CheckBonusMultiplierCondition(reels) {
 		bonusMultiplier = GenerateRandomBonusMultiplier()
-		rg.GameLogger.Info("Bonus Multiplier triggered: %dx (free spins + gold flower on reel 3)", bonusMultiplier)
+		rg.GameLogger.Debug("Bonus Multiplier triggered: %dx (free spins + gold flower on reel 3)", bonusMultiplier)
 	}
 
 	// Calculate winnings - if in free spin mode, apply the current free spin multiplier
@@ -74,7 +74,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Apply appropriate multiplier to calculate total potential win
 	totalWinnings, winDetails := CalculateWins(reels, betMultiplier, effectiveMultiplier, req.IsFreeSpin)
-	rg.GameLogger.Info("Initial calculation: totalWinnings=%v, winDetails=%v, effectiveMultiplier=%v",
+	rg.GameLogger.Debug("Initial calculation: totalWinnings=%v, winDetails=%v, effectiveMultiplier=%v",
 		totalWinnings, winDetails, effectiveMultiplier)
 
 	// Select correct clients for this request
@@ -89,7 +89,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Capture values from context before starting goroutine
 		origin := c.Get("Origin")
-		rg.GameLogger.Info("🫠🫠Origin received: %v", origin)
+		rg.GameLogger.Debug("🫠🫠Origin received: %v", origin)
 
 		// Send to Joe's endpoint with environment-aware label
 		go func() {
@@ -109,22 +109,22 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 			jsonData, err := json.Marshal(joePayload)
 			if err != nil {
-				rg.GameLogger.Info("Error marshaling Joe notification payload: %v", err)
+				rg.GameLogger.Debug("Error marshaling Joe notification payload: %v", err)
 				return
 			}
 
 			client := &http.Client{Timeout: 10 * time.Second}
 			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
-				rg.GameLogger.Info("Error sending notification to Joe's endpoint: %v", err)
+				rg.GameLogger.Debug("Error sending notification to Joe's endpoint: %v", err)
 				return
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
-				rg.GameLogger.Info("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+				rg.GameLogger.Debug("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
 			} else {
-				rg.GameLogger.Info("Successfully sent notification to Joe's endpoint")
+				rg.GameLogger.Debug("Successfully sent notification to Joe's endpoint")
 			}
 		}()
 
@@ -144,10 +144,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), settingsErr)
 
 			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
-				rg.GameLogger.Info("Failed to send Telegram notification: %v", telegramErr)
+				rg.GameLogger.Debug("Failed to send Telegram notification: %v", telegramErr)
 			}
 		} else {
-			rg.GameLogger.Info("Telegram client not configured - cannot send notification")
+			rg.GameLogger.Debug("Telegram client not configured - cannot send notification")
 		}
 	}
 
@@ -155,9 +155,9 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	payoutMultiplier := totalWinnings / req.BetAmount
 	if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
 		payoutMultiplier = 0
-		rg.GameLogger.Info("Payout multiplier is NaN or Inf, setting to 0")
+		rg.GameLogger.Debug("Payout multiplier is NaN or Inf, setting to 0")
 	}
-	rg.GameLogger.Info("Payout multiplier: %v", payoutMultiplier)
+	rg.GameLogger.Debug("Payout multiplier: %v", payoutMultiplier)
 
 	// Call RNG with the total potential win (including all multipliers)
 	// Get IP address and user agent from request
@@ -177,15 +177,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	} else {
 		rngResp = rng.Response{PrefOutcome: "loss"}
 		rngErr = nil
-		rg.GameLogger.Info("‼️‼️‼️Forcing loss outcome due to settings API failure")
+		rg.GameLogger.Debug("‼️‼️‼️Forcing loss outcome due to settings API failure")
 	}
 
 	if rngErr != nil {
-		rg.GameLogger.Info("RNG API failed - sending Joe notification")
+		rg.GameLogger.Debug("RNG API failed - sending Joe notification")
 
 		// Capture values from context before starting goroutine
 		origin := c.Get("Origin")
-		rg.GameLogger.Info("🫠🫠Origin received: %v", origin)
+		rg.GameLogger.Debug("🫠🫠Origin received: %v", origin)
 
 		// Send to Joe's endpoint with environment-aware label
 		go func() {
@@ -194,7 +194,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				label = "rng-test"
 			}
 
-			rg.GameLogger.Info("Joe endpoint: %v", label)
+			rg.GameLogger.Debug("Joe endpoint: %v", label)
 
 			joePayload := map[string]interface{}{
 				"endpoint":     "http://159.89.235.166:17003/api/proxy/rng/1",
@@ -207,22 +207,22 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 			jsonData, err := json.Marshal(joePayload)
 			if err != nil {
-				rg.GameLogger.Info("Error marshaling Joe notification payload: %v", err)
+				rg.GameLogger.Debug("Error marshaling Joe notification payload: %v", err)
 				return
 			}
 
 			client := &http.Client{Timeout: 10 * time.Second}
 			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
-				rg.GameLogger.Info("Error sending notification to Joe's endpoint: %v", err)
+				rg.GameLogger.Debug("Error sending notification to Joe's endpoint: %v", err)
 				return
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
-				rg.GameLogger.Info("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+				rg.GameLogger.Debug("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
 			} else {
-				rg.GameLogger.Info("Successfully sent notification to Joe's endpoint")
+				rg.GameLogger.Debug("Successfully sent notification to Joe's endpoint")
 			}
 		}()
 
@@ -242,30 +242,30 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), rngErr)
 
 			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
-				rg.GameLogger.Info("Failed to send Telegram notification: %v", telegramErr)
+				rg.GameLogger.Debug("Failed to send Telegram notification: %v", telegramErr)
 			}
 		} else {
-			rg.GameLogger.Info("Telegram client not configured - cannot send notification")
+			rg.GameLogger.Debug("Telegram client not configured - cannot send notification")
 		}
 
 		rngResp = rng.Response{PrefOutcome: "loss"}
 		rngErr = nil
-		rg.GameLogger.Info("‼️‼️‼️Forcing loss outcome due to RNG API failure")
+		rg.GameLogger.Debug("‼️‼️‼️Forcing loss outcome due to RNG API failure")
 	}
 
-	rg.GameLogger.Info("RTP retrieved: %v", rtp)
-	rg.GameLogger.Info("RNG response: %v", rngResp)
+	rg.GameLogger.Debug("RTP retrieved: %v", rtp)
+	rg.GameLogger.Debug("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Info("RNG determined a loss outcome")
+		rg.GameLogger.Debug("RNG determined a loss outcome")
 		reels = GenerateLossReels()
 		totalWinnings = 0
 		winDetails = nil
 
 		// Capture values from context before starting goroutine
 		origin := c.Get("Origin")
-		rg.GameLogger.Info("🫠🫠Origin received: %v", origin)
+		rg.GameLogger.Debug("🫠🫠Origin received: %v", origin)
 
 		// Send loss update to Mosomi's endpoint with environment-aware URL
 		go func() {
@@ -274,7 +274,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				mosomiEndpoint = "https://admin-api3.ibibe.africa/api/v1/update_loss"
 			}
 
-			rg.GameLogger.Info("Mosomi endpoint: %v", mosomiEndpoint)
+			rg.GameLogger.Debug("Mosomi endpoint: %v", mosomiEndpoint)
 
 			lossPayload := map[string]interface{}{
 				"bet_id":     req.BetID,
@@ -283,22 +283,22 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			}
 			jsonData, err := json.Marshal(lossPayload)
 			if err != nil {
-				rg.GameLogger.Info("Error marshaling loss payload: %v", err)
+				rg.GameLogger.Debug("Error marshaling loss payload: %v", err)
 				return
 			}
 
 			client := &http.Client{Timeout: 10 * time.Second}
 			resp, err := client.Post(mosomiEndpoint, "application/json", bytes.NewBuffer(jsonData))
 			if err != nil {
-				rg.GameLogger.Info("Error sending loss update to Mosomi's endpoint: %v", err)
+				rg.GameLogger.Debug("Error sending loss update to Mosomi's endpoint: %v", err)
 				return
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
-				rg.GameLogger.Info("Mosomi's endpoint returned non-200 status: %d", resp.StatusCode)
+				rg.GameLogger.Debug("Mosomi's endpoint returned non-200 status: %d", resp.StatusCode)
 			} else {
-				rg.GameLogger.Info("Successfully sent loss update to Mosomi's endpoint")
+				rg.GameLogger.Debug("Successfully sent loss update to Mosomi's endpoint")
 			}
 		}()
 
@@ -312,14 +312,14 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Check for free spin trigger with strict Silver Flower requirements
 		freeSpinTriggered = HasSilverFlowerOnEachFirstReel(reels)
 		if freeSpinTriggered {
-			rg.GameLogger.Info("Free Spin Bonus triggered on loss: %d silver flowers", silverFlowerCount)
+			rg.GameLogger.Debug("Free Spin Bonus triggered on loss: %d silver flowers", silverFlowerCount)
 		}
 
 		// Check for bonus multiplier with strict conditions
 		bonusMultiplier = 0
 		if !req.IsFreeSpin && CheckBonusMultiplierCondition(reels) {
 			bonusMultiplier = GenerateRandomBonusMultiplier()
-			rg.GameLogger.Info("Bonus Multiplier triggered on loss: %dx (free spins + gold flower on reel 3)", bonusMultiplier)
+			rg.GameLogger.Debug("Bonus Multiplier triggered on loss: %dx (free spins + gold flower on reel 3)", bonusMultiplier)
 		}
 	}
 
@@ -353,7 +353,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			totalFreeSpinsAwarded = MaxTotalFreeSpins
 		}
 
-		rg.GameLogger.Info("Free Spin Bonus started with %d spins and multiplier %d",
+		rg.GameLogger.Debug("Free Spin Bonus started with %d spins and multiplier %d",
 			remainingFreeSpins, freeSpinMultiplier)
 		// Handle free spin retrigger during free spins
 	} else if freeSpinTriggered && req.IsFreeSpin {
@@ -372,7 +372,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			totalFreeSpinsAwarded = MaxTotalFreeSpins
 		}
 
-		rg.GameLogger.Info("Free Spin Bonus retriggered, adding %d spins. Total: %d",
+		rg.GameLogger.Debug("Free Spin Bonus retriggered, adding %d spins. Total: %d",
 			newFreeSpins, remainingFreeSpins)
 	}
 
@@ -387,7 +387,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			freeSpinMultiplier = req.FreeSpinMultiplier + 1
 		}
 
-		rg.GameLogger.Info("Free Spin in progress: spin=%d, remaining=%d, multiplier=%d",
+		rg.GameLogger.Debug("Free Spin in progress: spin=%d, remaining=%d, multiplier=%d",
 			currentFreeSpinIndex, remainingFreeSpins, freeSpinMultiplier)
 	}
 
@@ -396,10 +396,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		isFreeSpin = false
 		currentFreeSpinIndex = 0
 		freeSpinMultiplier = 0
-		rg.GameLogger.Info("Free Spin Bonus ended")
+		rg.GameLogger.Debug("Free Spin Bonus ended")
 	}
 
-	rg.GameLogger.Info("Spin completed: totalWin=%v, freeSpinTriggered=%v, isFreeSpin=%v, bonusMultiplier=%v",
+	rg.GameLogger.Debug("Spin completed: totalWin=%v, freeSpinTriggered=%v, isFreeSpin=%v, bonusMultiplier=%v",
 		totalWinnings, freeSpinTriggered, isFreeSpin, bonusMultiplier)
 
 	return c.JSON(SpinResponse{

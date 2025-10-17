@@ -43,7 +43,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	expectedGridSize := req.GameState.CurrentLevel.GetGridSize()
 	if req.GameState.GridSize != expectedGridSize {
 		req.GameState.GridSize = expectedGridSize
-		rg.GameLogger.Info("Corrected grid size to %d for level %d", expectedGridSize, req.GameState.CurrentLevel)
+		rg.GameLogger.Debug("Corrected grid size to %d for level %d", expectedGridSize, req.GameState.CurrentLevel)
 	}
 
 	// Create rand instance
@@ -71,7 +71,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	for i, cloverConnection := range cloverConnections {
 		// Upgrade multiplier first
 		UpgradeBoomingReels(&req.GameState)
-		rg.GameLogger.Info("Clover connection found (%d symbols), multiplier upgraded to %.1fx",
+		rg.GameLogger.Debug("Clover connection found (%d symbols), multiplier upgraded to %.1fx",
 			cloverConnection.Count, req.GameState.FreeSpins.CurrentMultiplier)
 
 		// Calculate clover payout - BASE VALUE ONLY, NO MULTIPLIER
@@ -121,7 +121,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Adjust outcome based on RNG
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome")
+			rg.GameLogger.Debug("RNG determined a loss outcome")
 			req.GameState.Grid = GenerateLossGrid(req.GameState.CurrentLevel, r, req.GameState.GameMode)
 
 			// Re-find stage-cleared symbols in loss grid
@@ -152,7 +152,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		req.GameState.GameMode = "freeSpins"
 		req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 		req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
-		rg.GameLogger.Info("Free Spins triggered by rainbow egg, current booming reels multiplier: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
+		rg.GameLogger.Debug("Free Spins triggered by rainbow egg, current booming reels multiplier: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
 	}
 
 	// Update free spins count (DELUXE: no re-triggering during free spins)
@@ -163,7 +163,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			// Reset free spins data but keep booming reels for this cascade sequence
 			req.GameState.FreeSpins.Remaining = 0
 			req.GameState.FreeSpins.TotalAwarded = 0
-			rg.GameLogger.Info("Free Spins ended, booming reels multiplier continues: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
+			rg.GameLogger.Debug("Free Spins ended, booming reels multiplier continues: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
 		}
 	}
 
@@ -178,7 +178,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Determine if we have stage-cleared symbols
 	hasStageCleared := len(stageClearedSymbols) > 0
 
-	rg.GameLogger.Info("Spin completed: level=%d, gridSize=%dx%d, stageClearedSymbols=%d, hasStageCleared=%v, cascading=%v, boomingReels=%.1fx, cloverConnections=%d, birdConnections=%d",
+	rg.GameLogger.Debug("Spin completed: level=%d, gridSize=%dx%d, stageClearedSymbols=%d, hasStageCleared=%v, cascading=%v, boomingReels=%.1fx, cloverConnections=%d, birdConnections=%d",
 		req.GameState.CurrentLevel, req.GameState.GridSize, req.GameState.GridSize,
 		len(stageClearedSymbols), hasStageCleared, req.GameState.Cascading, req.GameState.FreeSpins.CurrentMultiplier, len(cloverConnections), len(birdConnections))
 
@@ -259,7 +259,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		newPositions = ApplyGravitySurgical(req.GameState.Grid, stageClearedSymbols, req.GameState.CurrentLevel, r, req.GameState.GameMode)
 		// Update stage progress
 		req.GameState.StageProgress += len(stageClearedSymbols)
-		rg.GameLogger.Info("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
+		rg.GameLogger.Debug("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
 		// Check for level advancement
 		if req.GameState.StageProgress >= StageProgressTarget {
 			newLevel = AdvanceLevel(oldLevel)
@@ -275,7 +275,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 			// Generate new grid for the new level
 			req.GameState.Grid = GenerateGrid(newLevel, r, req.GameState.GameMode)
 			levelAdvanced = true
-			rg.GameLogger.Info("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
+			rg.GameLogger.Debug("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 
 			// --- NEW: Analyze the brand new grid for wins and special symbols ---
 			allConnections := FindAllConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -288,7 +288,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 			for i, cloverConnection := range cloverConnections {
 				// Upgrade multiplier first
 				UpgradeBoomingReels(&req.GameState)
-				rg.GameLogger.Info("Clover connection found on new level (%d symbols), multiplier upgraded to %.1fx",
+				rg.GameLogger.Debug("Clover connection found on new level (%d symbols), multiplier upgraded to %.1fx",
 					cloverConnection.Count, req.GameState.FreeSpins.CurrentMultiplier)
 
 				// Calculate clover payout - BASE VALUE ONLY, NO MULTIPLIER
@@ -312,7 +312,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 				req.GameState.GameMode = "freeSpins"
 				req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 				req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
-				rg.GameLogger.Info("Free Spins triggered on new level by rainbow egg, current booming reels multiplier: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
+				rg.GameLogger.Debug("Free Spins triggered on new level by rainbow egg, current booming reels multiplier: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
 			}
 
 			// Update game state for the response
@@ -346,7 +346,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 	for i, cloverConnection := range cloverConnections {
 		// Upgrade multiplier first
 		UpgradeBoomingReels(&req.GameState)
-		rg.GameLogger.Info("Clover connection found after stage-cleared processing (%d symbols), multiplier upgraded to %.1fx",
+		rg.GameLogger.Debug("Clover connection found after stage-cleared processing (%d symbols), multiplier upgraded to %.1fx",
 			cloverConnection.Count, req.GameState.FreeSpins.CurrentMultiplier)
 
 		// Calculate clover payout - BASE VALUE ONLY, NO MULTIPLIER
@@ -397,14 +397,14 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 		// SURGICAL LOSS: Adjust outcome based on RNG while preserving grid structure
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome for stage-cleared processing")
+			rg.GameLogger.Debug("RNG determined a loss outcome for stage-cleared processing")
 			// Try surgical loss approach first (only new positions)
 			success := ApplySurgicalLoss(&req.GameState, originalGrid, stageClearedSymbols, req.GameState.CurrentLevel, r, newPositions)
 			if !success {
 				// If surgical loss is impossible, bypass RNG and allow the win
-				rg.GameLogger.Info("⚠️  RNG BYPASS: Surgical loss impossible after stage-cleared processing - preserving natural outcome")
-				rg.GameLogger.Info("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
-				rg.GameLogger.Info("⚠️  REASON: Stage-cleared symbol removal at positions %+v made loss impossible", stageClearedSymbols)
+				rg.GameLogger.Debug("⚠️  RNG BYPASS: Surgical loss impossible after stage-cleared processing - preserving natural outcome")
+				rg.GameLogger.Debug("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
+				rg.GameLogger.Debug("⚠️  REASON: Stage-cleared symbol removal at positions %+v made loss impossible", stageClearedSymbols)
 				rngBypassed = true
 				// Keep the original connections and winnings
 				// Grid remains as it is after stage-cleared processing
@@ -414,7 +414,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 				birdConnections = nil
 				allConnections = nil // IMPORTANT: Clear allConnections when surgical loss is successful
 				totalWinnings = 0
-				rg.GameLogger.Info("Surgical loss applied successfully after stage-cleared processing (all paying connections)")
+				rg.GameLogger.Debug("Surgical loss applied successfully after stage-cleared processing (all paying connections)")
 
 				// IMPORTANT: Re-find connections in the modified grid to ensure consistency
 				allConnections = FindAllConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -442,7 +442,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	rg.GameLogger.Info(logMessage)
+	rg.GameLogger.Debug(logMessage)
 
 	return c.JSON(ProcessStageClearedResponse{
 		Status:            "success",
@@ -539,7 +539,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	for i, cloverConnection := range cloverConnections {
 		// Upgrade multiplier first
 		UpgradeBoomingReels(&req.GameState)
-		rg.GameLogger.Info("Clover connection found in cascade (%d symbols), multiplier upgraded to %.1fx",
+		rg.GameLogger.Debug("Clover connection found in cascade (%d symbols), multiplier upgraded to %.1fx",
 			cloverConnection.Count, req.GameState.FreeSpins.CurrentMultiplier)
 
 		// Calculate clover payout - BASE VALUE ONLY, NO MULTIPLIER
@@ -590,16 +590,16 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		// SURGICAL LOSS: Adjust outcome based on RNG while preserving grid structure
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome for cascade")
+			rg.GameLogger.Debug("RNG determined a loss outcome for cascade")
 
 			// Try surgical loss approach first (only new positions)
 			success := ApplySurgicalLossForCascade(&req.GameState, originalGrid, newPositions, req.GameState.CurrentLevel, r)
 
 			if !success {
 				// If surgical loss is impossible, bypass RNG and allow the win
-				rg.GameLogger.Info("⚠️  RNG BYPASS: Surgical loss impossible after cascade processing - preserving natural outcome")
-				rg.GameLogger.Info("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
-				rg.GameLogger.Info("⚠️  REASON: Cascade processing at %d positions made loss impossible", len(affectedPositions))
+				rg.GameLogger.Debug("⚠️  RNG BYPASS: Surgical loss impossible after cascade processing - preserving natural outcome")
+				rg.GameLogger.Debug("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
+				rg.GameLogger.Debug("⚠️  REASON: Cascade processing at %d positions made loss impossible", len(affectedPositions))
 				rngBypassed = true
 
 				// Keep the original connections and winnings
@@ -610,7 +610,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 				birdConnections = nil
 				allConnections = nil // IMPORTANT: Clear allConnections when surgical loss is successful
 				totalWinnings = 0
-				rg.GameLogger.Info("Surgical loss applied successfully after cascade processing (all paying connections)")
+				rg.GameLogger.Debug("Surgical loss applied successfully after cascade processing (all paying connections)")
 
 				// IMPORTANT: Re-find connections in the modified grid to ensure consistency
 				allConnections = FindAllConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -638,13 +638,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			req.GameState.GameMode = "freeSpins"
 			req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 			req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
-			rg.GameLogger.Info("Free Spins triggered during cascade by rainbow egg, current booming reels multiplier: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
+			rg.GameLogger.Debug("Free Spins triggered during cascade by rainbow egg, current booming reels multiplier: %.1fx", req.GameState.FreeSpins.CurrentMultiplier)
 		}
 	}
 
 	// DELUXE: If no more connections, reset booming reels (cascade sequence ends)
 	if len(allConnections) == 0 {
-		rg.GameLogger.Info("Cascade sequence ended, resetting booming reels from %.1fx to 1.0x", req.GameState.FreeSpins.CurrentMultiplier)
+		rg.GameLogger.Debug("Cascade sequence ended, resetting booming reels from %.1fx to 1.0x", req.GameState.FreeSpins.CurrentMultiplier)
 		ResetBoomingReels(&req.GameState)
 	}
 
@@ -661,7 +661,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	rg.GameLogger.Info("%s", logMessage)
+	rg.GameLogger.Debug("%s", logMessage)
 
 	return c.JSON(CascadeResponse{
 		Status:              "success",

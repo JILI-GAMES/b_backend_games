@@ -44,7 +44,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	expectedGridSize := req.GameState.CurrentLevel.GetGridSize()
 	if req.GameState.GridSize != expectedGridSize {
 		req.GameState.GridSize = expectedGridSize
-		rg.GameLogger.Info("Corrected grid size to %d for level %d", expectedGridSize, req.GameState.CurrentLevel)
+		rg.GameLogger.Debug("Corrected grid size to %d for level %d", expectedGridSize, req.GameState.CurrentLevel)
 	}
 
 	// Create rand instance
@@ -105,7 +105,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Adjust outcome based on RNG
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome")
+			rg.GameLogger.Debug("RNG determined a loss outcome")
 			forbidFreeGame := req.GameState.GameMode == "freeSpins"
 			req.GameState.Grid = GenerateLossGrid(req.GameState.CurrentLevel, r, forbidFreeGame)
 
@@ -131,7 +131,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 		req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
 		req.GameState.FreeSpins.Multiplier = GetRandomFreeSpinMultiplier(r)
-		rg.GameLogger.Info("Free Spins triggered with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
+		rg.GameLogger.Debug("Free Spins triggered with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
 	}
 
 	// Update free spins count
@@ -144,7 +144,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				TotalAwarded int     `json:"totalAwarded"`
 				Multiplier   float64 `json:"multiplier"`
 			}{0, 0, 1.0}
-			rg.GameLogger.Info("Free Spins ended")
+			rg.GameLogger.Debug("Free Spins ended")
 		}
 	}
 
@@ -159,7 +159,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Determine if we have stage-cleared symbols
 	hasStageCleared := len(stageClearedSymbols) > 0
 
-	rg.GameLogger.Info("Spin completed: level=%d, gridSize=%dx%d, stageClearedSymbols=%d, hasStageCleared=%v, cascading=%v",
+	rg.GameLogger.Debug("Spin completed: level=%d, gridSize=%dx%d, stageClearedSymbols=%d, hasStageCleared=%v, cascading=%v",
 		req.GameState.CurrentLevel, req.GameState.GridSize, req.GameState.GridSize,
 		len(stageClearedSymbols), hasStageCleared, req.GameState.Cascading)
 
@@ -242,7 +242,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		newPositions = ApplyGravitySurgical(req.GameState.Grid, stageClearedSymbols, req.GameState.CurrentLevel, r, req.GameState.GameMode == "freeSpins")
 		// Update stage progress
 		req.GameState.StageProgress += len(stageClearedSymbols)
-		rg.GameLogger.Info("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
+		rg.GameLogger.Debug("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
 		// Check for level advancement
 		if req.GameState.StageProgress >= StageProgressTarget {
 			newLevel = AdvanceLevel(oldLevel)
@@ -260,7 +260,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 			forbidFreeGame := req.GameState.GameMode == "freeSpins"
 			req.GameState.Grid = GenerateGrid(newLevel, r, forbidFreeGame)
 			levelAdvanced = true
-			rg.GameLogger.Info("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
+			rg.GameLogger.Debug("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 
 			// --- NEW: Analyze the brand new grid for wins, free spins, and special symbols ---
 			connections := FindRegularConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -282,7 +282,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 				req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 				req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
 				req.GameState.FreeSpins.Multiplier = GetRandomFreeSpinMultiplier(r)
-				rg.GameLogger.Info("Free Spins triggered on new level with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
+				rg.GameLogger.Debug("Free Spins triggered on new level with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
 				// Apply multiplier if free spins were just triggered
 				totalWinnings *= req.GameState.FreeSpins.Multiplier
 			}
@@ -354,7 +354,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 		// SURGICAL LOSS: Adjust outcome based on RNG while preserving grid structure
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome for stage-cleared processing")
+			rg.GameLogger.Debug("RNG determined a loss outcome for stage-cleared processing")
 			// Try surgical loss approach first (only new positions)
 			success := ApplySurgicalLoss(&req.GameState, originalGrid, stageClearedSymbols, req.GameState.CurrentLevel, r, newPositions)
 			if !success {
@@ -369,7 +369,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 				// Surgical loss successful - remove connections
 				connections = nil
 				totalWinnings = 0
-				rg.GameLogger.Info("Surgical loss applied successfully after stage-cleared processing (new only)")
+				rg.GameLogger.Debug("Surgical loss applied successfully after stage-cleared processing (new only)")
 			}
 		}
 	}
@@ -394,7 +394,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	rg.GameLogger.Info(logMessage)
+	rg.GameLogger.Debug(logMessage)
 
 	return c.JSON(ProcessStageClearedResponse{
 		Status:            "success",
@@ -525,7 +525,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		// SURGICAL LOSS: Adjust outcome based on RNG while preserving grid structure
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Info("RNG determined a loss outcome for cascade")
+			rg.GameLogger.Debug("RNG determined a loss outcome for cascade")
 
 			// Try surgical loss approach first (only new positions)
 			success := ApplySurgicalLossForCascade(&req.GameState, originalGrid, newPositions, req.GameState.CurrentLevel, r)
@@ -543,7 +543,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 				// Surgical loss successful - remove connections
 				connections = nil
 				totalWinnings = 0
-				rg.GameLogger.Info("Surgical loss applied successfully after cascade processing (new only)")
+				rg.GameLogger.Debug("Surgical loss applied successfully after cascade processing (new only)")
 			}
 		}
 	}
@@ -563,7 +563,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 			req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
 			req.GameState.FreeSpins.Multiplier = GetRandomFreeSpinMultiplier(r)
-			rg.GameLogger.Info("Free Spins triggered during cascade with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
+			rg.GameLogger.Debug("Free Spins triggered during cascade with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
 		}
 	}
 
@@ -580,7 +580,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	rg.GameLogger.Info(logMessage)
+	rg.GameLogger.Debug(logMessage)
 
 	return c.JSON(CascadeResponse{
 		Status:              "success",

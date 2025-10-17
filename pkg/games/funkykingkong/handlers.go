@@ -11,7 +11,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Parse the request
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Info("Error parsing request body: %v", err)
+		rg.GameLogger.Debug("Error parsing request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
 			Status:  "error",
 			Message: "Invalid request body",
@@ -20,7 +20,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Validate the request
 	if req.ClientID == "" || req.PlayerID == "" || req.BetID == "" || req.GameID == "" {
-		rg.GameLogger.Info("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
+		rg.GameLogger.Debug("Validation error: ClientID, PlayerID, BetID, GameID must not be empty")
 		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
 			Status:  "error",
 			Message: "ClientID, PlayerID, BetID, GameID must not be empty",
@@ -28,7 +28,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	}
 
 	if !ValidateBetLevel(req.BetLevel) {
-		rg.GameLogger.Info("Validation error: Invalid bet level %d", req.BetLevel)
+		rg.GameLogger.Debug("Validation error: Invalid bet level %d", req.BetLevel)
 		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
 			Status:  "error",
 			Message: "Invalid bet level, allowed values are 1, 2, 3",
@@ -37,7 +37,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	if !ValidateBetAmount(req.BetAmount, req.BetLevel) {
 		validAmounts := GetValidBetAmounts(req.BetLevel)
-		rg.GameLogger.Info("Validation error: Invalid bet amount %f for level %d", req.BetAmount, req.BetLevel)
+		rg.GameLogger.Debug("Validation error: Invalid bet amount %f for level %d", req.BetAmount, req.BetLevel)
 		return c.Status(fiber.StatusBadRequest).JSON(SpinResponse{
 			Status:  "error",
 			Message: fmt.Sprintf("Invalid bet amount for level x%d, valid amounts: %v", req.BetLevel, validAmounts),
@@ -50,13 +50,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Call the Settings API to get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Info("Error retrieving game settings: %v", err)
+		rg.GameLogger.Debug("Error retrieving game settings: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(SpinResponse{
 			Status:  "error",
 			Message: "Failed to retrieve game settings: " + err.Error(),
 		})
 	}
-	rg.GameLogger.Info("Retrieved RTP: %f", rtp)
+	rg.GameLogger.Debug("Retrieved RTP: %f", rtp)
 
 	// Generate guaranteed winning combination first
 	internalMultiplier := GetInternalMultiplier(req.BetAmount, req.BetLevel)
@@ -69,27 +69,27 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		payoutMultiplier = potentialWin / req.BetAmount
 	}
 
-	rg.GameLogger.Info("Generated winning reels: %v", winningReels)
-	rg.GameLogger.Info("Potential win: %f", potentialWin)
-	rg.GameLogger.Info("Win combination: %s", winCombination)
-	rg.GameLogger.Info("Payout multiplier: %f", payoutMultiplier)
+	rg.GameLogger.Debug("Generated winning reels: %v", winningReels)
+	rg.GameLogger.Debug("Potential win: %f", potentialWin)
+	rg.GameLogger.Debug("Win combination: %s", winCombination)
+	rg.GameLogger.Debug("Payout multiplier: %f", payoutMultiplier)
 
 	// Call the RNG API
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	rg.GameLogger.Info("IP: %v", ip)
-	rg.GameLogger.Info("User-Agent: %v", userAgent)
+	rg.GameLogger.Debug("IP: %v", ip)
+	rg.GameLogger.Debug("User-Agent: %v", userAgent)
 
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Info("Error retrieving RNG outcome: %v", err)
+		rg.GameLogger.Debug("Error retrieving RNG outcome: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(SpinResponse{
 			Status:  "error",
 			Message: "Failed to retrieve RNG outcome: " + err.Error(),
 		})
 	}
-	rg.GameLogger.Info("RNG outcome: %s", rngResp.PrefOutcome)
+	rg.GameLogger.Debug("RNG outcome: %s", rngResp.PrefOutcome)
 
 	// Determine final result based on RNG outcome
 	var finalReels []string
@@ -101,13 +101,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		finalReels = winningReels
 		finalWinAmount = potentialWin
 		finalWinCombination = winCombination
-		rg.GameLogger.Info("RNG Win - Using winning reels: %v, Win amount: %f", finalReels, finalWinAmount)
+		rg.GameLogger.Debug("RNG Win - Using winning reels: %v, Win amount: %f", finalReels, finalWinAmount)
 	} else {
 		// RNG says loss - force a losing combination
 		finalReels = GenerateLosingReels()
 		finalWinAmount = 0
 		finalWinCombination = ""
-		rg.GameLogger.Info("RNG Loss - Using losing reels: %v", finalReels)
+		rg.GameLogger.Debug("RNG Loss - Using losing reels: %v", finalReels)
 	}
 
 	// Build the response

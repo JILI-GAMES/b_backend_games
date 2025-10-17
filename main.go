@@ -50,12 +50,6 @@ func main() {
 		MaxAge:    1,    // days to keep
 		LocalTime: true, // use local time for file names
 	})
-	// Set up logging with lumberjack for daily rotation and 1 day retention (use test config for log file)
-	log.SetOutput(&lumberjack.Logger{
-		Filename:  testCfg.LogFile,
-		MaxAge:    1,    // days to keep
-		LocalTime: true, // use local time for file names
-	})
 
 	// Create both prod and test clients
 	rngClientProd := rng.NewClient(prodCfg.RNGServiceURL)

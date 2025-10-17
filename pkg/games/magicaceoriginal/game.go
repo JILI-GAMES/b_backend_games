@@ -2,19 +2,11 @@ package magicaceoriginal
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"strings"
-
-	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
-
-var GameLogger *logger.GameLogger
-
-// InitializeGameLogger initializes the global GameLogger
-func InitializeGameLogger() {
-	GameLogger = logger.GetGameLogger("magicaceoriginal")
-}
 
 // Constants
 const (
@@ -258,7 +250,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 		if isNewlyCreated {
 			// Keep newly created jokers - they should persist to next cascade
 			remainingJokers = append(remainingJokers, joker)
-			GameLogger.Debug("Joker at %d,%d was newly created - keeping for next cascade", joker.Position.Reel, joker.Position.Row)
+			log.Printf("Joker at %d,%d was newly created - keeping for next cascade", joker.Position.Reel, joker.Position.Row)
 			continue
 		}
 
@@ -268,7 +260,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 			for _, pos := range win.Payline {
 				if pos.Reel == joker.Position.Reel && pos.Row == joker.Position.Row {
 					wasInWin = true
-					GameLogger.Debug("Existing joker at %d,%d was in win - will be removed", joker.Position.Reel, joker.Position.Row)
+					log.Printf("Existing joker at %d,%d was in win - will be removed", joker.Position.Reel, joker.Position.Row)
 					break
 				}
 			}
@@ -280,7 +272,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 		if !wasInWin {
 			// Keep jokers that didn't form wins
 			remainingJokers = append(remainingJokers, joker)
-			GameLogger.Debug("Existing joker at %d,%d was not in win - keeping", joker.Position.Reel, joker.Position.Row)
+			log.Printf("Existing joker at %d,%d was not in win - keeping", joker.Position.Reel, joker.Position.Row)
 		} else {
 			// Replace joker position with random symbol in the reels
 			randomSymbol := WeightedRandomSymbol(r)
@@ -289,7 +281,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 				randomSymbol = WeightedRandomSymbol(r)
 			}
 			newReels[joker.Position.Reel][joker.Position.Row] = string(randomSymbol)
-			GameLogger.Debug("Existing joker at %d,%d was in win - replaced with %s", joker.Position.Reel, joker.Position.Row, randomSymbol)
+			log.Printf("Existing joker at %d,%d was in win - replaced with %s", joker.Position.Reel, joker.Position.Row, randomSymbol)
 		}
 	}
 
@@ -363,7 +355,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 			return newReels, specialSymbols, remainingJokers
 		}
 	}
-	GameLogger.Debug("ERROR: Max attempts reached in GenerateReelsForCascade. Returning last generated reels.")
+	log.Printf("ERROR: Max attempts reached in GenerateReelsForCascade. Returning last generated reels.")
 	return newReels, specialSymbols, remainingJokers
 }
 
@@ -384,7 +376,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 		if isNewlyCreated {
 			// Keep newly created jokers - they should persist to next cascade
 			remainingJokers = append(remainingJokers, joker)
-			GameLogger.Debug("Joker at %d,%d was newly created - keeping for next cascade", joker.Position.Reel, joker.Position.Row)
+			log.Printf("Joker at %d,%d was newly created - keeping for next cascade", joker.Position.Reel, joker.Position.Row)
 			continue
 		}
 
@@ -394,7 +386,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 			for _, pos := range win.Payline {
 				if pos.Reel == joker.Position.Reel && pos.Row == joker.Position.Row {
 					wasInWin = true
-					GameLogger.Debug("Existing joker at %d,%d was in win - will be removed", joker.Position.Reel, joker.Position.Row)
+					log.Printf("Existing joker at %d,%d was in win - will be removed", joker.Position.Reel, joker.Position.Row)
 					break
 				}
 			}
@@ -406,7 +398,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 		if !wasInWin {
 			// Keep jokers that didn't form wins
 			remainingJokers = append(remainingJokers, joker)
-			GameLogger.Debug("Existing joker at %d,%d was not in win - keeping", joker.Position.Reel, joker.Position.Row)
+			log.Printf("Existing joker at %d,%d was not in win - keeping", joker.Position.Reel, joker.Position.Row)
 		} else {
 			// Replace joker position with random symbol in the reels
 			randomSymbol := WeightedRandomSymbol(r)
@@ -415,7 +407,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 				randomSymbol = WeightedRandomSymbol(r)
 			}
 			newReels[joker.Position.Reel][joker.Position.Row] = string(randomSymbol)
-			GameLogger.Debug("Existing joker at %d,%d was in win - replaced with %s", joker.Position.Reel, joker.Position.Row, randomSymbol)
+			log.Printf("Existing joker at %d,%d was in win - replaced with %s", joker.Position.Reel, joker.Position.Row, randomSymbol)
 		}
 	}
 
@@ -490,7 +482,7 @@ func GenerateLossForCascade(reels [][]string, winningPositions map[Position]bool
 			return newReels, specialSymbols, remainingJokers
 		}
 	}
-	GameLogger.Debug("ERROR: Max attempts reached in GenerateLossForCascade. Returning last generated reels.")
+	log.Printf("ERROR: Max attempts reached in GenerateLossForCascade. Returning last generated reels.")
 	return newReels, specialSymbols, remainingJokers
 }
 
@@ -613,7 +605,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, r *rand.
 				continue // Not a golden card in the current grid
 			}
 
-			GameLogger.Debug("TRANSFORM: Golden card at position %d,%d will be transformed to a joker", pos.Reel, pos.Row)
+			log.Printf("TRANSFORM: Golden card at position %d,%d will be transformed to a joker", pos.Reel, pos.Row)
 
 			// Use weighted probability for joker types
 			roll := r.Intn(100)
@@ -639,7 +631,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, r *rand.
 
 			// Replace in reels
 			reels[pos.Reel][pos.Row] = string(SymbolWild)
-			GameLogger.Debug("Created %s joker at position %d,%d", mode, pos.Reel, pos.Row)
+			log.Printf("Created %s joker at position %d,%d", mode, pos.Reel, pos.Row)
 
 			// Big Joker creates a duplicate
 			if mode == ModeBigJoker {
@@ -674,7 +666,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, r *rand.
 					reels[newReel][newRow] = string(SymbolWild)
 					occupiedPositions[newPos] = true
 
-					GameLogger.Debug("Created duplicate Big Joker at position %d,%d", newReel, newRow)
+					log.Printf("Created duplicate Big Joker at position %d,%d", newReel, newRow)
 				}
 			}
 		}
@@ -688,18 +680,18 @@ func UpdateBaseGameCollector(collector *BaseGameCollector, superJokerCount int) 
 	if superJokerCount > 0 && !collector.IsActive {
 		// Add to collection count
 		collector.CollectedCount += superJokerCount
-		GameLogger.Debug("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@Base game collector: Added %d Super Jokers, total collected: %d/5", superJokerCount, collector.CollectedCount)
+		log.Printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@Base game collector: Added %d Super Jokers, total collected: %d/5", superJokerCount, collector.CollectedCount)
 
 		// Check if we reached 5 to activate
 		if collector.CollectedCount >= 5 {
 			collector.IsActive = true
 			collector.RemainingRounds = 3
 			collector.CollectedCount = 5 // Cap at 5
-			GameLogger.Debug("Base game collector ACTIVATED! 3 rounds of enhanced multipliers")
+			log.Printf("Base game collector ACTIVATED! 3 rounds of enhanced multipliers")
 		}
 	} else if superJokerCount > 0 && collector.IsActive {
 		// Already active, Super Jokers have no effect
-		GameLogger.Debug("Base game collector already active, Super Jokers ignored")
+		log.Printf("Base game collector already active, Super Jokers ignored")
 	}
 }
 
@@ -707,14 +699,14 @@ func UpdateBaseGameCollector(collector *BaseGameCollector, superJokerCount int) 
 func UpdateBaseGameCollectorRounds(collector *BaseGameCollector, hasWins bool) {
 	if collector.IsActive && collector.RemainingRounds > 0 && hasWins {
 		collector.RemainingRounds--
-		GameLogger.Debug("Base game collector: Round used, remaining: %d", collector.RemainingRounds)
+		log.Printf("Base game collector: Round used, remaining: %d", collector.RemainingRounds)
 
 		if collector.RemainingRounds <= 0 {
 			// Reset collector completely
 			collector.IsActive = false
 			collector.CollectedCount = 0
 			collector.RemainingRounds = 0
-			GameLogger.Debug("Base game collector EXPIRED - completely reset")
+			log.Printf("Base game collector EXPIRED - completely reset")
 		}
 	}
 }
@@ -739,9 +731,9 @@ func UpdateFreeSpinsCollector(collector *FreeSpinsCollector, superJokerCount int
 			actualUpgrades := newUpgradeCount - collector.UpgradeCount
 			collector.UpgradeCount = newUpgradeCount
 
-			GameLogger.Debug("********************Free spins collector: Added %d upgrades, total: %d/%d", actualUpgrades, collector.UpgradeCount, collector.MaxUpgrades)
+			log.Printf("********************Free spins collector: Added %d upgrades, total: %d/%d", actualUpgrades, collector.UpgradeCount, collector.MaxUpgrades)
 		} else {
-			GameLogger.Debug("Free spins collector: Max upgrades reached (%d), Super Jokers ignored", collector.MaxUpgrades)
+			log.Printf("Free spins collector: Max upgrades reached (%d), Super Jokers ignored", collector.MaxUpgrades)
 		}
 	}
 }
@@ -750,7 +742,7 @@ func UpdateFreeSpinsCollector(collector *FreeSpinsCollector, superJokerCount int
 func ResetFreeSpinsCollector(collector *FreeSpinsCollector) {
 	collector.UpgradeCount = 0
 	collector.MaxUpgrades = 10
-	GameLogger.Debug("Free spins collector RESET for base game")
+	log.Printf("Free spins collector RESET for base game")
 }
 
 // GetBoomingMultiplier calculates the current booming multiplier

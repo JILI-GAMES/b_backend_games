@@ -2,24 +2,17 @@ package winningmask
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
+	
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
 )
-
-var GameLogger *logger.GameLogger
-
-// InitializeGameLogger initializes the global GameLogger
-func InitializeGameLogger() {
-	GameLogger = logger.GetGameLogger("winningmask")
-}
 
 // Constants
 const (
@@ -160,7 +153,7 @@ func GenerateReelsWithWin(isFreeSpin bool) [][]string {
 		// Check for a win
 		totalWinnings, _, bonusPayout, _, _ := CalculateWins(reels, 1, isFreeSpin)
 		if totalWinnings > 0 || bonusPayout > 0 {
-			GameLogger.Debug("Generated reels with win: %v", reels)
+			log.Printf("Generated reels with win: %v", reels)
 			break
 		}
 	}
@@ -195,7 +188,7 @@ func GenerateLossReels(isFreeSpin bool) [][]string {
 		// Check for no regular wins (but allow bonus payouts)
 		totalWinnings, _, _, _, _ := CalculateWins(reels, 1, isFreeSpin)
 		if totalWinnings == 0 {
-			GameLogger.Debug("Generated reels with no wins: %v", reels)
+			log.Printf("Generated reels with no wins: %v", reels)
 			break
 		}
 	}
@@ -361,7 +354,7 @@ func CalculateWins(reels [][]string, betMultiplier int, isFreeSpin bool) (float6
 	// Collect all the unique wins
 	winsMu.Lock()
 	for _, win := range uniqueWins {
-		GameLogger.Debug("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, payout=%v",
+		log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, payout=%v",
 			win.Symbol, win.Count, betMultiplier, win.Payout)
 
 		totalPayout += win.Payout
@@ -379,7 +372,7 @@ func CalculateWins(reels [][]string, betMultiplier int, isFreeSpin bool) (float6
 		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
 		bonusPayout = bonusPayValue * totalBetAmount
 		bonusPayout = math.Round(bonusPayout*100) / 100
-		GameLogger.Debug("Bonus payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+		log.Printf("Bonus payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
 			bonusCount, bonusPayValue, betMultiplier, totalBetAmount, bonusPayout)
 	}
 
@@ -529,19 +522,19 @@ func HasAtLeastOneMaskInEachFirstThreeReels(reels [][]string) bool {
 		for _, symbol := range reels[reelIndex] {
 			if maskSymbols[symbol] {
 				hasMaskOrWildInThisReel = true
-				GameLogger.Debug("Reel %d has %s, contributing to transformation condition", reelIndex, symbol)
+				log.Printf("Reel %d has %s, contributing to transformation condition", reelIndex, symbol)
 				break
 			}
 		}
 
 		// If any of the first 3 reels has no mask or wild, condition is not met
 		if !hasMaskOrWildInThisReel {
-			GameLogger.Debug("Reel %d has no mask or wild symbols, transformation condition not met", reelIndex)
+			log.Printf("Reel %d has no mask or wild symbols, transformation condition not met", reelIndex)
 			return false
 		}
 	}
 
-	GameLogger.Debug("All first 3 reels have at least one mask or wild, transformation condition met")
+	log.Printf("All first 3 reels have at least one mask or wild, transformation condition met")
 	return true
 }
 
@@ -564,7 +557,7 @@ func TransformAllMasksInGrid(reels [][]string, targetMask Symbol) [][]string {
 				// Transform this mask to the target mask type
 				transformed[i][j] = string(targetMask)
 				transformationCount++
-				GameLogger.Debug("Transformed mask at reel %d, row %d from %s to %s",
+				log.Printf("Transformed mask at reel %d, row %d from %s to %s",
 					i, j, symbol, string(targetMask))
 			} else {
 				// Keep non-mask symbols unchanged
@@ -573,7 +566,7 @@ func TransformAllMasksInGrid(reels [][]string, targetMask Symbol) [][]string {
 		}
 	}
 
-	GameLogger.Debug("Transformed %d masks to %s in entire grid", transformationCount, string(targetMask))
+	log.Printf("Transformed %d masks to %s in entire grid", transformationCount, string(targetMask))
 	return transformed
 }
 
@@ -618,7 +611,7 @@ func GenerateStage1Scenarios(betMultiplier int, isFreeSpin bool) []Stage1Result 
 		WinDetails: lossDetails,
 	})
 
-	GameLogger.Debug("Generated %d Stage1 scenarios", len(scenarios))
+	log.Printf("Generated %d Stage1 scenarios", len(scenarios))
 	return scenarios
 }
 
@@ -645,7 +638,7 @@ func GenerateTransformationScenarios(stage1Reels [][]string, betMultiplier int, 
 
 		transformations = append(transformations, transformation)
 
-		GameLogger.Debug("Transformation scenario - Type: %s, Win: %v", maskType, winAmount)
+		log.Printf("Transformation scenario - Type: %s, Win: %v", maskType, winAmount)
 	}
 
 	return transformations
@@ -661,7 +654,7 @@ func GenerateCombinedScenarios(betMultiplier int, isFreeSpin bool) []CombinedSce
 	for _, stage1 := range stage1Scenarios {
 		// Check if transformation condition is met
 		if HasAtLeastOneMaskInEachFirstThreeReels(stage1.Reels) {
-			GameLogger.Debug("Stage1 win: %v - Transformation condition met, generating transformation scenarios", stage1.WinAmount)
+			log.Printf("Stage1 win: %v - Transformation condition met, generating transformation scenarios", stage1.WinAmount)
 
 			// Generate all possible transformations for this Stage 1 result
 			transformations := GenerateTransformationScenarios(stage1.Reels, betMultiplier, isFreeSpin)
@@ -682,11 +675,11 @@ func GenerateCombinedScenarios(betMultiplier int, isFreeSpin bool) []CombinedSce
 				}
 				combinedScenarios = append(combinedScenarios, combined)
 
-				GameLogger.Debug("Combined scenario - Stage1: %v, Stage2: %v, Total: %v, Mask: %s",
+				log.Printf("Combined scenario - Stage1: %v, Stage2: %v, Total: %v, Mask: %s",
 					combined.Stage1Win, combined.Stage2Win, combined.TotalWin, combined.MaskType)
 			}
 		} else {
-			GameLogger.Debug("Stage1 win: %v - Transformation condition NOT met, no transformation", stage1.WinAmount)
+			log.Printf("Stage1 win: %v - Transformation condition NOT met, no transformation", stage1.WinAmount)
 
 			// No transformation possible for this Stage 1 result
 			combined := CombinedScenario{
@@ -709,13 +702,13 @@ func GenerateCombinedScenarios(betMultiplier int, isFreeSpin bool) []CombinedSce
 		return combinedScenarios[i].TotalWin < combinedScenarios[j].TotalWin
 	})
 
-	GameLogger.Debug("Generated %d combined scenarios, sorted by total win", len(combinedScenarios))
+	log.Printf("Generated %d combined scenarios, sorted by total win", len(combinedScenarios))
 	return combinedScenarios
 }
 
 // Update HandleTwoStageMaskTransformation to pass isFreeSpin
 func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngClient *rng.Client, rtp float64) (CombinedScenario, error) {
-	GameLogger.Debug("Starting two-stage mask transformation for free spin %d", req.CurrentFreeSpinIndex+1)
+	log.Printf("Starting two-stage mask transformation for free spin %d", req.CurrentFreeSpinIndex+1)
 
 	// Generate all possible combined scenarios (Stage 1 + Stage 2)
 	combinedScenarios := GenerateCombinedScenarios(betMultiplier, req.IsFreeSpin)
@@ -723,11 +716,11 @@ func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngCli
 	// Select the best scenario that RNG approves
 	selectedScenario, err := SelectBestScenarioWithRNG(combinedScenarios, rngClient, req, rtp)
 	if err != nil {
-		GameLogger.Debug("Error selecting combined scenario: %v", err)
+		log.Printf("Error selecting combined scenario: %v", err)
 		return CombinedScenario{}, err
 	}
 
-	GameLogger.Debug("Selected combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
+	log.Printf("Selected combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s",
 		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin,
 		selectedScenario.HasTransform, selectedScenario.MaskType)
 
@@ -736,12 +729,12 @@ func HandleTwoStageMaskTransformation(betMultiplier int, req SpinRequest, rngCli
 
 // SelectBestScenarioWithRNG selects the best combined scenario that RNG approves
 func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Client, req SpinRequest, rtp float64) (CombinedScenario, error) {
-
+	
 	if len(scenarios) == 0 {
 		return CombinedScenario{}, fmt.Errorf("no scenarios provided")
 	}
 
-	GameLogger.Debug("Testing %d combined scenarios with RNG", len(scenarios))
+	log.Printf("Testing %d combined scenarios with RNG", len(scenarios))
 
 	// Start with the highest total win and work down
 	for i := len(scenarios) - 1; i >= 0; i-- {
@@ -758,9 +751,11 @@ func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Clie
 			payoutMultiplier = 0
 		}
 
-		GameLogger.Debug("Testing combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s, Multiplier=%v",
+		log.Printf("Testing combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v, Mask=%s, Multiplier=%v",
 			scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin,
 			scenario.HasTransform, scenario.MaskType, payoutMultiplier)
+
+	
 
 		// Ask RNG if we can award this total win amount
 		rngResp, err := rngClient.GetOutcome(
@@ -770,26 +765,26 @@ func SelectBestScenarioWithRNG(scenarios []CombinedScenario, rngClient *rng.Clie
 			false,
 		)
 		if err != nil {
-			GameLogger.Debug("RNG call failed for combined scenario (total: %v): %v", scenario.TotalWin, err)
+			log.Printf("RNG call failed for combined scenario (total: %v): %v", scenario.TotalWin, err)
 			continue // Try next scenario
 		}
 
-		GameLogger.Debug("RNG response for combined scenario (total: %v): outcome=%s, winAmount=%v",
+		log.Printf("RNG response for combined scenario (total: %v): outcome=%s, winAmount=%v",
 			scenario.TotalWin, rngResp.PrefOutcome, rngResp.WinAmount)
 
 		if rngResp.PrefOutcome == "win" {
-			GameLogger.Debug("RNG approved combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v",
+			log.Printf("RNG approved combined scenario: Stage1=%v, Stage2=%v, Total=%v, Transform=%v",
 				scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin, scenario.HasTransform)
 			return scenario, nil
 		}
 
-		GameLogger.Debug("RNG rejected combined scenario: Stage1=%v, Stage2=%v, Total=%v",
+		log.Printf("RNG rejected combined scenario: Stage1=%v, Stage2=%v, Total=%v",
 			scenario.Stage1Win, scenario.Stage2Win, scenario.TotalWin)
 	}
 
 	// If all scenarios were rejected, use the lowest/no-win scenario
 	selectedScenario := scenarios[0]
-	GameLogger.Debug("All combined scenarios rejected by RNG, using lowest scenario: Stage1=%v, Stage2=%v, Total=%v",
+	log.Printf("All combined scenarios rejected by RNG, using lowest scenario: Stage1=%v, Stage2=%v, Total=%v",
 		selectedScenario.Stage1Win, selectedScenario.Stage2Win, selectedScenario.TotalWin)
 
 	return selectedScenario, nil

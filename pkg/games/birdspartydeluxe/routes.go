@@ -1,7 +1,7 @@
 package birdspartydeluxe
 
 import (
-	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
+	"log"
 	"strings"
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
@@ -11,7 +11,6 @@ import (
 
 // RouteGroup holds the dependencies for the handlers
 type RouteGroup struct {
-	GameLogger   *logger.GameLogger
 	RNGProd      *rng.Client
 	SettingsProd *settings.Client
 	RNGTest      *rng.Client
@@ -31,7 +30,7 @@ func NewRouteGroup(rngProd *rng.Client, settingsProd *settings.Client, rngTest *
 // Helper to select the correct clients per request
 func (rg *RouteGroup) getClientsForRequest(c *fiber.Ctx) (*rng.Client, *settings.Client) {
 	origin := c.Get("Origin")
-	rg.GameLogger.Debug("Origin: %s", origin)
+	log.Printf("Origin: %s\n", origin)
 	if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test")) || origin == "" {
 		return rg.RNGTest, rg.SettingsTest
 	}

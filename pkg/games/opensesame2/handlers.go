@@ -2,7 +2,7 @@ package opensesame2
 
 import (
 	"fmt"
-	// "log"
+	"log"
 	"math"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,7 +12,7 @@ import (
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -22,7 +22,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Get bet multiplier from bet amount
 	betMultiplier, err := getBetMultiplierFromAmount(req.BetAmount)
 	if err != nil {
-		rg.GameLogger.Debug("Invalid bet amount: %v", err)
+		log.Printf("Invalid bet amount: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -31,7 +31,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.BetAmount, req.IsFreeSpin); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -51,19 +51,19 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	totalWinnings, winDetails, scatterWinAmount, combinationWinAmount, combinationType, combinationPositions, scatterPositions :=
 		CalculateWins(reels, betMultiplier, req.FreeSpinMultiplier, req.ExtraFreeSpinMultiplier, req.IsFreeSpin, req.IsExtraFreeSpin)
 
-	rg.GameLogger.Debug("Initial calculation: totalWinnings=%v, scatterWinAmount=%v, combinationWinAmount=%v, combinationType=%s, winDetails=%v",
+	log.Printf("Initial calculation: totalWinnings=%v, scatterWinAmount=%v, combinationWinAmount=%v, combinationType=%s, winDetails=%v",
 		totalWinnings, scatterWinAmount, combinationWinAmount, combinationType, winDetails)
 
 	// Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to get RTP: %v", err)
+		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
 		})
 	}
-	rg.GameLogger.Debug("RTP retrieved: %v", rtp)
+	log.Printf("RTP retrieved: %v", rtp)
 
 	// Calculate total bet amount
 	totalBetAmount := req.BetAmount
@@ -72,31 +72,31 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	payoutMultiplier := (totalWinnings + scatterWinAmount + combinationWinAmount) / totalBetAmount
 	if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
 		payoutMultiplier = 0
-		rg.GameLogger.Debug("Payout multiplier is NaN or Inf, setting to 0")
+		log.Printf("Payout multiplier is NaN or Inf, setting to 0")
 	}
-	rg.GameLogger.Debug("Payout multiplier: %v", payoutMultiplier)
+	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
 	// Get IP address and user agent from request
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	rg.GameLogger.Debug("IP: %v", ip)
-	rg.GameLogger.Debug("User-Agent: %v", userAgent)
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
 
 	// Call RNG
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, totalBetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
+		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
 		})
 	}
-	rg.GameLogger.Debug("RNG response: %v", rngResp)
+	log.Printf("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Debug("RNG determined a loss outcome")
+		log.Printf("RNG determined a loss outcome")
 		reels = GenerateLossReels(gameModeIsFreeSpin)
 		totalWinnings = 0
 		winDetails = nil
@@ -114,17 +114,17 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	if HasFreeSpinSymbolsOnFirstThreeReels(reels) {
 		if !req.IsFreeSpin && !req.IsExtraFreeSpin {
 			freeSpinTriggered = true
-			rg.GameLogger.Debug("Regular Free Spin Bonus triggered")
+			log.Printf("Regular Free Spin Bonus triggered")
 		} else {
 			freeSpinRetriggered = true
-			rg.GameLogger.Debug("Free Spin Bonus retriggered")
+			log.Printf("Free Spin Bonus retriggered")
 		}
 	}
 
 	// Check for extra free spin trigger
 	if CheckForExtraFreeSpinTrigger(reels) && !req.IsFreeSpin && !req.IsExtraFreeSpin {
 		extraFreeSpinTriggered = true
-		rg.GameLogger.Debug("Extra Free Spin Bonus triggered")
+		log.Printf("Extra Free Spin Bonus triggered")
 	}
 
 	// Update Free Spin state
@@ -171,7 +171,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		extraFreeSpinMultiplier = 0
 		remainingFreeSpins = 0
 		totalFreeSpinsAwarded = 0
-		rg.GameLogger.Debug("Free Spin Bonus ended")
+		log.Printf("Free Spin Bonus ended")
 	}
 
 	// Calculate total win amount - Updated to include combination wins
@@ -189,7 +189,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		combinationSymbols = []string{"FreeSpins", "FreeSpins", "MysteryBox"}
 	}
 
-	rg.GameLogger.Debug("Spin completed: regularWin=%v, scatterWin=%v, combinationWin=%v, combinationType=%s, totalWin=%v, freeSpinTriggered=%v, extraFreeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v, isExtraFreeSpin=%v",
+	log.Printf("Spin completed: regularWin=%v, scatterWin=%v, combinationWin=%v, combinationType=%s, totalWin=%v, freeSpinTriggered=%v, extraFreeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v, isExtraFreeSpin=%v",
 		totalWinnings, scatterWinAmount, combinationWinAmount, combinationType, totalWinAmount, freeSpinTriggered, extraFreeSpinTriggered, freeSpinRetriggered, isFreeSpin, isExtraFreeSpin)
 
 	return c.JSON(SpinResponse{
@@ -224,7 +224,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 	var req SelectOptionRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -235,7 +235,7 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 	if req.IsExtraBonus {
 		// Validate request for extra bonus
 		if err := validateExtraOptionRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.TreasureIndex); err != nil {
-			rg.GameLogger.Error("Request validation failed: %v", err)
+			log.Printf("Request validation failed: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"status":  "error",
 				"message": err.Error(),
@@ -245,14 +245,14 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 		// Get extra free spin options based on player selection
 		extraMultiplier, extraFreeSpins, isExtraMultiplier, err := GetSelectedExtraOption(req.TreasureIndex)
 		if err != nil {
-			rg.GameLogger.Debug("Failed to get extra free spin options: %v", err)
+			log.Printf("Failed to get extra free spin options: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"status":  "error",
 				"message": err.Error(),
 			})
 		}
 
-		rg.GameLogger.Debug("Extra Free Spin options selected: extraMultiplier=%d, extraFreeSpins=%d, isExtraMultiplier=%v",
+		log.Printf("Extra Free Spin options selected: extraMultiplier=%d, extraFreeSpins=%d, isExtraMultiplier=%v",
 			extraMultiplier, extraFreeSpins, isExtraMultiplier)
 
 		return c.JSON(SelectOptionResponse{
@@ -265,7 +265,7 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 	} else {
 		// Validate regular free spin option request
 		if err := validateSelectOptionRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.ChestIndex, req.LampIndex); err != nil {
-			rg.GameLogger.Error("Request validation failed: %v", err)
+			log.Printf("Request validation failed: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"status":  "error",
 				"message": err.Error(),
@@ -275,14 +275,14 @@ func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
 		// Get free spin options based on player selection
 		freeSpinCount, multiplier, err := GetSelectedFreeSpinOptions(req.ChestIndex, req.LampIndex)
 		if err != nil {
-			rg.GameLogger.Debug("Failed to get free spin options: %v", err)
+			log.Printf("Failed to get free spin options: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"status":  "error",
 				"message": err.Error(),
 			})
 		}
 
-		rg.GameLogger.Debug("Free Spin options selected: count=%d, multiplier=%d", freeSpinCount, multiplier)
+		log.Printf("Free Spin options selected: count=%d, multiplier=%d", freeSpinCount, multiplier)
 
 		return c.JSON(SelectOptionResponse{
 			FreeSpinCount:      freeSpinCount,

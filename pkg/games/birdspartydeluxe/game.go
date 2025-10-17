@@ -2,18 +2,10 @@ package birdspartydeluxe
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
-
-	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
-
-var GameLogger *logger.GameLogger
-
-// InitializeGameLogger initializes the global GameLogger
-func InitializeGameLogger() {
-	GameLogger = logger.GetGameLogger("birdspartydeluxe")
-}
 
 // round rounds a float64 to two decimal places
 func round(val float64) float64 {
@@ -113,7 +105,7 @@ func GenerateGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 // DELUXE: GenerateGridWithWin - Modified to allow connection-forming symbols (birds + clovers)
 func GenerateGridWithWin(level Level, r *rand.Rand, gameMode string) [][]string {
 	gridSize := level.GetGridSize()
-	GameLogger.Debug("Generating grid with win for level %d with grid size %dx%d, gameMode: %s", level, gridSize, gridSize, gameMode)
+	log.Printf("Generating grid with win for level %d with grid size %dx%d, gameMode: %s", level, gridSize, gridSize, gameMode)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -132,7 +124,7 @@ func GenerateGridWithWin(level Level, r *rand.Rand, gameMode string) [][]string 
 // DELUXE: GenerateLossGrid - Modified to prevent connection-forming symbol connections
 func GenerateLossGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 	gridSize := level.GetGridSize()
-	GameLogger.Debug("Generating loss grid for level %d with grid size %dx%d, gameMode: %s", level, gridSize, gridSize, gameMode)
+	log.Printf("Generating loss grid for level %d with grid size %dx%d, gameMode: %s", level, gridSize, gridSize, gameMode)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -160,7 +152,7 @@ func ForceWinGrid(level Level, r *rand.Rand, gameMode string) [][]string {
 
 	if forceClover {
 		targetSymbol = SymbolClover
-		GameLogger.Debug("Forcing clover connection for Booming Reels feature")
+		log.Printf("Forcing clover connection for Booming Reels feature")
 	} else {
 		// Pick a random connection-forming symbol (birds or clover)
 		// IMPORTANT: Never use free game symbols during free spins mode
@@ -242,7 +234,7 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 
 	// Update stage progress
 	gameState.StageProgress += len(stageClearedSymbols)
-	GameLogger.Debug("Added %d stage-cleared symbols to progress, total: %d/15",
+	log.Printf("Added %d stage-cleared symbols to progress, total: %d/15",
 		len(stageClearedSymbols), gameState.StageProgress)
 
 	// Check for level advancement
@@ -265,7 +257,7 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 		gameState.Grid = GenerateGrid(newLevel, r, gameState.GameMode)
 
 		levelAdvanced = true
-		GameLogger.Debug("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
+		log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 
 		return levelAdvanced, oldLevel, newLevel
 	}
@@ -279,7 +271,7 @@ func RemoveStageClearedSymbolsSurgical(grid [][]string, stageClearedSymbols []St
 		pos := stageSymbol.Position
 		if pos.X >= 0 && pos.X < len(grid) && pos.Y >= 0 && pos.Y < len(grid) {
 			grid[pos.Y][pos.X] = ""
-			GameLogger.Debug("Surgically removed stage-cleared symbol %s at position (%d,%d)",
+			log.Printf("Surgically removed stage-cleared symbol %s at position (%d,%d)",
 				stageSymbol.Symbol, pos.X, pos.Y)
 		}
 	}
@@ -296,7 +288,7 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 		affectedColumns[stageSymbol.Position.X] = true
 	}
 
-	GameLogger.Debug("Applying surgical gravity to columns: %v", getKeys(affectedColumns))
+	log.Printf("Applying surgical gravity to columns: %v", getKeys(affectedColumns))
 
 	// Apply gravity only to affected columns
 	for x := range affectedColumns {
@@ -324,13 +316,13 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 
 				if forceClover && allowFreeGameSymbols {
 					newSymbol = SymbolClover
-					GameLogger.Debug("Forcing clover at position (%d,%d) during gravity for Booming Reels", x, y)
+					log.Printf("Forcing clover at position (%d,%d) during gravity for Booming Reels", x, y)
 				} else {
 					newSymbol = WeightedRandomSymbolWithControl(level, r, !allowFreeGameSymbols)
 				}
 
 				grid[y][x] = string(newSymbol)
-				GameLogger.Debug("Generated new symbol %s at position (%d,%d) after surgical gravity", grid[y][x], x, y)
+				log.Printf("Generated new symbol %s at position (%d,%d) after surgical gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
 		}
@@ -355,7 +347,7 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 		return true
 	}
 
-	GameLogger.Debug("Attempting surgical loss on %d connections (only new positions)", len(connections))
+	log.Printf("Attempting surgical loss on %d connections (only new positions)", len(connections))
 
 	maxAttempts := 50
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -389,7 +381,7 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 				if len(testConnections) == 0 {
 					// Success! Apply this modification
 					gameState.Grid = testGrid
-					GameLogger.Debug("Surgical loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
+					log.Printf("Surgical loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
 					return true
 				}
 
@@ -398,7 +390,7 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 		}
 	}
 
-	GameLogger.Debug("Surgical loss impossible: stage-cleared processing created unbreakable winning configuration (new only)")
+	log.Printf("Surgical loss impossible: stage-cleared processing created unbreakable winning configuration (new only)")
 	return false
 }
 
@@ -421,7 +413,7 @@ func RemoveConnectionsSurgical(grid [][]string, connections []Connection) []Posi
 			if pos.X >= 0 && pos.X < len(grid) && pos.Y >= 0 && pos.Y < len(grid) {
 				grid[pos.Y][pos.X] = ""
 				affectedPositions = append(affectedPositions, pos)
-				GameLogger.Debug("Surgically removed %s symbol at position (%d,%d)",
+				log.Printf("Surgically removed %s symbol at position (%d,%d)",
 					connection.Symbol, pos.X, pos.Y)
 			}
 		}
@@ -441,7 +433,7 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 		affectedColumns[pos.X] = true
 	}
 
-	GameLogger.Debug("Applying surgical cascade gravity to columns: %v", getKeys(affectedColumns))
+	log.Printf("Applying surgical cascade gravity to columns: %v", getKeys(affectedColumns))
 
 	// Apply gravity only to affected columns
 	for x := range affectedColumns {
@@ -453,7 +445,7 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 					if y != writePos {
 						grid[writePos][x] = grid[y][x]
 						grid[y][x] = ""
-						GameLogger.Debug("Moved symbol %s from (%d,%d) to (%d,%d) via cascade gravity", grid[writePos][x], x, y, x, writePos)
+						log.Printf("Moved symbol %s from (%d,%d) to (%d,%d) via cascade gravity", grid[writePos][x], x, y, x, writePos)
 					}
 					writePos--
 				}
@@ -470,13 +462,13 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 
 				if forceClover && allowFreeGameSymbols {
 					newSymbol = SymbolClover
-					GameLogger.Debug("Forcing clover at position (%d,%d) during cascade for Booming Reels", x, y)
+					log.Printf("Forcing clover at position (%d,%d) during cascade for Booming Reels", x, y)
 				} else {
 					newSymbol = WeightedRandomSymbolWithControl(level, r, !allowFreeGameSymbols)
 				}
 
 				grid[y][x] = string(newSymbol)
-				GameLogger.Debug("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
+				log.Printf("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
 		}
@@ -501,7 +493,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 		return true
 	}
 
-	GameLogger.Debug("Attempting surgical cascade loss on %d connections (only new positions)", len(connections))
+	log.Printf("Attempting surgical cascade loss on %d connections (only new positions)", len(connections))
 
 	maxAttempts := 50
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -535,7 +527,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 				if len(testConnections) == 0 {
 					// Success! Apply this modification
 					gameState.Grid = testGrid
-					GameLogger.Debug("Surgical cascade loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
+					log.Printf("Surgical cascade loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
 					return true
 				}
 
@@ -544,7 +536,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 		}
 	}
 
-	GameLogger.Debug("Surgical cascade loss impossible: cascade processing created unbreakable winning configuration (new only)")
+	log.Printf("Surgical cascade loss impossible: cascade processing created unbreakable winning configuration (new only)")
 	return false
 }
 
@@ -573,7 +565,7 @@ func FindStageClearedSymbols(grid [][]string, level Level) []StageClearedSymbol 
 		}
 	}
 
-	GameLogger.Debug("Found %d stage-cleared symbols (%s) for level %d",
+	log.Printf("Found %d stage-cleared symbols (%s) for level %d",
 		len(stageClearedSymbols), expectedSymbol, level)
 
 	return stageClearedSymbols
@@ -740,7 +732,7 @@ func UpdateGameStateForLevel(gameState *GameState, newLevel Level) {
 	gameState.GridSize = newLevel.GetGridSize()
 	gameState.StageProgress = 0 // Reset progress for new level
 
-	GameLogger.Debug("Advanced to Level %d with %dx%d grid", newLevel, gameState.GridSize, gameState.GridSize)
+	log.Printf("Advanced to Level %d with %dx%d grid", newLevel, gameState.GridSize, gameState.GridSize)
 }
 
 // ValidateGridDimensions ensures grid matches expected size for level
@@ -773,12 +765,12 @@ func CleanupInvalidSymbols(grid [][]string, level Level, r *rand.Rand, gameMode 
 					// Use WeightedRandomSymbolWithControl to exclude free game symbols
 					newSymbol := WeightedRandomSymbolWithControl(level, r, true)
 					grid[y][x] = string(newSymbol)
-					GameLogger.Debug("Replaced invalid stage-cleared symbol %s with %s at (%d,%d) during free spins (no free game symbols)",
+					log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d) during free spins (no free game symbols)",
 						symbol, newSymbol, x, y)
 				} else {
 					newSymbol := WeightedRandomSymbol(level, r)
 					grid[y][x] = string(newSymbol)
-					GameLogger.Debug("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",
+					log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",
 						symbol, newSymbol, x, y)
 				}
 			}

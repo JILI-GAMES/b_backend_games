@@ -2,6 +2,7 @@ package moneybagsman
 
 import (
 	"fmt"
+	"log"
 	"math"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +12,7 @@ import (
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -20,7 +21,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.BetAmount, req.IsFreeSpin); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -35,7 +36,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Calculate winnings with the appropriate multiplier
 	totalWinnings, winDetails := CalculateWins(reels, betMultiplier, req.FreeSpinMultiplier, req.IsFreeSpin)
-	rg.GameLogger.Debug("Initial calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
+	log.Printf("Initial calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
 
 	// Select correct clients for this request
 	rngClient, settingsClient := rg.getClientsForRequest(c)
@@ -43,42 +44,42 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to get RTP: %v", err)
+		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
 		})
 	}
-	rg.GameLogger.Debug("RTP retrieved: %v", rtp)
+	log.Printf("RTP retrieved: %v", rtp)
 
 	// Calculate payout multiplier (total_win / bet_amount)
 	payoutMultiplier := totalWinnings / req.BetAmount
 	if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
 		payoutMultiplier = 0
-		rg.GameLogger.Debug("Payout multiplier is NaN or Inf, setting to 0")
+		log.Printf("Payout multiplier is NaN or Inf, setting to 0")
 	}
-	rg.GameLogger.Debug("Payout multiplier: %v", payoutMultiplier)
+	log.Printf("Payout multiplier: %v", payoutMultiplier)
 
 	// Call RNG
 	// Get IP address and user agent from request
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	rg.GameLogger.Debug("IP: %v", ip)
-	rg.GameLogger.Debug("User-Agent: %v", userAgent)
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
+		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
 		})
 	}
-	rg.GameLogger.Debug("RNG response: %v", rngResp)
+	log.Printf("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Debug("RNG determined a loss outcome")
+		log.Printf("RNG determined a loss outcome")
 		reels = GenerateLossReels()
 		totalWinnings = 0
 		winDetails = nil
@@ -91,10 +92,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	if HasScatterOnEachReel(reels) {
 		if !req.IsFreeSpin {
 			freeSpinTriggered = true
-			rg.GameLogger.Debug("Free Spin Bonus triggered: %d scatters", scatterCount)
+			log.Printf("Free Spin Bonus triggered: %d scatters", scatterCount)
 		} else {
 			freeSpinRetriggered = true
-			rg.GameLogger.Debug("Free Spin Bonus retriggered: %d scatters", scatterCount)
+			log.Printf("Free Spin Bonus retriggered: %d scatters", scatterCount)
 		}
 	}
 
@@ -112,7 +113,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Set multiplier based on scatter count
 		initialMultiplier, multiplierIncrement, maxMultiplier = GetFreeSpinMultiplierInfo(scatterCount)
-		rg.GameLogger.Debug("Free Spin Bonus triggered with %d scatters. Initial multiplier: %d, Increment: %d, Max: %d",
+		log.Printf("Free Spin Bonus triggered with %d scatters. Initial multiplier: %d, Increment: %d, Max: %d",
 			scatterCount, initialMultiplier, multiplierIncrement, maxMultiplier)
 	} else if freeSpinRetriggered {
 		// Retrigger adds more free spins
@@ -124,7 +125,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			remainingFreeSpins = MaxFreeSpins
 		}
 
-		rg.GameLogger.Debug("Free Spin Bonus retriggered. Remaining: %d, Total awarded: %d",
+		log.Printf("Free Spin Bonus retriggered. Remaining: %d, Total awarded: %d",
 			remainingFreeSpins, totalFreeSpinsAwarded)
 	}
 
@@ -158,7 +159,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		freeSpinMultiplier = initialMultiplier
 	}
 
-	rg.GameLogger.Debug("Free Spin state updated: remainingFreeSpins=%d, totalFreeSpinsAwarded=%d, currentFreeSpinIndex=%d, freeSpinMultiplier=%d",
+	log.Printf("Free Spin state updated: remainingFreeSpins=%d, totalFreeSpinsAwarded=%d, currentFreeSpinIndex=%d, freeSpinMultiplier=%d",
 		remainingFreeSpins, totalFreeSpinsAwarded, currentFreeSpinIndex, freeSpinMultiplier)
 
 	// Check if Free Spin Bonus has ended
@@ -169,7 +170,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		freeSpinMultiplier = 0
 		remainingFreeSpins = 0
 		totalFreeSpinsAwarded = 0
-		rg.GameLogger.Debug("Free Spin Bonus ended")
+		log.Printf("Free Spin Bonus ended")
 	}
 
 	// If free spins were just triggered, set isFreeSpin to true for the next round
@@ -177,7 +178,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		isFreeSpin = true
 	}
 
-	rg.GameLogger.Debug("Spin completed: totalWin=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v",
+	log.Printf("Spin completed: totalWin=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v",
 		totalWinnings, freeSpinTriggered, freeSpinRetriggered, isFreeSpin)
 
 	// Get multiplier information for response
@@ -186,11 +187,11 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		// Use the existing scatter count if we're in free spins
 		initialMult, increment, maxMult = GetFreeSpinMultiplierInfo(req.ScatterCount)
 	}
-	rg.GameLogger.Debug("Multiplier info: initial=%d, increment=%d, max=%d", initialMult, increment, maxMult)
+	log.Printf("Multiplier info: initial=%d, increment=%d, max=%d", initialMult, increment, maxMult)
 
 	// Find scatter positions for animation
 	scatterPositions := FindScatterPositions(reels)
-	rg.GameLogger.Debug("Found %d scatter positions for animation", len(scatterPositions))
+	log.Printf("Found %d scatter positions for animation", len(scatterPositions))
 
 	return c.JSON(SpinResponse{
 		Reels:                 reels,

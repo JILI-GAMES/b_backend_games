@@ -2,7 +2,7 @@ package hilo
 
 import (
 	"fmt"
-	// "log"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -11,7 +11,7 @@ import (
 func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	var req StartGameRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -20,7 +20,7 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -47,20 +47,20 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	if req.Card != "" {
 		// Use card from Unity frontend
 		startingCard = req.Card
-		rg.GameLogger.Debug("Using card from Unity frontend: %s", startingCard)
+		log.Printf("Using card from Unity frontend: %s", startingCard)
 
 		// Generate a deck that starts with the Unity-specified card
 		seed = GenerateUniqueSeed()
 		deck = GenerateDeckWithFirstCard(seed, startingCard)
 		deckHash = HashDeck(deck)
-		rg.GameLogger.Debug("Generated deck with Unity card: firstCard=%s, deck[0]=%s", startingCard, deck[0])
+		log.Printf("Generated deck with Unity card: firstCard=%s, deck[0]=%s", startingCard, deck[0])
 	} else {
 		// Generate random card and deck
 		seed = GenerateUniqueSeed()
 		deck = GenerateDeck(seed)
 		startingCard = deck[0]
 		deckHash = HashDeck(deck)
-		rg.GameLogger.Debug("Generated random card: %s", startingCard)
+		log.Printf("Generated random card: %s", startingCard)
 	}
 
 	// Initialize game state
@@ -92,7 +92,7 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 	if req.Card != "" {
 		cardSource = "Unity"
 	}
-	rg.GameLogger.Debug("Started new Hilo game: seed=%s, currentCard=%s, betAmount=%.2f, cardSource=%s",
+	log.Printf("Started new Hilo game: seed=%s, currentCard=%s, betAmount=%.2f, cardSource=%s",
 		seed, gameState.CurrentCard, req.BetAmount, cardSource)
 
 	return c.JSON(StartGameResponse{
@@ -110,7 +110,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 
 	var req GuessRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -119,7 +119,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -169,7 +169,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	if req.GameState.UnityCard != "" {
 		// Use the same deck generation logic as StartGameHandler for Unity cards
 		deck = GenerateDeckWithFirstCard(req.GameState.Seed, req.GameState.UnityCard)
-		rg.GameLogger.Debug("Using Unity deck generation: unityCard=%s", req.GameState.UnityCard)
+		log.Printf("Using Unity deck generation: unityCard=%s", req.GameState.UnityCard)
 	} else {
 		// Use regular deck generation for random cards
 		deck = GenerateDeck(req.GameState.Seed)
@@ -178,25 +178,25 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	// Apply RNG modifications if any
 	if len(req.GameState.RNGModifications) > 0 {
 		deck = ApplyRNGModifications(deck, req.GameState.RNGModifications)
-		rg.GameLogger.Debug("Applied %d RNG modifications to deck", len(req.GameState.RNGModifications))
+		log.Printf("Applied %d RNG modifications to deck", len(req.GameState.RNGModifications))
 	}
 
 	// Verify deck hash matches
 	regeneratedDeckHash := HashDeck(deck)
-	rg.GameLogger.Debug("Deck hash verification: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
+	log.Printf("Deck hash verification: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
 	if regeneratedDeckHash != req.GameState.DeckHash {
-		rg.GameLogger.Debug("❌ Deck hash verification failed: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
+		log.Printf("❌ Deck hash verification failed: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid deck hash",
 		})
 	}
 
-	rg.GameLogger.Debug("Verifying game state: position=%d, currentCard=%s, deckCard=%s, deckLength=%d, seed=%s, unityCard=%s",
+	log.Printf("Verifying game state: position=%d, currentCard=%s, deckCard=%s, deckLength=%d, seed=%s, unityCard=%s",
 		req.GameState.Position, req.GameState.CurrentCard, deck[req.GameState.Position], len(deck), req.GameState.Seed, req.GameState.UnityCard)
 
 	if req.GameState.Position >= len(deck) || deck[req.GameState.Position] != req.GameState.CurrentCard {
-		rg.GameLogger.Debug("❌ Game state verification failed: expected=%s, actual=%s", req.GameState.CurrentCard, deck[req.GameState.Position])
+		log.Printf("❌ Game state verification failed: expected=%s, actual=%s", req.GameState.CurrentCard, deck[req.GameState.Position])
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid game state",
@@ -236,7 +236,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	// Get RTP settings
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to get RTP: %v", err)
+		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
@@ -247,18 +247,18 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	rg.GameLogger.Debug("IP: %v", ip)
-	rg.GameLogger.Debug("User-Agent: %v", userAgent)
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, rngPayoutMultiplier, req.GameState.BetAmount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
+		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
 		})
 	}
 
-	rg.GameLogger.Debug("RNG Decision: %s for potential win of %.2f (multiplier: %.2fx)",
+	log.Printf("RNG Decision: %s for potential win of %.2f (multiplier: %.2fx)",
 		rngResp.PrefOutcome, totalWinAmount, rngPayoutMultiplier)
 
 	// Get the natural next card
@@ -279,7 +279,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		forced = true
 		// Update deck with forced card
 		deck[req.GameState.Position+1] = forcedCard
-		rg.GameLogger.Debug("RNG FORCED LOSS: Natural %s would win, forced %s instead (saving %.2f)",
+		log.Printf("RNG FORCED LOSS: Natural %s would win, forced %s instead (saving %.2f)",
 			nextCard, forcedCard, totalWinAmount)
 	} else if !naturalResult && rngResp.PrefOutcome == "win" {
 		// Player would lose naturally, but house allows win (rare, for retention)
@@ -291,7 +291,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 			forced = true
 			// Update deck with forced card
 			deck[req.GameState.Position+1] = forcedCard
-			rg.GameLogger.Debug("RNG FORCED WIN: Natural %s would lose, forced %s for retention",
+			log.Printf("RNG FORCED WIN: Natural %s would lose, forced %s for retention",
 				nextCard, forcedCard)
 		}
 	}
@@ -311,7 +311,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 			ForcedCard:   finalCard,
 		}
 		newGameState.RNGModifications = append(req.GameState.RNGModifications, rngMod)
-		rg.GameLogger.Debug("Updated deck hash due to RNG modification: %s", newGameState.DeckHash)
+		log.Printf("Updated deck hash due to RNG modification: %s", newGameState.DeckHash)
 	}
 
 	// Add to history
@@ -354,7 +354,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		// Generate betting options for next round with JDB multipliers
 		betOptions = GetHiloOptions(newGameState.CurrentCard, newGameState.Position, newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
 
-		rg.GameLogger.Debug("Player WON: current multiplier=%.2f, previous winning=%.2f", payoutMultiplier, newGameState.PreviousWinningMultiplier)
+		log.Printf("Player WON: current multiplier=%.2f, previous winning=%.2f", payoutMultiplier, newGameState.PreviousWinningMultiplier)
 	} else {
 		// LOSS: Game over, reset multipliers but show next card with base multipliers
 		newGameState.PreviousWinningMultiplier = 1.0 // Reset to base
@@ -370,7 +370,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 		// Generate signature for next game (using base multipliers)
 		// newSignature = ComputeHMAC(newGameState.Seed, newGameState.Position, GetBaseMultiplierForBet(newGameState.CurrentCard, "higher_or_same"), newGameState.BetAmount)
 
-		rg.GameLogger.Debug("Player LOST: game over, showing next card with base multipliers for new game")
+		log.Printf("Player LOST: game over, showing next card with base multipliers for new game")
 	}
 
 	return c.JSON(GuessResponse{
@@ -387,7 +387,7 @@ func (rg *RouteGroup) GuessHandler(c *fiber.Ctx) error {
 func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 	var req SkipRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -396,7 +396,7 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -462,13 +462,13 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 	// Apply RNG modifications if any
 	if len(req.GameState.RNGModifications) > 0 {
 		deck = ApplyRNGModifications(deck, req.GameState.RNGModifications)
-		rg.GameLogger.Debug("Applied %d RNG modifications to deck", len(req.GameState.RNGModifications))
+		log.Printf("Applied %d RNG modifications to deck", len(req.GameState.RNGModifications))
 	}
 
 	// Verify deck hash matches
 	regeneratedDeckHash := HashDeck(deck)
 	if regeneratedDeckHash != req.GameState.DeckHash {
-		rg.GameLogger.Debug("❌ Deck hash verification failed: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
+		log.Printf("❌ Deck hash verification failed: expected=%s, actual=%s", req.GameState.DeckHash, regeneratedDeckHash)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid deck hash",
@@ -518,7 +518,7 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 	newCurrentMultiplier := GetMultiplierForBet(newGameState.CurrentCard, "higher_or_same", newGameState.MultiplierModifier, newGameState.PreviousWinningMultiplier)
 	newSignature := ComputeHMAC(newGameState.Seed, newGameState.Position, newCurrentMultiplier, newGameState.BetAmount)
 
-	rg.GameLogger.Debug("Player skipped: newCard=%s, skipsRemaining=%d", nextCard, newGameState.SkipsRemaining)
+	log.Printf("Player skipped: newCard=%s, skipsRemaining=%d", nextCard, newGameState.SkipsRemaining)
 
 	return c.JSON(SkipResponse{
 		Status:     "success",
@@ -533,7 +533,7 @@ func (rg *RouteGroup) SkipHandler(c *fiber.Ctx) error {
 func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 	var req CashoutRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -542,7 +542,7 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -591,7 +591,7 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 	multiplier := req.GameState.MultiplierModifier
 	if multiplier > MaxMultiplier {
 		multiplier = MaxMultiplier
-		rg.GameLogger.Debug("CASHOUT CAP APPLIED: Original multiplier %.2f capped at %.0fx", req.GameState.MultiplierModifier, MaxMultiplier)
+		log.Printf("CASHOUT CAP APPLIED: Original multiplier %.2f capped at %.0fx", req.GameState.MultiplierModifier, MaxMultiplier)
 	} else {
 		multiplier = req.GameState.MultiplierModifier
 	}
@@ -605,7 +605,7 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 	newGameState.MultiplierModifier = multiplier
 	newGameState.PreviousWinningMultiplier = multiplier
 
-	rg.GameLogger.Debug("Player cashed out: finalWin=%.2f, multiplier=%.2f (capped from %.2f)", finalWin, multiplier, req.GameState.MultiplierModifier)
+	log.Printf("Player cashed out: finalWin=%.2f, multiplier=%.2f (capped from %.2f)", finalWin, multiplier, req.GameState.MultiplierModifier)
 
 	return c.JSON(CashoutResponse{
 		Status:    "success",
@@ -619,7 +619,7 @@ func (rg *RouteGroup) CashoutHandler(c *fiber.Ctx) error {
 func (rg *RouteGroup) VerifyDeckHandler(c *fiber.Ctx) error {
 	var req VerifyRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -666,7 +666,7 @@ func validateRequest(clientID, gameID, playerID, betID string) error {
 func (rg *RouteGroup) PreviewHandler(c *fiber.Ctx) error {
 	var req PreviewRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -710,13 +710,13 @@ func (rg *RouteGroup) PreviewHandler(c *fiber.Ctx) error {
 	if req.Card != "" {
 		// Use card from Unity frontend
 		currentCard = req.Card
-		rg.GameLogger.Debug("Preview: Using card from Unity frontend: %s", currentCard)
+		log.Printf("Preview: Using card from Unity frontend: %s", currentCard)
 	} else {
 		// Generate random card for preview
 		seed := GenerateUniqueSeed()
 		deck := GenerateDeck(seed)
 		currentCard = deck[0]
-		rg.GameLogger.Debug("Preview: Generated random card: %s", currentCard)
+		log.Printf("Preview: Generated random card: %s", currentCard)
 	}
 
 	// Generate betting options for the card (base multipliers for preview)
@@ -726,7 +726,7 @@ func (rg *RouteGroup) PreviewHandler(c *fiber.Ctx) error {
 	if req.Card != "" {
 		cardSource = "Unity"
 	}
-	rg.GameLogger.Debug("Preview: Showing card %s (source: %s) with bet amount %.2f",
+	log.Printf("Preview: Showing card %s (source: %s) with bet amount %.2f",
 		currentCard, cardSource, req.BetAmount)
 
 	return c.JSON(PreviewResponse{
@@ -741,7 +741,7 @@ func (rg *RouteGroup) PreviewHandler(c *fiber.Ctx) error {
 func (rg *RouteGroup) PreviewSkipHandler(c *fiber.Ctx) error {
 	var req PreviewSkipRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -782,7 +782,7 @@ func (rg *RouteGroup) PreviewSkipHandler(c *fiber.Ctx) error {
 	// Generate betting options for the new card (base multipliers for preview skip)
 	betOptions := GetBaseHiloOptions(nextCard)
 
-	rg.GameLogger.Debug("Preview Skip: Skipped from %s to %s", req.CurrentCard, nextCard)
+	log.Printf("Preview Skip: Skipped from %s to %s", req.CurrentCard, nextCard)
 
 	return c.JSON(PreviewSkipResponse{
 		Status:      "success",

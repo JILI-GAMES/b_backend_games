@@ -1,20 +1,12 @@
 package kong
 
 import (
+	"log"
 	"math/rand"
 	"runtime"
 	"sync"
 	"time"
-
-	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
-
-var GameLogger *logger.GameLogger
-
-// InitializeGameLogger initializes the global GameLogger
-func InitializeGameLogger() {
-	GameLogger = logger.GetGameLogger("kong")
-}
 
 // Symbol represents a symbol on the reels
 type Symbol string
@@ -134,7 +126,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 				attempts++
 				select {
 				case <-stopChan:
-					GameLogger.Debug("Worker %d stopping after %d attempts", workerID, attempts)
+					log.Printf("Worker %d stopping after %d attempts", workerID, attempts)
 					return
 				default:
 					// Generate a reel set
@@ -144,7 +136,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 					if guaranteeWin {
 						// We need a win
 						if winAmount > 0 {
-							GameLogger.Debug("Worker %d found a winning reel set after %d attempts: %v, winAmount: %f", workerID, attempts, reels, winAmount)
+							log.Printf("Worker %d found a winning reel set after %d attempts: %v, winAmount: %f", workerID, attempts, reels, winAmount)
 							select {
 							case resultChan <- reels:
 								closeOnce.Do(func() {
@@ -152,7 +144,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 								})
 								return
 							case <-stopChan:
-								GameLogger.Debug("Worker %d stopping after %d attempts (stopChan received)", workerID, attempts)
+								log.Printf("Worker %d stopping after %d attempts (stopChan received)", workerID, attempts)
 								return
 							}
 						}
@@ -170,7 +162,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 							// Recheck the win amount after adding Scatters
 							winAmount2, _ := CalculateRegularWin(reels, false, 1, 0)
 							if winAmount2 == 0 {
-								GameLogger.Debug("Worker %d found a losing reel set after %d attempts: %v", workerID, attempts, reels)
+								log.Printf("Worker %d found a losing reel set after %d attempts: %v", workerID, attempts, reels)
 								select {
 								case resultChan <- reels:
 									closeOnce.Do(func() {
@@ -178,7 +170,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 									})
 									return
 								case <-stopChan:
-									GameLogger.Debug("Worker %d stopping after %d attempts (stopChan received)", workerID, attempts)
+									log.Printf("Worker %d stopping after %d attempts (stopChan received)", workerID, attempts)
 									return
 								}
 							}
@@ -200,7 +192,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 	if guaranteeWin {
 		winAmount, _ := CalculateRegularWin(reels, false, 1, 0)
 		if winAmount <= 0 {
-			GameLogger.Debug("Error: Generated reels do not have a win despite guaranteeWin=true: %v", reels)
+			log.Printf("Error: Generated reels do not have a win despite guaranteeWin=true: %v", reels)
 			// Force a simple win as a fallback, starting from Reel 0
 			reels = generateSingleReelSet()
 			// Force a win: 3 matching symbols on reels 0, 1, and 2 in a random row
@@ -210,7 +202,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 			reels[1][row] = string(winningSymbol)
 			reels[2][row] = string(winningSymbol)
 			winAmount, _ = CalculateRegularWin(reels, false, 1, 0)
-			GameLogger.Debug("Forced a win in row %d: %v, winAmount: %f", row, reels, winAmount)
+			log.Printf("Forced a win in row %d: %v, winAmount: %f", row, reels, winAmount)
 		}
 	}
 
@@ -289,7 +281,7 @@ func GenerateReels(guaranteeWin bool) [][]string {
 // 							win *= float64(ways)
 // 						}
 // 						totalWin += win
-// 						GameLogger.Debug("Win for %s (count=%d, ways=%d): %f", symbol, count, ways, win)
+// 						log.Printf("Win for %s (count=%d, ways=%d): %f", symbol, count, ways, win)
 // 					}
 // 				}
 // 			}
@@ -315,7 +307,7 @@ func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, b
 				}
 			}
 		}
-
+		
 		// Check for consecutive symbols from left to right
 		maxConsecutive := 0
 		for i := 0; i < 5; i++ {
@@ -325,7 +317,7 @@ func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, b
 				break
 			}
 		}
-
+		
 		// If we have at least 3 consecutive symbols, it's a win
 		if maxConsecutive >= 3 {
 			// Calculate ways (multiply the number of symbols on each reel)
@@ -333,7 +325,7 @@ func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, b
 			for i := 0; i < maxConsecutive; i++ {
 				ways *= len(positions[i])
 			}
-
+			
 			// Look up the win amount in the paytable
 			if baseWin, ok := payouts[maxConsecutive]; ok {
 				// Calculate total win
@@ -349,9 +341,9 @@ func CalculateRegularWin(reels [][]string, isFreeSpin bool, betMultiplier int, b
 					win *= float64(ways)
 				}
 				totalWin += win
-
-				GameLogger.Debug("Win for %s (count=%d, ways=%d): %f", symbol, maxConsecutive, ways, win)
-
+				
+				log.Printf("Win for %s (count=%d, ways=%d): %f", symbol, maxConsecutive, ways, win)
+				
 				// Add all contributing positions to winning positions
 				for reel := 0; reel < maxConsecutive; reel++ {
 					for _, row := range positions[reel] {

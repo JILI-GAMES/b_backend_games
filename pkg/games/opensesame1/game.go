@@ -2,21 +2,13 @@ package opensesame1
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
-
-var GameLogger *logger.GameLogger
-
-// InitializeGameLogger initializes the global GameLogger
-func InitializeGameLogger() {
-	GameLogger = logger.GetGameLogger("opensesame1")
-}
 
 // Constants
 const (
@@ -156,7 +148,7 @@ func GenerateReelsWithWin() [][]string {
 		// Check for a win (base game, so isFreeSpin=false and multiplier=1)
 		totalWinnings, _, _, _, _ := CalculateWins(reels, 1, 1, false)
 		if totalWinnings > 0 {
-			GameLogger.Debug("Generated reels with win: %v", reels)
+			log.Printf("Generated reels with win: %v", reels)
 			break
 		}
 	}
@@ -187,7 +179,7 @@ func GenerateLossReels() [][]string {
 		// Check for no regular wins (exclude scatter wins)
 		totalWinnings, _, _, _, _ := CalculateWins(reels, 1, 1, false)
 		if totalWinnings == 0 {
-			GameLogger.Debug("Generated reels with no wins: %v", reels)
+			log.Printf("Generated reels with no wins: %v", reels)
 			break
 		}
 	}
@@ -361,7 +353,7 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
 	// Collect all the unique wins
 	winsMu.Lock()
 	for _, win := range uniqueWins {
-		GameLogger.Debug("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
+		log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
 			win.Symbol, win.Count, betMultiplier,
 			func() int {
 				if isFreeSpin && (win.Symbol != string(SymbolWoman) || win.Count < 5) {
@@ -385,7 +377,7 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
 		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
 		scatterPayout = scatterPayValue * totalBetAmount
 		scatterPayout = math.Round(scatterPayout*100) / 100
-		GameLogger.Debug("Scatter payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+		log.Printf("Scatter payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
 			scatterCount, scatterPayValue, betMultiplier, totalBetAmount, scatterPayout)
 	}
 
@@ -398,7 +390,7 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
 		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
 		freeSpinPayout = freeSpinPayValue * totalBetAmount
 		freeSpinPayout = math.Round(freeSpinPayout*100) / 100
-		GameLogger.Debug("Free Spin symbol payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+		log.Printf("Free Spin symbol payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
 			freeSpinCount, freeSpinPayValue, betMultiplier, totalBetAmount, freeSpinPayout)
 	}
 

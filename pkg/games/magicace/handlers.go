@@ -2,7 +2,7 @@ package magicace
 
 import (
 	"fmt"
-	// "log"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -16,7 +16,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	rngClient, settingsClient := rg.getClientsForRequest(c)
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -25,7 +25,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -37,12 +37,12 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		var retainedJokers []JokerCard
 
 		for _, joker := range req.GameState.JokerCards {
-			rg.GameLogger.Debug("Start of spin - processing existing joker: %s at %d,%d with %d remaining rounds",
+			log.Printf("Start of spin - processing existing joker: %s at %d,%d with %d remaining rounds",
 				joker.Mode, joker.Position.Reel, joker.Position.Row, joker.RemainingRounds)
 
 			// Super Joker with counter = 1 is removed at start of new spin
 			if joker.Mode == ModeSuperJoker && joker.RemainingRounds == 1 {
-				rg.GameLogger.Debug("Removing Super Joker at %d,%d with counter 1 at start of new spin",
+				log.Printf("Removing Super Joker at %d,%d with counter 1 at start of new spin",
 					joker.Position.Reel, joker.Position.Row)
 				continue // Don't retain this joker
 			}
@@ -52,7 +52,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			if joker.Mode == ModeSuperJoker {
 				retainedJokers = append(retainedJokers, joker)
 			} else {
-				rg.GameLogger.Debug("Unexpected %s Joker at start of spin - should have been removed earlier",
+				log.Printf("Unexpected %s Joker at start of spin - should have been removed earlier",
 					joker.Mode)
 				// Don't retain non-Super Jokers
 			}
@@ -65,7 +65,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 		req.GameState.SpecialSymbols.JokerCards = retainedJokers
 
-		rg.GameLogger.Debug("Start of spin - retained %d jokers from previous spin", len(retainedJokers))
+		log.Printf("Start of spin - retained %d jokers from previous spin", len(retainedJokers))
 	}
 
 	// Initialize game state
@@ -93,7 +93,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		req.GameState.BoomingMultiplier = BoomingMultipliersFreeSpins[0] // Reset to 2
 	}
 
-	rg.GameLogger.Debug("##_____________##Game Mode: %s, Booming Multiplier: %d", req.GameState.GameMode, req.GameState.BoomingMultiplier)
+	log.Printf("##_____________##Game Mode: %s, Booming Multiplier: %d", req.GameState.GameMode, req.GameState.BoomingMultiplier)
 
 	// Create a single rand.Rand instance for this request (Issue 1)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -114,13 +114,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Get RTP
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to get RTP: %v", err)
+		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
 		})
 	}
-	rg.GameLogger.Debug("RTP retrieved: %v", rtp)
+	log.Printf("RTP retrieved: %v", rtp)
 
 	// Call RNG
 	payoutMultiplier := totalWinnings / req.GameState.Bet.Amount
@@ -128,21 +128,21 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	rg.GameLogger.Debug("IP: %v", ip)
-	rg.GameLogger.Debug("User-Agent: %v", userAgent)
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
+		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
 		})
 	}
-	rg.GameLogger.Debug("RNG response: %v", rngResp)
+	log.Printf("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Debug("RNG determined a loss outcome")
+		log.Printf("RNG determined a loss outcome")
 
 		// Make sure jokerCards is initialized
 		if req.GameState.JokerCards == nil {
@@ -167,7 +167,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Count Scatters and trigger Free Spins
 	req.GameState.ScatterCount, req.GameState.SpecialSymbols.TargetSymbols = CountScatters(reels)
 	if req.GameState.GameMode == "base" && req.GameState.ScatterCount >= 3 {
-		rg.GameLogger.Debug("Free Spins triggered: %d scatter(s)", req.GameState.ScatterCount)
+		log.Printf("Free Spins triggered: %d scatter(s)", req.GameState.ScatterCount)
 		req.GameState.GameMode = "freeSpins"
 		req.GameState.FreeSpins.ScattersTriggered = req.GameState.ScatterCount
 		if req.GameState.ScatterCount == 3 {
@@ -197,14 +197,14 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		req.GameState.FreeSpins.Remaining += additionalSpins
 		req.GameState.FreeSpins.TotalAwarded += additionalSpins
 		req.GameState.FreeSpins.ScattersTriggered = req.GameState.ScatterCount
-		rg.GameLogger.Debug("Free Spins retriggered: %d scatter(s), %d additional spins, total %d spins", req.GameState.ScatterCount, additionalSpins, req.GameState.FreeSpins.TotalAwarded)
+		log.Printf("Free Spins retriggered: %d scatter(s), %d additional spins, total %d spins", req.GameState.ScatterCount, additionalSpins, req.GameState.FreeSpins.TotalAwarded)
 	}
 
 	// Update Free Spins
 	if req.GameState.GameMode == "freeSpins" {
 		req.GameState.FreeSpins.Remaining--
 		if req.GameState.FreeSpins.Remaining <= 0 {
-			rg.GameLogger.Debug("Free Spins ended")
+			log.Printf("Free Spins ended")
 			req.GameState.GameMode = "base"
 			req.GameState.FreeSpins = struct {
 				Remaining         int `json:"remaining"`
@@ -231,17 +231,17 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			}
 		}
 
-		rg.GameLogger.Debug("Processing joker %s at %d,%d with %d remaining rounds - was in win: %v",
+		log.Printf("Processing joker %s at %d,%d with %d remaining rounds - was in win: %v",
 			joker.Mode, joker.Position.Reel, joker.Position.Row, joker.RemainingRounds, wasInWin)
 
 		// If joker formed a winning combination, remove it
 		if wasInWin {
-			rg.GameLogger.Debug("Joker was in win - removing")
+			log.Printf("Joker was in win - removing")
 			// Skip adding to updatedJokerCards to remove the joker
 
 			// For Super Joker, log the counter decrement before removal
 			if joker.Mode == ModeSuperJoker {
-				rg.GameLogger.Debug("Super Joker was in win - counter decreased before removal")
+				log.Printf("Super Joker was in win - counter decreased before removal")
 			}
 			continue
 		} else {
@@ -249,18 +249,18 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 			if joker.Mode == ModeSuperJoker {
 				// Super Joker still decreases counter after each spin
 				joker.RemainingRounds--
-				rg.GameLogger.Debug("Super Joker was not in win - counter decreased to %d", joker.RemainingRounds)
+				log.Printf("Super Joker was not in win - counter decreased to %d", joker.RemainingRounds)
 
 				// Keep only if counter is still above 0
 				if joker.RemainingRounds > 0 {
 					updatedJokerCards = append(updatedJokerCards, joker)
-					rg.GameLogger.Debug("Super Joker retained with counter %d", joker.RemainingRounds)
+					log.Printf("Super Joker retained with counter %d", joker.RemainingRounds)
 				} else {
-					rg.GameLogger.Debug("Super Joker counter reached 0 - removing")
+					log.Printf("Super Joker counter reached 0 - removing")
 				}
 			} else {
 				// IMPORTANT: Big and Small Jokers don't persist to next spin
-				rg.GameLogger.Debug("%s Joker was not in win but doesn't persist - removing", joker.Mode)
+				log.Printf("%s Joker was not in win but doesn't persist - removing", joker.Mode)
 				// Don't add to updatedJokerCards to remove
 
 				// Replace the wild symbol with a random regular symbol
@@ -270,7 +270,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 					randomSymbol = WeightedRandomSymbol(r)
 				}
 				req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(randomSymbol)
-				rg.GameLogger.Debug("Replaced %s Joker at %d,%d with random symbol %s",
+				log.Printf("Replaced %s Joker at %d,%d with random symbol %s",
 					joker.Mode, joker.Position.Reel, joker.Position.Row, randomSymbol)
 			}
 		}
@@ -278,7 +278,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	req.GameState.JokerCards = updatedJokerCards
 	req.GameState.SpecialSymbols.JokerCards = updatedJokerCards
-	rg.GameLogger.Debug("Updated Joker Cards: %d", len(req.GameState.JokerCards))
+	log.Printf("Updated Joker Cards: %d", len(req.GameState.JokerCards))
 
 	// PATCH: Remove wilds at positions where jokers were removed due to being in a win
 	for _, win := range winDetails {
@@ -299,7 +299,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 					randomSymbol = WeightedRandomSymbol(rand.New(rand.NewSource(time.Now().UnixNano())))
 				}
 				req.GameState.Reels[pos.Reel][pos.Row] = string(randomSymbol)
-				rg.GameLogger.Debug("PATCH: Replaced wild at %d,%d after joker removal with random symbol %s", pos.Reel, pos.Row, randomSymbol)
+				log.Printf("PATCH: Replaced wild at %d,%d after joker removal with random symbol %s", pos.Reel, pos.Row, randomSymbol)
 			}
 		}
 	}
@@ -333,7 +333,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 				// If wild symbol doesn't have a corresponding joker card, add one
 				if !found {
-					rg.GameLogger.Debug("WARNING: Found wild symbol at %d,%d without a corresponding joker card - adding one", reel, row)
+					log.Printf("WARNING: Found wild symbol at %d,%d without a corresponding joker card - adding one", reel, row)
 
 					// Create a new joker card (small joker by default)
 					newJoker := JokerCard{
@@ -361,7 +361,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	rg.GameLogger.Debug("Spin completed: totalWin=%v, cascading=%v, gameMode=%s, totalCost=%v", totalWinnings, req.GameState.Cascading, req.GameState.GameMode, totalCost)
+	log.Printf("Spin completed: totalWin=%v, cascading=%v, gameMode=%s, totalCost=%v", totalWinnings, req.GameState.Cascading, req.GameState.GameMode, totalCost)
 
 	return c.JSON(SpinResponse{
 		Status:     "success",
@@ -378,7 +378,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	rngClient, settingsClient := rg.getClientsForRequest(c)
 	var req CascadeRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -387,7 +387,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -396,7 +396,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Validate reels
 	if len(req.GameState.Reels) != Reels || len(req.GameState.Reels[0]) != Rows {
-		rg.GameLogger.Debug("Invalid reels dimensions")
+		log.Printf("Invalid reels dimensions")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid reels",
@@ -434,14 +434,14 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		lastMultiplier := boomingMultipliers[len(boomingMultipliers)-1]
 		req.GameState.BoomingMultiplier = lastMultiplier + (index-len(boomingMultipliers)+1)*step
 	}
-	rg.GameLogger.Debug("Updated Booming Multiplier: %d (Cascade %d)", req.GameState.BoomingMultiplier, req.GameState.CascadeCount)
+	log.Printf("Updated Booming Multiplier: %d (Cascade %d)", req.GameState.BoomingMultiplier, req.GameState.CascadeCount)
 
 	// Create a single rand.Rand instance for this request
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Check if there are existing jokers in the input
 	hasExistingJokers := req.GameState.JokerCards != nil && len(req.GameState.JokerCards) > 0
-	rg.GameLogger.Debug("Request contains %d existing jokers", len(req.GameState.JokerCards))
+	log.Printf("Request contains %d existing jokers", len(req.GameState.JokerCards))
 
 	// Track positions to replace
 
@@ -451,7 +451,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	for _, win := range req.GameState.LastWinDetails {
 		for i, pos := range win.Payline {
 			if !seenPositions[pos] {
-				rg.GameLogger.Debug("Symbol to replace: %s at position %d,%d", win.Symbols[i], pos.Reel, pos.Row)
+				log.Printf("Symbol to replace: %s at position %d,%d", win.Symbols[i], pos.Reel, pos.Row)
 				winningPositions[pos] = true
 				seenPositions[pos] = true
 			}
@@ -467,23 +467,23 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	rg.GameLogger.Debug("$$$$$$$$$$$ hasGoldenCards: %v", hasGoldenCards)
+	log.Printf("$$$$$$$$$$$ hasGoldenCards: %v", hasGoldenCards)
 
 	// First cascade case: Transform golden cards to jokers
 	if hasGoldenCards {
-		rg.GameLogger.Debug("Processing golden cards: Transforming golden cards to jokers")
+		log.Printf("Processing golden cards: Transforming golden cards to jokers")
 		// Transform Golden Cards if present in the last win
-		rg.GameLogger.Debug("Transforming Golden Cards from last win details")
+		log.Printf("Transforming Golden Cards from last win details")
 		newJokerCards := TransformGoldenCards(req.GameState.Reels, req.GameState.LastWinDetails, req.GameState.JokerCards, r)
 
-		rg.GameLogger.Debug("<--------> newJokerCards: %v", newJokerCards)
+		log.Printf("<--------> newJokerCards: %v", newJokerCards)
 		// Log joker cards created and remove their positions from winningPositions
 		for _, joker := range newJokerCards {
-			rg.GameLogger.Debug("New joker created: mode=%s, position=%d,%d, rounds=%d",
+			log.Printf("New joker created: mode=%s, position=%d,%d, rounds=%d",
 				joker.Mode, joker.Position.Reel, joker.Position.Row, joker.RemainingRounds)
 			// Remove transformed positions from winningPositions to preserve the jokers
 			delete(winningPositions, joker.Position)
-			rg.GameLogger.Debug("Removed position %d,%d from winningPositions to preserve new joker",
+			log.Printf("Removed position %d,%d from winningPositions to preserve new joker",
 				joker.Position.Reel, joker.Position.Row)
 		}
 
@@ -501,13 +501,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		}
 		req.GameState.SpecialSymbols.JokerCards = req.GameState.JokerCards
 
-		rg.GameLogger.Debug("Transformed %d Golden Cards into Joker Cards. Total jokers now: %d",
+		log.Printf("Transformed %d Golden Cards into Joker Cards. Total jokers now: %d",
 			len(newJokerCards), len(req.GameState.JokerCards))
 	}
 
 	// Second cascade case: Process existing jokers
 	if hasExistingJokers {
-		rg.GameLogger.Debug("Processing existing jokers")
+		log.Printf("Processing existing jokers")
 
 		// First check which jokers are in winning positions
 		jokersInWins := make(map[Position]bool)
@@ -515,7 +515,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			for _, joker := range req.GameState.JokerCards {
 				if joker.Position.Reel == pos.Reel && joker.Position.Row == pos.Row {
 					jokersInWins[joker.Position] = true
-					rg.GameLogger.Debug("Joker at position %d,%d is in a win", pos.Reel, pos.Row)
+					log.Printf("Joker at position %d,%d is in a win", pos.Reel, pos.Row)
 				}
 			}
 		}
@@ -524,7 +524,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		var updatedJokerCards []JokerCard
 		for _, joker := range req.GameState.JokerCards {
 			wasInWin := jokersInWins[joker.Position]
-			rg.GameLogger.Debug("Processing existing joker %s at %d,%d with %d remaining rounds - was in win: %v",
+			log.Printf("Processing existing joker %s at %d,%d with %d remaining rounds - was in win: %v",
 				joker.Mode, joker.Position.Reel, joker.Position.Row, joker.RemainingRounds, wasInWin)
 
 			if wasInWin {
@@ -532,20 +532,20 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 				if joker.Mode == ModeSuperJoker {
 					// Super Joker in win - decrement counter
 					joker.RemainingRounds--
-					rg.GameLogger.Debug("Super Joker in win - counter decreased to %d", joker.RemainingRounds)
+					log.Printf("Super Joker in win - counter decreased to %d", joker.RemainingRounds)
 
 					if joker.RemainingRounds > 0 {
 						// Keep Super Joker with decreased counter
 						updatedJokerCards = append(updatedJokerCards, joker)
-						rg.GameLogger.Debug("Super Joker retained with counter %d", joker.RemainingRounds)
+						log.Printf("Super Joker retained with counter %d", joker.RemainingRounds)
 					} else {
 						// Counter reached 0, remove Super Joker
-						rg.GameLogger.Debug("Super Joker counter reached 0 - removing")
+						log.Printf("Super Joker counter reached 0 - removing")
 						// Replace with random symbol in winningPositions for replacement
 					}
 				} else {
 					// Big or Small Joker in win - they're removed
-					rg.GameLogger.Debug("%s Joker in win - will be removed", joker.Mode)
+					log.Printf("%s Joker in win - will be removed", joker.Mode)
 					// Will be replaced with new symbols in winningPositions
 				}
 			} else {
@@ -553,13 +553,13 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 				if joker.Mode == ModeSuperJoker {
 					// Super Joker not in win - keep with same counter
 					updatedJokerCards = append(updatedJokerCards, joker)
-					rg.GameLogger.Debug("Super Joker not in win - retained with counter %d", joker.RemainingRounds)
+					log.Printf("Super Joker not in win - retained with counter %d", joker.RemainingRounds)
 
 					// Remove position from winningPositions to preserve it
 					delete(winningPositions, joker.Position)
 				} else {
 					// Big or Small Joker not in win - still removed after one cascade
-					rg.GameLogger.Debug("%s Joker not in win but doesn't persist - removing", joker.Mode)
+					log.Printf("%s Joker not in win but doesn't persist - removing", joker.Mode)
 					// Will be replaced with random symbols in next step
 
 					// // First replace the joker with a random symbol
@@ -574,7 +574,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 					updatedJokerCards = append(updatedJokerCards, joker)
 
-					rg.GameLogger.Debug("'''''''''''''''''''''''''''updatedJokerCards: %v", updatedJokerCards)
+					log.Printf("'''''''''''''''''''''''''''updatedJokerCards: %v", updatedJokerCards)
 
 					// log.Printf("Replaced %s Joker with %s", joker.Mode, randomSymbol)
 				}
@@ -589,49 +589,49 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		req.GameState.SpecialSymbols.JokerCards = updatedJokerCards
 	}
 
-	rg.GameLogger.Debug("winningPositions: %v", winningPositions)
+	log.Printf("winningPositions: %v", winningPositions)
 	// Generate new symbols for the cascade, only for non-joker positions
 	newReels, specialSymbols := GenerateReelsForCascade(req.GameState.Reels, winningPositions, req.GameState.JokerCards, r)
 
-	rg.GameLogger.Debug("@@@@@@@@@@@@@@@@@@@@@@@@@newReels: %v", newReels)
+	log.Printf("@@@@@@@@@@@@@@@@@@@@@@@@@newReels: %v", newReels)
 
 	// Calculate new wins
 	payout, winDetails := CalculateWins(newReels, req.GameState.Bet.Multiplier, req.GameState.BoomingMultiplier, req.GameState.JokerCards)
 
-	rg.GameLogger.Debug("TOTAL PAYOUT: %v", payout)
-	rg.GameLogger.Debug("WIN DETAILS: %v", winDetails)
+	log.Printf("TOTAL PAYOUT: %v", payout)
+	log.Printf("WIN DETAILS: %v", winDetails)
 
 	// Call RNG
 	rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to get RTP: %v", err)
+		log.Printf("Failed to get RTP: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve game settings",
 		})
 	}
-	rg.GameLogger.Debug("RTP retrieved: %v", rtp)
+	log.Printf("RTP retrieved: %v", rtp)
 
 	payoutMultiplier := payout / req.GameState.Bet.Amount
 	// Get IP address and user agent from request
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	rg.GameLogger.Debug("IP: %v", ip)
-	rg.GameLogger.Debug("User-Agent: %v", userAgent)
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
 	rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
 	if err != nil {
-		rg.GameLogger.Debug("Failed to call RNG API: %v", err)
+		log.Printf("Failed to call RNG API: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to determine outcome",
 		})
 	}
-	rg.GameLogger.Debug("RNG response: %v", rngResp)
+	log.Printf("RNG response: %v", rngResp)
 
 	// Adjust outcome based on RNG
 	if rngResp.PrefOutcome == "loss" {
-		rg.GameLogger.Debug("RNG determined a loss outcome")
+		log.Printf("RNG determined a loss outcome")
 
 		// Check if there are any Super Jokers that need processing
 		hasSuperJokers := false
@@ -682,16 +682,16 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		// 	}
 		// }
 
-		rg.GameLogger.Debug("############Loss making positions: %v", lossMakingPositions)
+		log.Printf("############Loss making positions: %v", lossMakingPositions)
 
-		rg.GameLogger.Debug("*************NEW REELS BEFORE FORCING LOSS: %v", newReels)
+		log.Printf("*************NEW REELS BEFORE FORCING LOSS: %v", newReels)
 
 		lossReels, lossSpecialSymbols, winOverride := GenerateLossForCascadePreservingJokers(
 			newReels, lossMakingPositions, req.GameState.JokerCards, r)
 
 		if winOverride {
 			// RNG wanted loss but we're accepting the win
-			rg.GameLogger.Debug("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
+			log.Printf("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
 
 			// Calculate the actual win with current reels and jokers
 			actualPayout, actualWinDetails := CalculateWins(
@@ -709,7 +709,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			req.GameState.LastWinDetails = actualWinDetails
 			req.GameState.Cascading = actualPayout > 0
 
-			rg.GameLogger.Debug("WIN OVERRIDE RESULT: Payout=%.2f, Cascading=%t", actualPayout, req.GameState.Cascading)
+			log.Printf("WIN OVERRIDE RESULT: Payout=%.2f, Cascading=%t", actualPayout, req.GameState.Cascading)
 
 			// Count scatters
 			scatterPositions := make([]Position, 0)
@@ -725,7 +725,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 			// Handle free spins if needed
 			if req.GameState.GameMode == "base" && req.GameState.ScatterCount >= 3 {
-				rg.GameLogger.Debug("Free Spins triggered during win override: %d scatter(s)", req.GameState.ScatterCount)
+				log.Printf("Free Spins triggered during win override: %d scatter(s)", req.GameState.ScatterCount)
 				req.GameState.GameMode = "freeSpins"
 				req.GameState.FreeSpins.ScattersTriggered = req.GameState.ScatterCount
 				if req.GameState.ScatterCount == 3 {
@@ -757,7 +757,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 							}
 						}
 						if !found {
-							rg.GameLogger.Debug("WARNING: Found wild symbol at %d,%d without joker card in win override - adding one", reel, row)
+							log.Printf("WARNING: Found wild symbol at %d,%d without joker card in win override - adding one", reel, row)
 							newJoker := JokerCard{
 								Position:        Position{Reel: reel, Row: row},
 								Mode:            ModeSmallJoker,
@@ -780,7 +780,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			})
 		} else {
 			// Successfully generated loss
-			rg.GameLogger.Debug("**************NEW REELS AFTER FORCING LOSS: %v", lossReels)
+			log.Printf("**************NEW REELS AFTER FORCING LOSS: %v", lossReels)
 
 			// Update the game state with loss
 			lossSpecialSymbols.JokerCards = req.GameState.JokerCards
@@ -849,7 +849,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	// 	})
 	// }
 
-	rg.GameLogger.Debug("*************New reels in win: %v", newReels)
+	log.Printf("*************New reels in win: %v", newReels)
 
 	// Update game state
 	req.GameState.Reels = newReels
@@ -873,11 +873,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	req.GameState.SpecialSymbols.TargetSymbols = scatterPositions
 	req.GameState.ScatterCount = len(scatterPositions)
 
-	rg.GameLogger.Debug("Final scatter count: %d", req.GameState.ScatterCount)
+	log.Printf("Final scatter count: %d", req.GameState.ScatterCount)
 
 	// Checks for free spins triggering from base game during a cascade
 	if req.GameState.GameMode == "base" && req.GameState.ScatterCount >= 3 {
-		rg.GameLogger.Debug("Free Spins triggered during cascade: %d scatter(s)", req.GameState.ScatterCount)
+		log.Printf("Free Spins triggered during cascade: %d scatter(s)", req.GameState.ScatterCount)
 		req.GameState.GameMode = "freeSpins"
 		req.GameState.FreeSpins.ScattersTriggered = req.GameState.ScatterCount
 		if req.GameState.ScatterCount == 3 {
@@ -911,7 +911,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		req.GameState.FreeSpins.Remaining += additionalSpins
 		req.GameState.FreeSpins.TotalAwarded += additionalSpins
 		req.GameState.FreeSpins.ScattersTriggered = newScatterCount
-		rg.GameLogger.Debug("Free Spins retriggered in cascade: %d new scatter(s), %d additional spins, total %d spins", newScatterCount, additionalSpins, req.GameState.FreeSpins.TotalAwarded)
+		log.Printf("Free Spins retriggered in cascade: %d new scatter(s), %d additional spins, total %d spins", newScatterCount, additionalSpins, req.GameState.FreeSpins.TotalAwarded)
 	}
 
 	// Ensure all wild symbols have corresponding joker cards
@@ -929,7 +929,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 				// If wild symbol doesn't have a corresponding joker card, add one
 				if !found {
-					rg.GameLogger.Debug("WARNING: Found wild symbol at %d,%d without a corresponding joker card - adding one", reel, row)
+					log.Printf("WARNING: Found wild symbol at %d,%d without a corresponding joker card - adding one", reel, row)
 
 					// Create a new joker card (small joker by default)
 					newJoker := JokerCard{
@@ -949,7 +949,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	rg.GameLogger.Debug("Cascade completed: totalWin=%v, cascading=%v, gameMode=%s",
+	log.Printf("Cascade completed: totalWin=%v, cascading=%v, gameMode=%s",
 		req.GameState.TotalWin, req.GameState.Cascading, req.GameState.GameMode)
 
 	return c.JSON(CascadeResponse{
@@ -967,7 +967,7 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 	// Remove unused rngClient, settingsClient
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -986,7 +986,7 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 		if joker.Mode == ModeSuperJoker {
 			// Decrement Super Joker counter
 			joker.RemainingRounds--
-			rg.GameLogger.Debug("Super Joker counter decreased to %d", joker.RemainingRounds)
+			log.Printf("Super Joker counter decreased to %d", joker.RemainingRounds)
 
 			if joker.RemainingRounds == 0 {
 				// Counter reached 0, replace with random symbol
@@ -996,21 +996,21 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 					randomSymbol = WeightedRandomSymbol(r)
 				}
 				req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(randomSymbol)
-				rg.GameLogger.Debug("Super Joker removed (counter=0) - replaced with %s", randomSymbol)
+				log.Printf("Super Joker removed (counter=0) - replaced with %s", randomSymbol)
 			} else {
 				// Keep joker with decreased counter
 				updatedJokerCards = append(updatedJokerCards, joker)
-				rg.GameLogger.Debug("Super Joker retained with counter %d", joker.RemainingRounds)
+				log.Printf("Super Joker retained with counter %d", joker.RemainingRounds)
 
 				// If counter is 1, signal to return to spin
 				if joker.RemainingRounds == 1 {
 					shouldReturnToSpin = true
-					rg.GameLogger.Debug("Super Joker has counter=1 - should return to spin")
+					log.Printf("Super Joker has counter=1 - should return to spin")
 				}
 			}
 		} else {
 			// Shouldn't have non-Super Jokers here
-			rg.GameLogger.Debug("WARNING: Unexpected %s Joker in ProcessSuperJokersHandler", joker.Mode)
+			log.Printf("WARNING: Unexpected %s Joker in ProcessSuperJokersHandler", joker.Mode)
 
 			// Replace with random symbol
 			randomSymbol := WeightedRandomSymbol(r)
@@ -1019,7 +1019,7 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 				randomSymbol = WeightedRandomSymbol(r)
 			}
 			req.GameState.Reels[joker.Position.Reel][joker.Position.Row] = string(randomSymbol)
-			rg.GameLogger.Debug("Replaced unexpected %s Joker with %s", joker.Mode, randomSymbol)
+			log.Printf("Replaced unexpected %s Joker with %s", joker.Mode, randomSymbol)
 		}
 	}
 
@@ -1053,7 +1053,7 @@ func (rg *RouteGroup) ProcessSuperJokersHandler(c *fiber.Ctx) error {
 		req.GameState.Reels, positionsToRandomize, req.GameState.JokerCards, rand.New(rand.NewSource(time.Now().UnixNano())),
 	)
 	if override {
-		rg.GameLogger.Debug("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
+		log.Printf("RNG OVERRIDE: RNG requested loss but jokers make it impossible, accepting win")
 	}
 
 	// Update game state
@@ -1079,7 +1079,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 	// Remove unused rngClient, settingsClient
 	var req FeatureBuyRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -1105,7 +1105,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -1114,7 +1114,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 
 	// Validate option
 	if req.Option != 1 && req.Option != 2 {
-		rg.GameLogger.Debug("Invalid option, allowed values are 1 or 2")
+		log.Printf("Invalid option, allowed values are 1 or 2")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid option, allowed values are 1 or 2",
@@ -1170,7 +1170,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 				RemainingRounds: 3, // Start with 3 rounds
 			}
 			if err := newJoker.ValidateMode(); err != nil {
-				rg.GameLogger.Debug("Invalid Joker Card mode in FeatureBuy: %v", err)
+				log.Printf("Invalid Joker Card mode in FeatureBuy: %v", err)
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"status":  "error",
 					"message": "Failed to create Super Joker",
@@ -1231,7 +1231,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 
 				// If wild symbol doesn't have a corresponding joker card, add one
 				if !found {
-					rg.GameLogger.Debug("WARNING: Found wild symbol at %d,%d without a corresponding joker card in FeatureBuy - adding one", reel, row)
+					log.Printf("WARNING: Found wild symbol at %d,%d without a corresponding joker card in FeatureBuy - adding one", reel, row)
 
 					// Create a new joker card (small joker by default)
 					newJoker := JokerCard{
@@ -1259,7 +1259,7 @@ func (rg *RouteGroup) FeatureBuyHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	rg.GameLogger.Debug("Feature Buy completed: option=%d, cost=%.2f", req.Option, cost)
+	log.Printf("Feature Buy completed: option=%d, cost=%.2f", req.Option, cost)
 
 	return c.JSON(FeatureBuyResponse{
 		Status:     "success",

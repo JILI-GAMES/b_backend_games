@@ -2,6 +2,7 @@ package birdsparty
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -16,7 +17,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	var req SpinRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -25,7 +26,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -44,7 +45,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	expectedGridSize := req.GameState.CurrentLevel.GetGridSize()
 	if req.GameState.GridSize != expectedGridSize {
 		req.GameState.GridSize = expectedGridSize
-		rg.GameLogger.Debug("Corrected grid size to %d for level %d", expectedGridSize, req.GameState.CurrentLevel)
+		log.Printf("Corrected grid size to %d for level %d", expectedGridSize, req.GameState.CurrentLevel)
 	}
 
 	// Create rand instance
@@ -80,7 +81,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	if len(connections) > 0 {
 		rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 		if err != nil {
-			rg.GameLogger.Error("Failed to get RTP: %v", err)
+			log.Printf("Failed to get RTP: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to retrieve game settings",
@@ -92,11 +93,11 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		ip := c.IP()
 		userAgent := c.Get("User-Agent")
 
-		rg.GameLogger.Debug("IP: %v", ip)
-		rg.GameLogger.Debug("User-Agent: %v", userAgent)
+		log.Printf("✅IP: %v", ip)
+		log.Printf("✅User-Agent: %v", userAgent)
 		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
 		if err != nil {
-			rg.GameLogger.Error("Failed to call RNG API: %v", err)
+			log.Printf("Failed to call RNG API: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to determine outcome",
@@ -105,7 +106,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Adjust outcome based on RNG
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Debug("RNG determined a loss outcome")
+			log.Printf("RNG determined a loss outcome")
 			forbidFreeGame := req.GameState.GameMode == "freeSpins"
 			req.GameState.Grid = GenerateLossGrid(req.GameState.CurrentLevel, r, forbidFreeGame)
 
@@ -131,7 +132,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 		req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
 		req.GameState.FreeSpins.Multiplier = GetRandomFreeSpinMultiplier(r)
-		rg.GameLogger.Debug("Free Spins triggered with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
+		log.Printf("Free Spins triggered with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
 	}
 
 	// Update free spins count
@@ -144,7 +145,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 				TotalAwarded int     `json:"totalAwarded"`
 				Multiplier   float64 `json:"multiplier"`
 			}{0, 0, 1.0}
-			rg.GameLogger.Debug("Free Spins ended")
+			log.Printf("Free Spins ended")
 		}
 	}
 
@@ -159,7 +160,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	// Determine if we have stage-cleared symbols
 	hasStageCleared := len(stageClearedSymbols) > 0
 
-	rg.GameLogger.Debug("Spin completed: level=%d, gridSize=%dx%d, stageClearedSymbols=%d, hasStageCleared=%v, cascading=%v",
+	log.Printf("Spin completed: level=%d, gridSize=%dx%d, stageClearedSymbols=%d, hasStageCleared=%v, cascading=%v",
 		req.GameState.CurrentLevel, req.GameState.GridSize, req.GameState.GridSize,
 		len(stageClearedSymbols), hasStageCleared, req.GameState.Cascading)
 
@@ -182,7 +183,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 	var req ProcessStageClearedRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -191,7 +192,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -200,7 +201,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 	// Validate grid dimensions
 	if !ValidateGridDimensions(req.GameState.Grid, req.GameState.CurrentLevel) {
-		rg.GameLogger.Error("Invalid grid dimensions for level %d", req.GameState.CurrentLevel)
+		log.Printf("Invalid grid dimensions for level %d", req.GameState.CurrentLevel)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid grid dimensions",
@@ -242,7 +243,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		newPositions = ApplyGravitySurgical(req.GameState.Grid, stageClearedSymbols, req.GameState.CurrentLevel, r, req.GameState.GameMode == "freeSpins")
 		// Update stage progress
 		req.GameState.StageProgress += len(stageClearedSymbols)
-		rg.GameLogger.Debug("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
+		log.Printf("Added %d stage-cleared symbols to progress, total: %d/15", len(stageClearedSymbols), req.GameState.StageProgress)
 		// Check for level advancement
 		if req.GameState.StageProgress >= StageProgressTarget {
 			newLevel = AdvanceLevel(oldLevel)
@@ -260,7 +261,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 			forbidFreeGame := req.GameState.GameMode == "freeSpins"
 			req.GameState.Grid = GenerateGrid(newLevel, r, forbidFreeGame)
 			levelAdvanced = true
-			rg.GameLogger.Debug("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
+			log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 
 			// --- NEW: Analyze the brand new grid for wins, free spins, and special symbols ---
 			connections := FindRegularConnections(req.GameState.Grid, req.GameState.CurrentLevel)
@@ -282,7 +283,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 				req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 				req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
 				req.GameState.FreeSpins.Multiplier = GetRandomFreeSpinMultiplier(r)
-				rg.GameLogger.Debug("Free Spins triggered on new level with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
+				log.Printf("Free Spins triggered on new level with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
 				// Apply multiplier if free spins were just triggered
 				totalWinnings *= req.GameState.FreeSpins.Multiplier
 			}
@@ -329,7 +330,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 	if len(connections) > 0 {
 		rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 		if err != nil {
-			rg.GameLogger.Error("Failed to get RTP: %v", err)
+			log.Printf("Failed to get RTP: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to retrieve game settings",
@@ -341,11 +342,11 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		ip := c.IP()
 		userAgent := c.Get("User-Agent")
 
-		rg.GameLogger.Debug("IP: %v", ip)
-		rg.GameLogger.Debug("User-Agent: %v", userAgent)
-		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
+		log.Printf("✅IP: %v", ip)
+		log.Printf("✅User-Agent: %v", userAgent)
+		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent,false)
 		if err != nil {
-			rg.GameLogger.Error("Failed to call RNG API: %v", err)
+			log.Printf("Failed to call RNG API: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to determine outcome",
@@ -354,14 +355,14 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 
 		// SURGICAL LOSS: Adjust outcome based on RNG while preserving grid structure
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Debug("RNG determined a loss outcome for stage-cleared processing")
+			log.Printf("RNG determined a loss outcome for stage-cleared processing")
 			// Try surgical loss approach first (only new positions)
 			success := ApplySurgicalLoss(&req.GameState, originalGrid, stageClearedSymbols, req.GameState.CurrentLevel, r, newPositions)
 			if !success {
 				// If surgical loss is impossible, bypass RNG and allow the win
-				rg.GameLogger.Warn("⚠️  RNG BYPASS: Surgical loss impossible after stage-cleared processing - preserving natural outcome")
-				rg.GameLogger.Warn("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
-				rg.GameLogger.Warn("⚠️  REASON: Stage-cleared symbol removal at positions %+v made loss impossible", stageClearedSymbols)
+				log.Printf("⚠️  RNG BYPASS: Surgical loss impossible after stage-cleared processing - preserving natural outcome")
+				log.Printf("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
+				log.Printf("⚠️  REASON: Stage-cleared symbol removal at positions %+v made loss impossible", stageClearedSymbols)
 				rngBypassed = true
 				// Keep the original connections and winnings
 				// Grid remains as it is after stage-cleared processing
@@ -369,7 +370,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 				// Surgical loss successful - remove connections
 				connections = nil
 				totalWinnings = 0
-				rg.GameLogger.Debug("Surgical loss applied successfully after stage-cleared processing (new only)")
+				log.Printf("Surgical loss applied successfully after stage-cleared processing (new only)")
 			}
 		}
 	}
@@ -394,7 +395,7 @@ func (rg *RouteGroup) ProcessStageClearedHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	rg.GameLogger.Debug(logMessage)
+	log.Printf(logMessage)
 
 	return c.JSON(ProcessStageClearedResponse{
 		Status:            "success",
@@ -418,7 +419,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	var req CascadeRequest
 	if err := c.BodyParser(&req); err != nil {
-		rg.GameLogger.Error("Failed to parse request body: %v", err)
+		log.Printf("Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid request body",
@@ -427,7 +428,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Validate request
 	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.GameState.Bet.Amount); err != nil {
-		rg.GameLogger.Error("Request validation failed: %v", err)
+		log.Printf("Request validation failed: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": err.Error(),
@@ -436,7 +437,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 	// Validate grid dimensions
 	if !ValidateGridDimensions(req.GameState.Grid, req.GameState.CurrentLevel) {
-		rg.GameLogger.Error("Invalid grid dimensions for level %d", req.GameState.CurrentLevel)
+		log.Printf("Invalid grid dimensions for level %d", req.GameState.CurrentLevel)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid grid dimensions",
@@ -500,7 +501,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 	if len(connections) > 0 {
 		rtp, err := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
 		if err != nil {
-			rg.GameLogger.Error("Failed to get RTP: %v", err)
+			log.Printf("Failed to get RTP: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to retrieve game settings",
@@ -512,11 +513,11 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		ip := c.IP()
 		userAgent := c.Get("User-Agent")
 
-		rg.GameLogger.Debug("IP: %v", ip)
-		rg.GameLogger.Debug("User-Agent: %v", userAgent)
+		log.Printf("✅IP: %v", ip)
+		log.Printf("✅User-Agent: %v", userAgent)
 		rngResp, err := rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.GameState.Bet.Amount, ip, userAgent, false)
 		if err != nil {
-			rg.GameLogger.Error("Failed to call RNG API: %v", err)
+			log.Printf("Failed to call RNG API: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to determine outcome",
@@ -525,16 +526,16 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 
 		// SURGICAL LOSS: Adjust outcome based on RNG while preserving grid structure
 		if rngResp.PrefOutcome == "loss" {
-			rg.GameLogger.Debug("RNG determined a loss outcome for cascade")
+			log.Printf("RNG determined a loss outcome for cascade")
 
 			// Try surgical loss approach first (only new positions)
 			success := ApplySurgicalLossForCascade(&req.GameState, originalGrid, newPositions, req.GameState.CurrentLevel, r)
 
 			if !success {
 				// If surgical loss is impossible, bypass RNG and allow the win
-				rg.GameLogger.Warn("⚠️  RNG BYPASS: Surgical loss impossible after cascade processing - preserving natural outcome")
-				rg.GameLogger.Warn("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
-				rg.GameLogger.Warn("⚠️  REASON: Cascade processing at %d positions made loss impossible", len(affectedPositions))
+				log.Printf("⚠️  RNG BYPASS: Surgical loss impossible after cascade processing - preserving natural outcome")
+				log.Printf("⚠️  GRID PRESERVATION: Maintaining grid structure as surgical loss would break game mechanics")
+				log.Printf("⚠️  REASON: Cascade processing at %d positions made loss impossible", len(affectedPositions))
 				rngBypassed = true
 
 				// Keep the original connections and winnings
@@ -543,7 +544,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 				// Surgical loss successful - remove connections
 				connections = nil
 				totalWinnings = 0
-				rg.GameLogger.Debug("Surgical loss applied successfully after cascade processing (new only)")
+				log.Printf("Surgical loss applied successfully after cascade processing (new only)")
 			}
 		}
 	}
@@ -563,7 +564,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 			req.GameState.FreeSpins.Remaining = FreeSpinsAwarded
 			req.GameState.FreeSpins.TotalAwarded = FreeSpinsAwarded
 			req.GameState.FreeSpins.Multiplier = GetRandomFreeSpinMultiplier(r)
-			rg.GameLogger.Debug("Free Spins triggered during cascade with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
+			log.Printf("Free Spins triggered during cascade with %.1fx multiplier", req.GameState.FreeSpins.Multiplier)
 		}
 	}
 
@@ -580,7 +581,7 @@ func (rg *RouteGroup) CascadeHandler(c *fiber.Ctx) error {
 		logMessage += " [RNG BYPASSED - Surgical loss impossible]"
 	}
 
-	rg.GameLogger.Debug(logMessage)
+	log.Printf(logMessage)
 
 	return c.JSON(CascadeResponse{
 		Status:              "success",

@@ -44,20 +44,18 @@ func main() {
 		log.Fatalf("Failed to initialize encryption: %v", err)
 	}
 
-	// Set up main server logging (for startup, shutdown, and general server events)
+	// Set up logging with lumberjack for daily rotation and 1 day retention (use prod config for log file)
 	log.SetOutput(&lumberjack.Logger{
-		Filename:   "logs/server.log",
-		MaxSize:    10,   // MB
-		MaxBackups: 3,    // Keep 3 backup files
-		MaxAge:     7,    // Keep logs for 7 days
-		LocalTime:  true, // use local time for file names
-		Compress:   true, // Compress old log files
+		Filename:  prodCfg.LogFile,
+		MaxAge:    1,    // days to keep
+		LocalTime: true, // use local time for file names
 	})
-
-	// Create logs directory if it doesn't exist
-	if err := os.MkdirAll("logs", 0755); err != nil {
-		log.Printf("Failed to create logs directory: %v", err)
-	}
+	// Set up logging with lumberjack for daily rotation and 1 day retention (use test config for log file)
+	log.SetOutput(&lumberjack.Logger{
+		Filename:  testCfg.LogFile,
+		MaxAge:    1,    // days to keep
+		LocalTime: true, // use local time for file names
+	})
 
 	// Create both prod and test clients
 	rngClientProd := rng.NewClient(prodCfg.RNGServiceURL)
@@ -68,21 +66,6 @@ func main() {
 
 	// Create Telegram client (use prod config for credentials)
 	telegramClient := telegram.NewClient(prodCfg.TelegramBotToken, prodCfg.TelegramChatID)
-
-	// Initialize GameLogger for all games that use logging
-	birdsparty.InitializeGameLogger()
-	birdspartydeluxe.InitializeGameLogger()
-	blossomsofwealth.InitializeGameLogger()
-	hilo.InitializeGameLogger()
-	kong.InitializeGameLogger()
-	magicace.InitializeGameLogger()
-	magicaceoriginal.InitializeGameLogger()
-	moneybagsman.InitializeGameLogger()
-	moneybagsman2.InitializeGameLogger()
-	onepiece.InitializeGameLogger()
-	opensesame1.InitializeGameLogger()
-	opensesame2.InitializeGameLogger()
-	winningmask.InitializeGameLogger()
 
 	// Create fiber app
 	app := fiber.New(fiber.Config{

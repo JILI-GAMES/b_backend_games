@@ -1,7 +1,7 @@
 package hilo
 
 import (
-	"log"
+	// "log"
 	"math"
 )
 
@@ -434,7 +434,7 @@ func getJDBMultipliers(card string, multiplierModifier float64, previousWinningM
 	// Bonus Streak = 1 + (Current Card Base Multiplier × 0.00588)
 	// New Multiplier = Previous Winning Multiplier × Current Card Base Multiplier × Bonus Streak
 	// CAP: Maximum multiplier is 1000x
-	log.Printf("Base multipliers: %v", baseMultipliers)
+	GameLogger.Debug("Base multipliers: %v", baseMultipliers)
 	for betType, baseMultiplier := range baseMultipliers {
 		if baseMultiplier > 0 { // Only apply to enabled bets
 			// Calculate bonus streak

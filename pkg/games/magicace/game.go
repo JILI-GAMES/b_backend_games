@@ -2,17 +2,25 @@ package magicace
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
+
+var GameLogger *logger.GameLogger
+
+// InitializeGameLogger initializes the global GameLogger
+func InitializeGameLogger() {
+	GameLogger = logger.GetGameLogger("magicace")
+}
 
 // Constants
 const (
 	Denomination          = 0.01
-	GoldenCardProbability = 0.05   // from 0.20
+	GoldenCardProbability = 0.05 // from 0.20
 	Reels                 = 5
 	Rows                  = 4
 	MinBet                = 20
@@ -231,7 +239,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 		copy(newReels[reel], reels[reel])
 	}
 
-	log.Printf("NEW REELS ENTRY: %v", newReels)
+	GameLogger.Debug("NEW REELS ENTRY: %v", newReels)
 
 	// Initialize special symbols
 	specialSymbols := SpecialSymbols{
@@ -303,7 +311,7 @@ func GenerateReelsForCascade(reels [][]string, winningPositions map[Position]boo
 			break
 		}
 	}
-	log.Printf("NEW REELS EXIT: %v", newReels)
+	GameLogger.Debug("NEW REELS EXIT: %v", newReels)
 
 	return newReels, specialSymbols
 }
@@ -485,28 +493,29 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 		// Check if we have a valid loss pattern
 		totalWinnings, _ := CalculateWins(newReels, 1, 1, jokerCards)
 		if totalWinnings == 0 {
-			log.Printf("LOSS GENERATED: Successfully created loss after %d attempts", attempts)
+			GameLogger.Debug("LOSS GENERATED: Successfully created loss after %d attempts", attempts)
 			return newReels, specialSymbols, false // false = no win override
 		}
 	}
 
 	// If we reach here, accept the win instead of forcing impossible loss
-	log.Printf("✅✅✅✅WIN ACCEPTED: Could not generate loss after %d attempts, accepting natural win", maxAttempts)
-	
+	GameLogger.Debug("✅✅✅✅WIN ACCEPTED: Could not generate loss after %d attempts, accepting natural win", maxAttempts)
+
 	// Return original reels with jokers properly placed
 	for reel := 0; reel < Reels; reel++ {
 		copy(newReels[reel], reels[reel])
 	}
-	
+
 	// Ensure jokers are in their positions
 	if jokerCards != nil {
 		for _, joker := range jokerCards {
 			newReels[joker.Position.Reel][joker.Position.Row] = string(SymbolWild)
 		}
 	}
-	
+
 	return newReels, specialSymbols, true // true = win override applied
 }
+
 // func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions map[Position]bool, jokerCards []JokerCard, r *rand.Rand) ([][]string, SpecialSymbols) {
 // 	newReels := make([][]string, Reels)
 // 	for reel := 0; reel < Reels; reel++ {
@@ -625,7 +634,7 @@ func GenerateLossForCascadePreservingJokers(reels [][]string, winningPositions m
 // 	}
 
 // 	// If we reach here, it's impossible to avoid a win with Jokers present
-// 	log.Printf("HYBRID OVERRIDE: Could not generate a loss grid with Jokers after %d attempts. Allowing unavoidable win (payout=%.2f)", maxAttempts, lastWinnings)
+// 	GameLogger.Debug("HYBRID OVERRIDE: Could not generate a loss grid with Jokers after %d attempts. Allowing unavoidable win (payout=%.2f)", maxAttempts, lastWinnings)
 // 	// Optionally, annotate specialSymbols for auditing (add a field if needed)
 // 	// lastSpecialSymbols.HybridOverride = true
 // 	return lastGrid, lastSpecialSymbols
@@ -734,7 +743,7 @@ func countGoldenCards(winDetails []WinDetail) int {
 
 // TransformGoldenCards transforms Golden Cards that are part of a win into Joker Cards
 func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existingJokerCards []JokerCard, r *rand.Rand) []JokerCard {
-	log.Printf("TransformGoldenCards: Examining %d golden cards from %d win details",
+	GameLogger.Debug("TransformGoldenCards: Examining %d golden cards from %d win details",
 		countGoldenCards(lastWinDetails), len(lastWinDetails))
 
 	var newJokerCards []JokerCard
@@ -744,7 +753,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 	if existingJokerCards != nil {
 		for _, joker := range existingJokerCards {
 			occupiedPositions[joker.Position] = true
-			log.Printf("Existing joker at position %d,%d marked as occupied",
+			GameLogger.Debug("Existing joker at position %d,%d marked as occupied",
 				joker.Position.Reel, joker.Position.Row)
 		}
 	}
@@ -756,7 +765,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 			if strings.Contains(symbol, "wild") || symbol == string(SymbolScatter) {
 				occupiedPositions[Position{Reel: reel, Row: row}] = true
 				if strings.HasPrefix(symbol, "golden_") {
-					log.Printf("Golden card at position %d,%d marked as occupied", reel, row)
+					GameLogger.Debug("Golden card at position %d,%d marked as occupied", reel, row)
 				}
 			}
 		}
@@ -766,44 +775,44 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 	transformed := make(map[Position]bool)
 
 	for winIndex, win := range lastWinDetails {
-		log.Printf("Processing win #%d with %d golden cards", winIndex, len(win.GoldenCards))
+		GameLogger.Debug("Processing win #%d with %d golden cards", winIndex, len(win.GoldenCards))
 
 		// Build a set of positions in the payline for this win
 		paylinePositions := make(map[Position]bool)
 		for _, p := range win.Payline {
 			paylinePositions[p] = true
-			log.Printf("Payline includes position %d,%d", p.Reel, p.Row)
+			GameLogger.Debug("Payline includes position %d,%d", p.Reel, p.Row)
 		}
 
 		for _, pos := range win.GoldenCards {
-			log.Printf("Checking golden card at position %d,%d", pos.Reel, pos.Row)
+			GameLogger.Debug("Checking golden card at position %d,%d", pos.Reel, pos.Row)
 
 			if transformed[pos] {
-				log.Printf("Position %d,%d already transformed - skipping", pos.Reel, pos.Row)
+				GameLogger.Debug("Position %d,%d already transformed - skipping", pos.Reel, pos.Row)
 				continue // Already transformed this position
 			}
 
 			// Only transform if this golden card is also in the payline of this win
 			if !paylinePositions[pos] {
-				log.Printf("Position %d,%d not in current payline - skipping", pos.Reel, pos.Row)
+				GameLogger.Debug("Position %d,%d not in current payline - skipping", pos.Reel, pos.Row)
 				continue
 			}
 
 			symbol := reels[pos.Reel][pos.Row]
-			log.Printf("Symbol at position %d,%d is %s", pos.Reel, pos.Row, symbol)
+			GameLogger.Debug("Symbol at position %d,%d is %s", pos.Reel, pos.Row, symbol)
 
 			if !strings.HasPrefix(symbol, "golden_") {
-				log.Printf("Symbol %s is not a golden card - skipping", symbol)
+				GameLogger.Debug("Symbol %s is not a golden card - skipping", symbol)
 				continue // Not a golden card in the current grid
 			}
 
 			// Check if a joker already exists at this position
 			if occupiedPositions[pos] {
-				log.Printf("Position %d,%d already occupied - skipping", pos.Reel, pos.Row)
+				GameLogger.Debug("Position %d,%d already occupied - skipping", pos.Reel, pos.Row)
 				continue // Already a joker here
 			}
 
-			log.Printf("TRANSFORM: Golden card at position %d,%d will be transformed to a joker", pos.Reel, pos.Row)
+			GameLogger.Debug("TRANSFORM: Golden card at position %d,%d will be transformed to a joker", pos.Reel, pos.Row)
 
 			// Use a weighted probability distribution for joker types
 			roll := r.Intn(100)
@@ -817,15 +826,15 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 			if roll < 20 {
 				mode = ModeSuperJoker
 				remainingRounds = 3 // Start with 3 rounds for Super Joker
-				log.Printf("Selected Super Joker (roll: %d)", roll)
+				GameLogger.Debug("Selected Super Joker (roll: %d)", roll)
 			} else if roll < 30 {
 				mode = ModeBigJoker
 				remainingRounds = 1
-				log.Printf("Selected Big Joker (roll: %d)", roll)
+				GameLogger.Debug("Selected Big Joker (roll: %d)", roll)
 			} else {
 				mode = ModeSmallJoker
 				remainingRounds = 1
-				log.Printf("Selected Small Joker (roll: %d)", roll)
+				GameLogger.Debug("Selected Small Joker (roll: %d)", roll)
 			}
 
 			joker := JokerCard{
@@ -840,7 +849,7 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 
 			// Mutate the reels to show the joker (wild)
 			reels[pos.Reel][pos.Row] = string(SymbolWild)
-			log.Printf("Replaced golden_%s with wild at position %d,%d",
+			GameLogger.Debug("Replaced golden_%s with wild at position %d,%d",
 				strings.TrimPrefix(symbol, "golden_"), pos.Reel, pos.Row)
 
 			// Add duplication logic for Big Joker
@@ -878,17 +887,17 @@ func TransformGoldenCards(reels [][]string, lastWinDetails []WinDetail, existing
 					reels[newReel][newRow] = string(SymbolWild)
 					occupiedPositions[newPos] = true
 
-					log.Printf("Created duplicate Big Joker at position %d,%d",
+					GameLogger.Debug("Created duplicate Big Joker at position %d,%d",
 						newReel, newRow)
 				} else {
-					log.Printf("Could not find position for duplicate Big Joker after %d attempts",
+					GameLogger.Debug("Could not find position for duplicate Big Joker after %d attempts",
 						maxAttempts)
 				}
 			}
 		}
 	}
 
-	log.Printf("TransformGoldenCards: Created %d new joker cards", len(newJokerCards))
+	GameLogger.Debug("TransformGoldenCards: Created %d new joker cards", len(newJokerCards))
 	return newJokerCards
 }
 
@@ -913,7 +922,7 @@ func getRandomPosition(reels [][]string, r *rand.Rand, excludeReel, excludeRow i
 	}
 
 	// If we couldn't find a suitable position after maximum attempts, log and return invalid
-	log.Printf("Warning: Could not find suitable random position after %d attempts", maxAttempts)
+	GameLogger.Debug("Warning: Could not find suitable random position after %d attempts", maxAttempts)
 	return -1, -1
 }
 

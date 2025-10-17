@@ -5,13 +5,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
 
 var secretKey = []byte("hilo_secret_key_change_in_production")
+
+var GameLogger *logger.GameLogger
+
+// InitializeGameLogger initializes the global GameLogger
+func InitializeGameLogger() {
+	GameLogger = logger.GetGameLogger("hilo")
+}
 
 // Card ranks with proper values (A=1, J=11, Q=12, K=13)
 var ranks = []string{"ACE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "JACK", "QUEEN", "KING"}
@@ -77,12 +85,12 @@ func GenerateDeckWithFirstCard(seed string, firstCard string) []string {
 	result = append(result, deck...)
 
 	// Debug logging
-	log.Printf("GenerateDeckWithFirstCard: seed=%s, firstCard=%s, result[0]=%s, deckLength=%d\n",
+	GameLogger.Debug("GenerateDeckWithFirstCard: seed=%s, firstCard=%s, result[0]=%s, deckLength=%d\n",
 		seed, firstCard, result[0], len(result))
 
 	// Additional debug: show first few cards
 	if len(result) >= 5 {
-		log.Printf("First 5 cards: %s, %s, %s, %s, %s", result[0], result[1], result[2], result[3], result[4])
+		GameLogger.Debug("First 5 cards: %s, %s, %s, %s, %s", result[0], result[1], result[2], result[3], result[4])
 	}
 
 	return result

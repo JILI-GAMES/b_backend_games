@@ -2,10 +2,18 @@ package birdsparty
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
+
+var GameLogger *logger.GameLogger
+
+// InitializeGameLogger initializes the global GameLogger
+func InitializeGameLogger() {
+	GameLogger = logger.GetGameLogger("birdsparty")
+}
 
 // round rounds a float64 to two decimal places
 func round(val float64) float64 {
@@ -92,7 +100,7 @@ func GenerateGrid(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 // If forbidFreeGame is true, free_game symbol will never appear
 func GenerateGridWithWin(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
-	log.Printf("Generating grid with win for level %d with grid size %dx%d", level, gridSize, gridSize)
+	GameLogger.Debug("Generating grid with win for level %d with grid size %dx%d", level, gridSize, gridSize)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -112,7 +120,7 @@ func GenerateGridWithWin(level Level, r *rand.Rand, forbidFreeGame bool) [][]str
 // If forbidFreeGame is true, free_game symbol will never appear
 func GenerateLossGrid(level Level, r *rand.Rand, forbidFreeGame bool) [][]string {
 	gridSize := level.GetGridSize()
-	log.Printf("Generating loss grid for level %d with grid size %dx%d", level, gridSize, gridSize)
+	GameLogger.Debug("Generating loss grid for level %d with grid size %dx%d", level, gridSize, gridSize)
 	maxAttempts := 100
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -224,7 +232,7 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 
 	// Update stage progress
 	gameState.StageProgress += len(stageClearedSymbols)
-	log.Printf("Added %d stage-cleared symbols to progress, total: %d/15",
+	GameLogger.Debug("Added %d stage-cleared symbols to progress, total: %d/15",
 		len(stageClearedSymbols), gameState.StageProgress)
 
 	// Check for level advancement
@@ -244,7 +252,7 @@ func ProcessStageClearedSymbolsSurgical(gameState *GameState, stageClearedSymbol
 		gameState.Grid = GenerateGrid(newLevel, r, false) // No free game in new level
 
 		levelAdvanced = true
-		log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
+		GameLogger.Debug("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 
 		return levelAdvanced, oldLevel, newLevel
 	}
@@ -258,7 +266,7 @@ func RemoveStageClearedSymbolsSurgical(grid [][]string, stageClearedSymbols []St
 		pos := stageSymbol.Position
 		if pos.X >= 0 && pos.X < len(grid) && pos.Y >= 0 && pos.Y < len(grid) {
 			grid[pos.Y][pos.X] = ""
-			log.Printf("Surgically removed stage-cleared symbol %s at position (%d,%d)",
+			GameLogger.Debug("Surgically removed stage-cleared symbol %s at position (%d,%d)",
 				stageSymbol.Symbol, pos.X, pos.Y)
 		}
 	}
@@ -276,7 +284,7 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 		affectedColumns[stageSymbol.Position.X] = true
 	}
 
-	log.Printf("Applying surgical gravity to columns: %v", getKeys(affectedColumns))
+	GameLogger.Debug("Applying surgical gravity to columns: %v", getKeys(affectedColumns))
 
 	// Apply gravity only to affected columns
 	for x := range affectedColumns {
@@ -297,7 +305,7 @@ func ApplyGravitySurgical(grid [][]string, stageClearedSymbols []StageClearedSym
 			for y := 0; y <= writePos; y++ {
 				allowFreeGame := !hasFreeGameSymbol(grid) && !forbidFreeGame
 				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, !allowFreeGame))
-				log.Printf("Generated new symbol %s at position (%d,%d) after surgical gravity", grid[y][x], x, y)
+				GameLogger.Debug("Generated new symbol %s at position (%d,%d) after surgical gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
 		}
@@ -322,7 +330,7 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 		return true
 	}
 
-	log.Printf("Attempting surgical loss on %d connections (only new positions)", len(connections))
+	GameLogger.Debug("Attempting surgical loss on %d connections (only new positions)", len(connections))
 
 	maxAttempts := 50
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -358,7 +366,7 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 				if len(testConnections) == 0 {
 					// Success! Apply this modification
 					gameState.Grid = testGrid
-					log.Printf("Surgical loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
+					GameLogger.Debug("Surgical loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
 					return true
 				}
 
@@ -367,7 +375,7 @@ func ApplySurgicalLoss(gameState *GameState, originalGrid [][]string, stageClear
 		}
 	}
 
-	log.Printf("Surgical loss impossible: stage-cleared processing created unbreakable winning configuration (new only)")
+	GameLogger.Debug("Surgical loss impossible: stage-cleared processing created unbreakable winning configuration (new only)")
 	return false
 }
 
@@ -390,7 +398,7 @@ func RemoveConnectionsSurgical(grid [][]string, connections []Connection) []Posi
 			if pos.X >= 0 && pos.X < len(grid) && pos.Y >= 0 && pos.Y < len(grid) {
 				grid[pos.Y][pos.X] = ""
 				affectedPositions = append(affectedPositions, pos)
-				log.Printf("Surgically removed %s symbol at position (%d,%d)",
+				GameLogger.Debug("Surgically removed %s symbol at position (%d,%d)",
 					connection.Symbol, pos.X, pos.Y)
 			}
 		}
@@ -411,7 +419,7 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 		affectedColumns[pos.X] = true
 	}
 
-	log.Printf("Applying surgical cascade gravity to columns: %v", getKeys(affectedColumns))
+	GameLogger.Debug("Applying surgical cascade gravity to columns: %v", getKeys(affectedColumns))
 
 	// Apply gravity only to affected columns
 	for x := range affectedColumns {
@@ -423,7 +431,7 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 					if y != writePos {
 						grid[writePos][x] = grid[y][x]
 						grid[y][x] = ""
-						log.Printf("Moved symbol %s from (%d,%d) to (%d,%d) via cascade gravity", grid[writePos][x], x, y, x, writePos)
+						GameLogger.Debug("Moved symbol %s from (%d,%d) to (%d,%d) via cascade gravity", grid[writePos][x], x, y, x, writePos)
 					}
 					writePos--
 				}
@@ -433,7 +441,7 @@ func ApplyGravitySurgicalForCascade(grid [][]string, affectedPositions []Positio
 			for y := 0; y <= writePos; y++ {
 				allowFreeGame := !hasFreeGameSymbol(grid) && !forbidFreeGame
 				grid[y][x] = string(WeightedRandomSymbolWithControl(level, r, !allowFreeGame))
-				log.Printf("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
+				GameLogger.Debug("Generated new symbol %s at position (%d,%d) after cascade gravity", grid[y][x], x, y)
 				newPositions = append(newPositions, Position{X: x, Y: y})
 			}
 		}
@@ -458,7 +466,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 		return true
 	}
 
-	log.Printf("Attempting surgical cascade loss on %d connections (only new positions)", len(connections))
+	GameLogger.Debug("Attempting surgical cascade loss on %d connections (only new positions)", len(connections))
 
 	maxAttempts := 50
 	for attempts := 0; attempts < maxAttempts; attempts++ {
@@ -494,7 +502,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 				if len(testConnections) == 0 {
 					// Success! Apply this modification
 					gameState.Grid = testGrid
-					log.Printf("Surgical cascade loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
+					GameLogger.Debug("Surgical cascade loss successful: changed symbol at (%d,%d) from %s to %s (new only)", x, y, originalSymbol, newSymbol)
 					return true
 				}
 
@@ -503,7 +511,7 @@ func ApplySurgicalLossForCascade(gameState *GameState, originalGrid [][]string, 
 		}
 	}
 
-	log.Printf("Surgical cascade loss impossible: cascade processing created unbreakable winning configuration (new only)")
+	GameLogger.Debug("Surgical cascade loss impossible: cascade processing created unbreakable winning configuration (new only)")
 	return false
 }
 
@@ -532,7 +540,7 @@ func FindStageClearedSymbols(grid [][]string, level Level) []StageClearedSymbol 
 		}
 	}
 
-	log.Printf("Found %d stage-cleared symbols (%s) for level %d",
+	GameLogger.Debug("Found %d stage-cleared symbols (%s) for level %d",
 		len(stageClearedSymbols), expectedSymbol, level)
 
 	return stageClearedSymbols
@@ -544,7 +552,7 @@ func RemoveStageClearedSymbols(grid [][]string, stageClearedSymbols []StageClear
 		pos := stageSymbol.Position
 		if pos.X >= 0 && pos.X < len(grid) && pos.Y >= 0 && pos.Y < len(grid) {
 			grid[pos.Y][pos.X] = ""
-			log.Printf("Removed stage-cleared symbol %s at position (%d,%d)",
+			GameLogger.Debug("Removed stage-cleared symbol %s at position (%d,%d)",
 				stageSymbol.Symbol, pos.X, pos.Y)
 		}
 	}
@@ -738,7 +746,7 @@ func UpdateGameStateForLevel(gameState *GameState, newLevel Level) {
 	gameState.GridSize = newLevel.GetGridSize()
 	gameState.StageProgress = 0 // Reset progress for new level
 
-	log.Printf("Advanced to Level %d with %dx%d grid", newLevel, gameState.GridSize, gameState.GridSize)
+	GameLogger.Debug("Advanced to Level %d with %dx%d grid", newLevel, gameState.GridSize, gameState.GridSize)
 }
 
 // ProcessStageClearedSymbols processes stage-cleared symbols and checks for level advancement (LEGACY VERSION)
@@ -757,7 +765,7 @@ func ProcessStageClearedSymbols(gameState *GameState, stageClearedSymbols []Stag
 
 	// Update stage progress
 	gameState.StageProgress += len(stageClearedSymbols)
-	log.Printf("Added %d stage-cleared symbols to progress, total: %d/15",
+	GameLogger.Debug("Added %d stage-cleared symbols to progress, total: %d/15",
 		len(stageClearedSymbols), gameState.StageProgress)
 
 	// Check for level advancement
@@ -779,7 +787,7 @@ func ProcessStageClearedSymbols(gameState *GameState, stageClearedSymbols []Stag
 		gameState.Grid = GenerateGrid(newLevel, r, forbidFreeGame)
 
 		levelAdvanced = true
-		log.Printf("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
+		GameLogger.Debug("Level advanced from %d to %d, excess progress: %d", oldLevel, newLevel, excessProgress)
 
 		return levelAdvanced, oldLevel, newLevel
 	}
@@ -816,7 +824,7 @@ func CleanupInvalidSymbols(grid [][]string, level Level, r *rand.Rand) {
 				// For now, we'll use the basic symbol generation - this function is rarely used
 				newSymbol := WeightedRandomSymbol(level, r)
 				grid[y][x] = string(newSymbol)
-				log.Printf("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",
+				GameLogger.Debug("Replaced invalid stage-cleared symbol %s with %s at (%d,%d)",
 					symbol, newSymbol, x, y)
 			}
 		}

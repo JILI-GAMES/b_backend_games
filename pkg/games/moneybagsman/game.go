@@ -2,450 +2,458 @@ package moneybagsman
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
+
+var GameLogger *logger.GameLogger
+
+// InitializeGameLogger initializes the global GameLogger
+func InitializeGameLogger() {
+	GameLogger = logger.GetGameLogger("moneybagsman")
+}
 
 // Constants
 const (
-    Denomination = 0.01
-    Reels        = 5
-    Rows         = 3
-    FreeSpin     = 12     // Number of free spins awarded
-    MaxFreeSpins = 50     // Maximum free spins possible
+	Denomination = 0.01
+	Reels        = 5
+	Rows         = 3
+	FreeSpin     = 12 // Number of free spins awarded
+	MaxFreeSpins = 50 // Maximum free spins possible
 )
 
 // Symbol weights for random generation
 var SymbolWeights = map[Symbol]float64{
-    SymbolAirplane:   0.1,
-    SymbolYacht:      0.1,
-    SymbolCar:        0.1,
-    SymbolMotorcycle: 0.1,
-    SymbolA:          0.1,
-    SymbolK:          0.1,
-    SymbolQ:          0.1,
-    SymbolJ:          0.1,
-    SymbolWild:       0.08,
-    SymbolScatter:    0.2, // 10% chance of a Scatter
+	SymbolAirplane:   0.1,
+	SymbolYacht:      0.1,
+	SymbolCar:        0.1,
+	SymbolMotorcycle: 0.1,
+	SymbolA:          0.1,
+	SymbolK:          0.1,
+	SymbolQ:          0.1,
+	SymbolJ:          0.1,
+	SymbolWild:       0.08,
+	SymbolScatter:    0.2, // 10% chance of a Scatter
 }
 
 // Paytable (payouts for Bet Multiplier = 1)
 var Paytable = map[Symbol]map[int]float64{
-    SymbolAirplane:   {3: 75, 4: 150, 5: 400},
-    SymbolYacht:      {3: 50, 4: 150, 5: 300},
-    SymbolCar:        {3: 40, 4: 100, 5: 250},
-    SymbolMotorcycle: {3: 30, 4: 100, 5: 200},
-    SymbolA:          {3: 15, 4: 30, 5: 125},
-    SymbolK:          {3: 15, 4: 30, 5: 125},
-    SymbolQ:          {3: 10, 4: 20, 5: 100},
-    SymbolJ:          {3: 10, 4: 20, 5: 100},
+	SymbolAirplane:   {3: 75, 4: 150, 5: 400},
+	SymbolYacht:      {3: 50, 4: 150, 5: 300},
+	SymbolCar:        {3: 40, 4: 100, 5: 250},
+	SymbolMotorcycle: {3: 30, 4: 100, 5: 200},
+	SymbolA:          {3: 15, 4: 30, 5: 125},
+	SymbolK:          {3: 15, 4: 30, 5: 125},
+	SymbolQ:          {3: 10, 4: 20, 5: 100},
+	SymbolJ:          {3: 10, 4: 20, 5: 100},
 }
 
 // BetAmountToMultiplier maps bet amounts to multipliers
 var BetAmountToMultiplier = map[float64]int{
-    0.5: 1,
-    1.0: 2,
-    1.5: 3,
-    2.5: 5,
-    5.0: 10,
+	0.5: 1,
+	1.0: 2,
+	1.5: 3,
+	2.5: 5,
+	5.0: 10,
 }
 
 // FreeSpinMultiplierInfo defines the multiplier settings based on scatter count
 var FreeSpinMultiplierInfo = map[int]struct {
-    InitialMultiplier  int
-    MultiplierIncrease int
-    MaxMultiplier      int
+	InitialMultiplier  int
+	MultiplierIncrease int
+	MaxMultiplier      int
 }{
-    5: {InitialMultiplier: 1, MultiplierIncrease: 1, MaxMultiplier: 50},
-    6: {InitialMultiplier: 2, MultiplierIncrease: 2, MaxMultiplier: 100},
-    7: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    // For 8 or more scatters, use the same settings as 7
-    8: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    9: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    10: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    11: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    12: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    13: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    14: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
-    15: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	5: {InitialMultiplier: 1, MultiplierIncrease: 1, MaxMultiplier: 50},
+	6: {InitialMultiplier: 2, MultiplierIncrease: 2, MaxMultiplier: 100},
+	7: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	// For 8 or more scatters, use the same settings as 7
+	8:  {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	9:  {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	10: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	11: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	12: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	13: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	14: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
+	15: {InitialMultiplier: 3, MultiplierIncrease: 3, MaxMultiplier: 150},
 }
 
 // Default multiplier info for cases with fewer than 5 scatters
 var DefaultMultiplierInfo = struct {
-    InitialMultiplier  int
-    MultiplierIncrease int
-    MaxMultiplier      int
+	InitialMultiplier  int
+	MultiplierIncrease int
+	MaxMultiplier      int
 }{
-    InitialMultiplier: 1, MultiplierIncrease: 1, MaxMultiplier: 50,
+	InitialMultiplier: 1, MultiplierIncrease: 1, MaxMultiplier: 50,
 }
 
 // WaysToWin generates all possible 243 ways to win (3^5)
 var WaysToWin = generateWaysToWin()
 
 func generateWaysToWin() [][]int {
-    ways := make([][]int, 0, 243)
-    for r0 := 0; r0 < 3; r0++ {
-        for r1 := 0; r1 < 3; r1++ {
-            for r2 := 0; r2 < 3; r2++ {
-                for r3 := 0; r3 < 3; r3++ {
-                    for r4 := 0; r4 < 3; r4++ {
-                        ways = append(ways, []int{r0, r1, r2, r3, r4})
-                    }
-                }
-            }
-        }
-    }
-    return ways
+	ways := make([][]int, 0, 243)
+	for r0 := 0; r0 < 3; r0++ {
+		for r1 := 0; r1 < 3; r1++ {
+			for r2 := 0; r2 < 3; r2++ {
+				for r3 := 0; r3 < 3; r3++ {
+					for r4 := 0; r4 < 3; r4++ {
+						ways = append(ways, []int{r0, r1, r2, r3, r4})
+					}
+				}
+			}
+		}
+	}
+	return ways
 }
 
 // WeightedRandomSymbol selects a symbol based on weights
 func WeightedRandomSymbol(r *rand.Rand) Symbol {
-    totalWeight := 0.0
-    for _, weight := range SymbolWeights {
-        totalWeight += weight
-    }
+	totalWeight := 0.0
+	for _, weight := range SymbolWeights {
+		totalWeight += weight
+	}
 
-    roll := r.Float64() * totalWeight
-    currentWeight := 0.0
-    for symbol, weight := range SymbolWeights {
-        currentWeight += weight
-        if roll <= currentWeight {
-            return symbol
-        }
-    }
-    return SymbolA // Fallback
+	roll := r.Float64() * totalWeight
+	currentWeight := 0.0
+	for symbol, weight := range SymbolWeights {
+		currentWeight += weight
+		if roll <= currentWeight {
+			return symbol
+		}
+	}
+	return SymbolA // Fallback
 }
 
 // GenerateReelsWithWin generates a 5x3 grid with a guaranteed win
 func GenerateReelsWithWin() [][]string {
-    r := rand.New(rand.NewSource(time.Now().UnixNano()))
-    var reels [][]string
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var reels [][]string
 
-    // Keep generating until a win is found
-    for {
-        reels = make([][]string, Reels)
-        for reel := 0; reel < Reels; reel++ {
-            reels[reel] = make([]string, Rows)
-            for row := 0; row < Rows; row++ {
-                symbol := WeightedRandomSymbol(r)
-                // Wilds only on reels 2-5 (indices 1-4)
-                if reel == 0 && symbol == SymbolWild {
-                    symbol = WeightedRandomSymbol(r)
-                    for symbol == SymbolWild {
-                        symbol = WeightedRandomSymbol(r)
-                    }
-                }
-                reels[reel][row] = string(symbol)
-            }
-        }
+	// Keep generating until a win is found
+	for {
+		reels = make([][]string, Reels)
+		for reel := 0; reel < Reels; reel++ {
+			reels[reel] = make([]string, Rows)
+			for row := 0; row < Rows; row++ {
+				symbol := WeightedRandomSymbol(r)
+				// Wilds only on reels 2-5 (indices 1-4)
+				if reel == 0 && symbol == SymbolWild {
+					symbol = WeightedRandomSymbol(r)
+					for symbol == SymbolWild {
+						symbol = WeightedRandomSymbol(r)
+					}
+				}
+				reels[reel][row] = string(symbol)
+			}
+		}
 
-        // Check for a win (base game, so isFreeSpin=false)
-        totalWinnings, _ := CalculateWins(reels, 1, 1, false)
-        if totalWinnings > 0 {
-            log.Printf("Generated reels with win: %v", reels)
-            break
-        }
-    }
+		// Check for a win (base game, so isFreeSpin=false)
+		totalWinnings, _ := CalculateWins(reels, 1, 1, false)
+		if totalWinnings > 0 {
+			GameLogger.Debug("Generated reels with win: %v", reels)
+			break
+		}
+	}
 
-    return reels
+	return reels
 }
 
 // GenerateLossReels generates a 5x3 grid with no wins but allows Free Spin Bonus triggers
 func GenerateLossReels() [][]string {
-    r := rand.New(rand.NewSource(time.Now().UnixNano()))
-    var reels [][]string
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var reels [][]string
 
-    // Keep generating until no wins are found
-    for {
-        reels = make([][]string, Reels)
-        for reel := 0; reel < Reels; reel++ {
-            reels[reel] = make([]string, Rows)
-            for row := 0; row < Rows; row++ {
-                symbol := WeightedRandomSymbol(r)
-                // Wilds only on reels 2-5 (indices 1-4)
-                if reel == 0 && symbol == SymbolWild {
-                    symbol = WeightedRandomSymbol(r)
-                    for symbol == SymbolWild {
-                        symbol = WeightedRandomSymbol(r)
-                    }
-                }
-                // Avoid matching symbols to prevent wins
-                if reel > 0 {
-                    previousSymbol := reels[reel-1][row]
-                    for string(symbol) == previousSymbol && symbol != SymbolScatter {
-                        symbol = WeightedRandomSymbol(r)
-                        if reel == 0 && symbol == SymbolWild {
-                            symbol = WeightedRandomSymbol(r)
-                            for symbol == SymbolWild {
-                                symbol = WeightedRandomSymbol(r)
-                            }
-                        }
-                    }
-                }
-                reels[reel][row] = string(symbol)
-            }
-        }
+	// Keep generating until no wins are found
+	for {
+		reels = make([][]string, Reels)
+		for reel := 0; reel < Reels; reel++ {
+			reels[reel] = make([]string, Rows)
+			for row := 0; row < Rows; row++ {
+				symbol := WeightedRandomSymbol(r)
+				// Wilds only on reels 2-5 (indices 1-4)
+				if reel == 0 && symbol == SymbolWild {
+					symbol = WeightedRandomSymbol(r)
+					for symbol == SymbolWild {
+						symbol = WeightedRandomSymbol(r)
+					}
+				}
+				// Avoid matching symbols to prevent wins
+				if reel > 0 {
+					previousSymbol := reels[reel-1][row]
+					for string(symbol) == previousSymbol && symbol != SymbolScatter {
+						symbol = WeightedRandomSymbol(r)
+						if reel == 0 && symbol == SymbolWild {
+							symbol = WeightedRandomSymbol(r)
+							for symbol == SymbolWild {
+								symbol = WeightedRandomSymbol(r)
+							}
+						}
+					}
+				}
+				reels[reel][row] = string(symbol)
+			}
+		}
 
-        // Check for no wins (base game, so isFreeSpin=false)
-        totalWinnings, _ := CalculateWins(reels, 1, 1, false)
-        if totalWinnings == 0 {
-            break
-        }
-    }
-    // Log the reels for debugging
-    log.Printf("Generated reels with no wins: %v", reels)
+		// Check for no wins (base game, so isFreeSpin=false)
+		totalWinnings, _ := CalculateWins(reels, 1, 1, false)
+		if totalWinnings == 0 {
+			break
+		}
+	}
+	// Log the reels for debugging
+	GameLogger.Debug("Generated reels with no wins: %v", reels)
 
-    return reels
+	return reels
 }
 
 // CalculateWins calculates the total payout and win details using Go concurrency
 func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, isFreeSpin bool) (float64, []WinDetail) {
-    totalPayout := 0.0
-    var winDetails []WinDetail
+	totalPayout := 0.0
+	var winDetails []WinDetail
 
-    // Map to store all unique winning paths: map[pathKey]WinDetail
-    uniqueWins := make(map[string]WinDetail)
-    // Keep track of which symbol+start combinations we've seen with which counts
-    seenCombinations := make(map[string]map[int]bool)
-    var winsMu sync.Mutex // Mutex for thread-safe access to our maps
+	// Map to store all unique winning paths: map[pathKey]WinDetail
+	uniqueWins := make(map[string]WinDetail)
+	// Keep track of which symbol+start combinations we've seen with which counts
+	seenCombinations := make(map[string]map[int]bool)
+	var winsMu sync.Mutex // Mutex for thread-safe access to our maps
 
-    // Worker pool configuration
-    const maxWorkers = 50
-    jobs := make(chan struct {
-        wayIndex int
-        way      []int
-    }, len(WaysToWin))
-    results := make(chan WinDetail, len(WaysToWin))
-    var wg sync.WaitGroup
+	// Worker pool configuration
+	const maxWorkers = 50
+	jobs := make(chan struct {
+		wayIndex int
+		way      []int
+	}, len(WaysToWin))
+	results := make(chan WinDetail, len(WaysToWin))
+	var wg sync.WaitGroup
 
-    // Start workers to identify potential wins
-    for w := 0; w < maxWorkers; w++ {
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            for job := range jobs {
-                way := job.way
+	// Start workers to identify potential wins
+	for w := 0; w < maxWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				way := job.way
 
-                // Preallocate slices
-                symbols := make([]string, 0, 5)
-                payline := make([]Position, 0, 5)
+				// Preallocate slices
+				symbols := make([]string, 0, 5)
+				payline := make([]Position, 0, 5)
 
-                for reel, row := range way {
-                    symbol := reels[reel][row]
-                    symbols = append(symbols, symbol)
-                    pos := Position{Reel: reel, Row: row}
-                    payline = append(payline, pos)
-                }
+				for reel, row := range way {
+					symbol := reels[reel][row]
+					symbols = append(symbols, symbol)
+					pos := Position{Reel: reel, Row: row}
+					payline = append(payline, pos)
+				}
 
-                // Count matching symbols
-                firstSymbol := symbols[0]
-                if firstSymbol == string(SymbolScatter) {
-                    continue
-                }
-                
-                matchCount := 1
-                for i := 1; i < len(symbols); i++ {
-                    currentSymbol := symbols[i]
-                    if currentSymbol == firstSymbol || currentSymbol == string(SymbolWild) {
-                        matchCount++
-                    } else {
-                        break
-                    }
-                }
+				// Count matching symbols
+				firstSymbol := symbols[0]
+				if firstSymbol == string(SymbolScatter) {
+					continue
+				}
 
-                if matchCount >= 3 {
-                    // Apply freeSpinMultiplier only during free spins; otherwise, use 1
-                    effectiveMultiplier := 1
-                    if isFreeSpin {
-                        effectiveMultiplier = freeSpinMultiplier
-                    }
-                    
-                    // Check if this symbol/count has a payout in the paytable
-                    payoutValue, exists := Paytable[Symbol(firstSymbol)][matchCount]
-                    if !exists {
-                        continue // Skip if no payout for this combination
-                    }
-                    
-                    payout := payoutValue * float64(betMultiplier) * float64(effectiveMultiplier) * Denomination
-                    payout = math.Round(payout*100) / 100
-                    win := WinDetail{
-                        Symbol:    firstSymbol,
-                        Count:     matchCount,
-                        Payout:    payout,
-                        Positions: payline[:matchCount],
-                    }
-                    results <- win
-                }
-            }
-        }()
-    }
+				matchCount := 1
+				for i := 1; i < len(symbols); i++ {
+					currentSymbol := symbols[i]
+					if currentSymbol == firstSymbol || currentSymbol == string(SymbolWild) {
+						matchCount++
+					} else {
+						break
+					}
+				}
 
-    // Send jobs to workers
-    for wayIndex, way := range WaysToWin {
-        jobs <- struct {
-            wayIndex int
-            way      []int
-        }{wayIndex: wayIndex, way: way}
-    }
-    close(jobs)
+				if matchCount >= 3 {
+					// Apply freeSpinMultiplier only during free spins; otherwise, use 1
+					effectiveMultiplier := 1
+					if isFreeSpin {
+						effectiveMultiplier = freeSpinMultiplier
+					}
 
-    // Close the results channel after all workers are done
-    go func() {
-        wg.Wait()
-        close(results)
-    }()
+					// Check if this symbol/count has a payout in the paytable
+					payoutValue, exists := Paytable[Symbol(firstSymbol)][matchCount]
+					if !exists {
+						continue // Skip if no payout for this combination
+					}
 
-    // Process all wins
-    for win := range results {
-        if len(win.Positions) < 3 {
-            continue
-        }
-        
-        // Create a key for the starting position and symbol
-        startKey := fmt.Sprintf("%s|%d,%d", 
-            win.Symbol,
-            win.Positions[0].Reel, win.Positions[0].Row)
-            
-        // Create a key for the complete path
-        var pathKey strings.Builder
-        pathKey.WriteString(win.Symbol)
-        for _, pos := range win.Positions {
-            pathKey.WriteString(fmt.Sprintf("|%d,%d", pos.Reel, pos.Row))
-        }
-        
-        winsMu.Lock()
-        
-        // Initialize the count map if it doesn't exist
-        if _, exists := seenCombinations[startKey]; !exists {
-            seenCombinations[startKey] = make(map[int]bool)
-        }
-        
-        // If we've seen a longer match for this start position, skip this one
-        longerMatchExists := false
-        for count := range seenCombinations[startKey] {
-            if count > win.Count {
-                longerMatchExists = true
-                break
-            }
-        }
-        
-        if !longerMatchExists {
-            // If we've seen a shorter match for this start position, remove it
-            for count := range seenCombinations[startKey] {
-                if count < win.Count {
-                    delete(seenCombinations[startKey], count)
-                    
-                    // Also remove any wins with this start position and shorter count
-                    for existingPathKey, existingWin := range uniqueWins {
-                        if existingWin.Symbol == win.Symbol && 
-                           existingWin.Positions[0].Reel == win.Positions[0].Reel &&
-                           existingWin.Positions[0].Row == win.Positions[0].Row &&
-                           existingWin.Count < win.Count {
-                            delete(uniqueWins, existingPathKey)
-                        }
-                    }
-                }
-            }
-            
-            // Add this count to the seen combinations
-            seenCombinations[startKey][win.Count] = true
-            
-            // Add this win to the unique wins
-            uniqueWins[pathKey.String()] = win
-        }
-        
-        winsMu.Unlock()
-    }
+					payout := payoutValue * float64(betMultiplier) * float64(effectiveMultiplier) * Denomination
+					payout = math.Round(payout*100) / 100
+					win := WinDetail{
+						Symbol:    firstSymbol,
+						Count:     matchCount,
+						Payout:    payout,
+						Positions: payline[:matchCount],
+					}
+					results <- win
+				}
+			}
+		}()
+	}
 
-    // Collect all the unique wins
-    winsMu.Lock()
-    for _, win := range uniqueWins {
-        log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v", 
-            win.Symbol, win.Count, betMultiplier, 
-            func() int {
-                if isFreeSpin {
-                    return freeSpinMultiplier
-                }
-                return 1
-            }(), win.Payout)
-        
-        totalPayout += win.Payout
-        totalPayout = math.Round(totalPayout*100) / 100
-        winDetails = append(winDetails, win)
-    }
-    winsMu.Unlock()
+	// Send jobs to workers
+	for wayIndex, way := range WaysToWin {
+		jobs <- struct {
+			wayIndex int
+			way      []int
+		}{wayIndex: wayIndex, way: way}
+	}
+	close(jobs)
 
-    return totalPayout, winDetails
+	// Close the results channel after all workers are done
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Process all wins
+	for win := range results {
+		if len(win.Positions) < 3 {
+			continue
+		}
+
+		// Create a key for the starting position and symbol
+		startKey := fmt.Sprintf("%s|%d,%d",
+			win.Symbol,
+			win.Positions[0].Reel, win.Positions[0].Row)
+
+		// Create a key for the complete path
+		var pathKey strings.Builder
+		pathKey.WriteString(win.Symbol)
+		for _, pos := range win.Positions {
+			pathKey.WriteString(fmt.Sprintf("|%d,%d", pos.Reel, pos.Row))
+		}
+
+		winsMu.Lock()
+
+		// Initialize the count map if it doesn't exist
+		if _, exists := seenCombinations[startKey]; !exists {
+			seenCombinations[startKey] = make(map[int]bool)
+		}
+
+		// If we've seen a longer match for this start position, skip this one
+		longerMatchExists := false
+		for count := range seenCombinations[startKey] {
+			if count > win.Count {
+				longerMatchExists = true
+				break
+			}
+		}
+
+		if !longerMatchExists {
+			// If we've seen a shorter match for this start position, remove it
+			for count := range seenCombinations[startKey] {
+				if count < win.Count {
+					delete(seenCombinations[startKey], count)
+
+					// Also remove any wins with this start position and shorter count
+					for existingPathKey, existingWin := range uniqueWins {
+						if existingWin.Symbol == win.Symbol &&
+							existingWin.Positions[0].Reel == win.Positions[0].Reel &&
+							existingWin.Positions[0].Row == win.Positions[0].Row &&
+							existingWin.Count < win.Count {
+							delete(uniqueWins, existingPathKey)
+						}
+					}
+				}
+			}
+
+			// Add this count to the seen combinations
+			seenCombinations[startKey][win.Count] = true
+
+			// Add this win to the unique wins
+			uniqueWins[pathKey.String()] = win
+		}
+
+		winsMu.Unlock()
+	}
+
+	// Collect all the unique wins
+	winsMu.Lock()
+	for _, win := range uniqueWins {
+		GameLogger.Debug("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
+			win.Symbol, win.Count, betMultiplier,
+			func() int {
+				if isFreeSpin {
+					return freeSpinMultiplier
+				}
+				return 1
+			}(), win.Payout)
+
+		totalPayout += win.Payout
+		totalPayout = math.Round(totalPayout*100) / 100
+		winDetails = append(winDetails, win)
+	}
+	winsMu.Unlock()
+
+	return totalPayout, winDetails
 }
 
 // CountScatters counts the number of Scatter symbols on the reels
 func CountScatters(reels [][]string) int {
-    count := 0
-    for reel := 0; reel < Reels; reel++ {
-        for row := 0; row < Rows; row++ {
-            if reels[reel][row] == string(SymbolScatter) {
-                count++
-            }
-        }
-    }
-    return count
+	count := 0
+	for reel := 0; reel < Reels; reel++ {
+		for row := 0; row < Rows; row++ {
+			if reels[reel][row] == string(SymbolScatter) {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 // HasScatterOnEachReel checks if there's at least one Scatter on each reel
 func HasScatterOnEachReel(reels [][]string) bool {
-    for reel := 0; reel < Reels; reel++ {
-        hasScatter := false
-        for row := 0; row < Rows; row++ {
-            if reels[reel][row] == string(SymbolScatter) {
-                hasScatter = true
-                break
-            }
-        }
-        if !hasScatter {
-            return false
-        }
-    }
-    return true
+	for reel := 0; reel < Reels; reel++ {
+		hasScatter := false
+		for row := 0; row < Rows; row++ {
+			if reels[reel][row] == string(SymbolScatter) {
+				hasScatter = true
+				break
+			}
+		}
+		if !hasScatter {
+			return false
+		}
+	}
+	return true
 }
 
 // GetFreeSpinMultiplierInfo returns the multiplier configuration based on scatter count
 func GetFreeSpinMultiplierInfo(scatterCount int) (initialMultiplier, multiplierIncrease, maxMultiplier int) {
-    if scatterCount < 5 {
-        return DefaultMultiplierInfo.InitialMultiplier, 
-               DefaultMultiplierInfo.MultiplierIncrease, 
-               DefaultMultiplierInfo.MaxMultiplier
-    }
-    
-    if scatterCount > 15 {
-        scatterCount = 15  // Cap at 15 for any higher values
-    }
-    
-    info, exists := FreeSpinMultiplierInfo[scatterCount]
-    if !exists {
-        return DefaultMultiplierInfo.InitialMultiplier, 
-               DefaultMultiplierInfo.MultiplierIncrease, 
-               DefaultMultiplierInfo.MaxMultiplier
-    }
-    
-    return info.InitialMultiplier, info.MultiplierIncrease, info.MaxMultiplier
+	if scatterCount < 5 {
+		return DefaultMultiplierInfo.InitialMultiplier,
+			DefaultMultiplierInfo.MultiplierIncrease,
+			DefaultMultiplierInfo.MaxMultiplier
+	}
+
+	if scatterCount > 15 {
+		scatterCount = 15 // Cap at 15 for any higher values
+	}
+
+	info, exists := FreeSpinMultiplierInfo[scatterCount]
+	if !exists {
+		return DefaultMultiplierInfo.InitialMultiplier,
+			DefaultMultiplierInfo.MultiplierIncrease,
+			DefaultMultiplierInfo.MaxMultiplier
+	}
+
+	return info.InitialMultiplier, info.MultiplierIncrease, info.MaxMultiplier
 }
 
 // FindScatterPositions finds all positions of Scatter symbols on the reels
 func FindScatterPositions(reels [][]string) []Position {
-    positions := make([]Position, 0)
-    for reel := 0; reel < Reels; reel++ {
-        for row := 0; row < Rows; row++ {
-            if reels[reel][row] == string(SymbolScatter) {
-                positions = append(positions, Position{
-                    Reel: reel,
-                    Row: row,
-                })
-            }
-        }
-    }
-    return positions
+	positions := make([]Position, 0)
+	for reel := 0; reel < Reels; reel++ {
+		for row := 0; row < Rows; row++ {
+			if reels[reel][row] == string(SymbolScatter) {
+				positions = append(positions, Position{
+					Reel: reel,
+					Row:  row,
+				})
+			}
+		}
+	}
+	return positions
 }

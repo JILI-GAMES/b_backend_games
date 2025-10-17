@@ -2,7 +2,6 @@ package superace_deluxe
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -10,7 +9,7 @@ import (
 func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	var rowReq RowBasedSpinRequest
 	if err := c.BodyParser(&rowReq); err != nil {
-		log.Printf("Error parsing row-based request: %v", err)
+		rg.GameLogger.Info("Error parsing row-based request: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  400,
 			"message": "Invalid request format",
@@ -72,8 +71,8 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	ip := c.IP()
 	userAgent := c.Get("User-Agent")
 
-	log.Printf("✅IP: %v", ip)
-	log.Printf("✅User-Agent: %v", userAgent)
+	rg.GameLogger.Debug("IP: %v", ip)
+	rg.GameLogger.Debug("User-Agent: %v", userAgent)
 
 	// Use the shared RNG service
 	rngResp, err := rngClient.GetOutcome(rowReq.ClientID, rowReq.Game.ID, rowReq.PlayerID, rowReq.BetID, rtp, payoutMultiplier, rowReq.BetAmount, ip, userAgent, false)
@@ -99,7 +98,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 	maxPayout := rowReq.BetAmount * 10000
 	if gs.AmountWon > maxPayout {
 		gs.AmountWon = maxPayout
-		log.Printf("Max payout reached: %v", maxPayout)
+		rg.GameLogger.Info("Max payout reached: %v", maxPayout)
 	}
 
 	// Convert the internal reel-based game state to row-based for response

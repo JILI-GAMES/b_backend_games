@@ -2,13 +2,22 @@ package opensesame2
 
 import (
 	"fmt"
-	"log"
+	// "log"
 	"math"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/logger"
 )
+
+var GameLogger *logger.GameLogger
+
+// InitializeGameLogger initializes the global GameLogger
+func InitializeGameLogger() {
+	GameLogger = logger.GetGameLogger("opensesame2")
+}
 
 // Constants
 const (
@@ -41,8 +50,8 @@ var SymbolWeights = map[Symbol]float64{
 	Symbol9:          0.11,
 	SymbolWild:       0.05,
 	SymbolScatter:    0.06, //0.3 for testing 0.06 normal
-	SymbolFreeSpins:  0.05,  //50 % for testing 0.05 normal
-	SymbolMysteryBox: 0.04,  //50 % for testing 0.04 normal
+	SymbolFreeSpins:  0.05, //50 % for testing 0.05 normal
+	SymbolMysteryBox: 0.04, //50 % for testing 0.04 normal
 }
 
 // Paytable (payouts for Bet Multiplier = 1) - Regular symbol payouts
@@ -114,8 +123,8 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int, isFreeSpin bool) [
 	specialSymbolPosition := -1
 	scatterSymbolPosition := -1
 
-	log.Println("has scatter symbol: ", hasScatterSymbol)
-	log.Println("has special symbol: ", hasSpecialSymbol)
+	GameLogger.Debug("has scatter symbol: %v", hasScatterSymbol)
+	GameLogger.Debug("has special symbol: %v", hasSpecialSymbol)
 
 	// First pass: decide if we want special symbols on this reel and where
 	if reelIndex <= 2 { // Reels 0, 1, 2 can have Free Spin symbols
@@ -124,7 +133,7 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int, isFreeSpin bool) [
 			specialSymbolPosition = r.Intn(Rows)
 			reel[specialSymbolPosition] = string(SymbolFreeSpins)
 			hasSpecialSymbol = true
-			log.Printf("Placed Free Spin symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
+			GameLogger.Debug("Placed Free Spin symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
 		}
 	}
 
@@ -135,7 +144,7 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int, isFreeSpin bool) [
 			specialSymbolPosition = r.Intn(Rows)
 			reel[specialSymbolPosition] = string(SymbolMysteryBox)
 			hasSpecialSymbol = true
-			log.Printf("Placed Mystery Box symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
+			GameLogger.Debug("Placed Mystery Box symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
 		}
 	}
 
@@ -146,7 +155,7 @@ func generateReelWithConstraints(r *rand.Rand, reelIndex int, isFreeSpin bool) [
 			scatterSymbolPosition = r.Intn(Rows)
 			reel[scatterSymbolPosition] = string(SymbolScatter)
 			hasScatterSymbol = true
-			log.Printf("Placed Scatter symbol on reel %d at position %d", reelIndex, scatterSymbolPosition)
+			GameLogger.Debug("Placed Scatter symbol on reel %d at position %d", reelIndex, scatterSymbolPosition)
 		}
 	}
 
@@ -207,7 +216,7 @@ func GenerateReelsWithWin(isFreeSpin bool) [][]string {
 		// Check for a win (base game, so isFreeSpin=false and multiplier=1)
 		totalWinnings, _, _, _, _, _, _ := CalculateWins(reels, 1, 1, 1, false, false)
 		if totalWinnings > 0 {
-			log.Printf("Generated reels with win: %v", reels)
+			GameLogger.Debug("Generated reels with win: %v", reels)
 			break
 		}
 	}
@@ -230,7 +239,7 @@ func GenerateLossReels(isFreeSpin bool) [][]string {
 		// Check for no regular wins (exclude scatter wins)
 		totalWinnings, _, _, _, _, _, _ := CalculateWins(reels, 1, 1, 1, false, false)
 		if totalWinnings == 0 {
-			log.Printf("Generated reels with no wins: %v", reels)
+			GameLogger.Debug("Generated reels with no wins: %v", reels)
 			break
 		}
 	}
@@ -286,7 +295,7 @@ func CheckCombinationPayouts(reels [][]string, betMultiplier int) (float64, stri
 		payout := float64(MysteryBoxCombinationPayout) * totalBetAmount
 		payout = math.Round(payout*100) / 100
 		positions := []Position{freeSpinReel1Pos, freeSpinReel2Pos, reel3Pos}
-		log.Printf("Mystery Box combination payout: 2 Free Spins + 1 Mystery Box = %v credits × %v = %v",
+		GameLogger.Debug("Mystery Box combination payout: 2 Free Spins + 1 Mystery Box = %v credits × %v = %v",
 			MysteryBoxCombinationPayout, totalBetAmount, payout)
 		return payout, "MysteryBoxCombination", positions
 	}
@@ -296,7 +305,7 @@ func CheckCombinationPayouts(reels [][]string, betMultiplier int) (float64, stri
 		payout := float64(FreeSpinCombinationPayout) * totalBetAmount
 		payout = math.Round(payout*100) / 100
 		positions := []Position{freeSpinReel1Pos, freeSpinReel2Pos, reel3Pos}
-		log.Printf("Free Spin combination payout: 3 Free Spins = %v credits × %v = %v",
+		GameLogger.Debug("Free Spin combination payout: 3 Free Spins = %v credits × %v = %v",
 			FreeSpinCombinationPayout, totalBetAmount, payout)
 		return payout, "FreeSpinCombination", positions
 	}
@@ -489,7 +498,7 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
 			}
 		}
 
-		log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
+		GameLogger.Debug("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
 			win.Symbol, win.Count, betMultiplier, effectiveMultiplier, win.Payout)
 
 		totalPayout += win.Payout
@@ -507,7 +516,7 @@ func CalculateWins(reels [][]string, betMultiplier int, freeSpinMultiplier int, 
 		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
 		scatterPayout = scatterPayValue * totalBetAmount
 		scatterPayout = math.Round(scatterPayout*100) / 100
-		log.Printf("Scatter payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+		GameLogger.Debug("Scatter payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
 			scatterCount, scatterPayValue, betMultiplier, totalBetAmount, scatterPayout)
 	}
 
@@ -665,7 +674,6 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 	}
 }
 
-
 // package opensesame2
 
 // import (
@@ -792,7 +800,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 			specialSymbolPosition = r.Intn(Rows)
 // 			reel[specialSymbolPosition] = string(SymbolFreeSpins)
 // 			hasSpecialSymbol = true
-// 			log.Printf("Placed Free Spin symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
+// 			GameLogger.Debug("Placed Free Spin symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
 // 		}
 // 	}
 
@@ -802,7 +810,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 			specialSymbolPosition = r.Intn(Rows)
 // 			reel[specialSymbolPosition] = string(SymbolMysteryBox)
 // 			hasSpecialSymbol = true
-// 			log.Printf("Placed Mystery Box symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
+// 			GameLogger.Debug("Placed Mystery Box symbol on reel %d at position %d", reelIndex, specialSymbolPosition)
 // 		}
 // 	}
 
@@ -813,7 +821,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 			scatterSymbolPosition = r.Intn(Rows)
 // 			reel[scatterSymbolPosition] = string(SymbolScatter)
 // 			hasScatterSymbol = true
-// 			log.Printf("Placed Scatter symbol on reel %d at position %d", reelIndex, scatterSymbolPosition)
+// 			GameLogger.Debug("Placed Scatter symbol on reel %d at position %d", reelIndex, scatterSymbolPosition)
 // 		}
 // 	}
 
@@ -874,7 +882,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 		// Check for a win (base game, so isFreeSpin=false and multiplier=1)
 // 		totalWinnings, _, _, _, _, _, _ := CalculateWins(reels, 1, 1, 1, false, false)
 // 		if totalWinnings > 0 {
-// 			log.Printf("Generated reels with win: %v", reels)
+// 			GameLogger.Debug("Generated reels with win: %v", reels)
 // 			break
 // 		}
 // 	}
@@ -897,7 +905,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 		// Check for no regular wins (exclude scatter wins)
 // 		totalWinnings, _, _, _, _, _, _ := CalculateWins(reels, 1, 1, 1, false, false)
 // 		if totalWinnings == 0 {
-// 			log.Printf("Generated reels with no wins: %v", reels)
+// 			GameLogger.Debug("Generated reels with no wins: %v", reels)
 // 			break
 // 		}
 // 	}
@@ -953,7 +961,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 		payout := float64(MysteryBoxCombinationPayout) * totalBetAmount
 // 		payout = math.Round(payout*100) / 100
 // 		positions := []Position{freeSpinReel1Pos, freeSpinReel2Pos, reel3Pos}
-// 		log.Printf("Mystery Box combination payout: 2 Free Spins + 1 Mystery Box = %v credits × %v = %v",
+// 		GameLogger.Debug("Mystery Box combination payout: 2 Free Spins + 1 Mystery Box = %v credits × %v = %v",
 // 			MysteryBoxCombinationPayout, totalBetAmount, payout)
 // 		return payout, "MysteryBoxCombination", positions
 // 	}
@@ -963,7 +971,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 		payout := float64(FreeSpinCombinationPayout) * totalBetAmount
 // 		payout = math.Round(payout*100) / 100
 // 		positions := []Position{freeSpinReel1Pos, freeSpinReel2Pos, reel3Pos}
-// 		log.Printf("Free Spin combination payout: 3 Free Spins = %v credits × %v = %v",
+// 		GameLogger.Debug("Free Spin combination payout: 3 Free Spins = %v credits × %v = %v",
 // 			FreeSpinCombinationPayout, totalBetAmount, payout)
 // 		return payout, "FreeSpinCombination", positions
 // 	}
@@ -1156,7 +1164,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 			}
 // 		}
 
-// 		log.Printf("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
+// 		GameLogger.Debug("Calculating payout: symbol=%s, matchCount=%d, betMultiplier=%d, effectiveMultiplier=%d, payout=%v",
 // 			win.Symbol, win.Count, betMultiplier, effectiveMultiplier, win.Payout)
 
 // 		totalPayout += win.Payout
@@ -1174,7 +1182,7 @@ func GetSelectedExtraOption(treasureIndex int) (int, int, bool, error) {
 // 		totalBetAmount := float64(betMultiplier*CreditMultiplier) * Denomination
 // 		scatterPayout = scatterPayValue * totalBetAmount
 // 		scatterPayout = math.Round(scatterPayout*100) / 100
-// 		log.Printf("Scatter payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
+// 		GameLogger.Debug("Scatter payout: count=%d, odds=%v, betMultiplier=%d, totalBetAmount=%v, payout=%v",
 // 			scatterCount, scatterPayValue, betMultiplier, totalBetAmount, scatterPayout)
 // 	}
 

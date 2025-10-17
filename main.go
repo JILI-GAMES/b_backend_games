@@ -110,7 +110,7 @@ func main() {
 	openSesame1Routes := opensesame1.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	openSesame1Routes.Register(app)
 
-	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest, telegramClient)
 	blossomsofwealthRoutes.Register(app)
 
 	openSesame2Routes := opensesame2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)

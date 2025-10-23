@@ -102,17 +102,70 @@ func WeightedRandomSymbol(r *rand.Rand) Symbol {
 	return SymbolA // Fallback
 }
 
+// ===== WIN TIER CONTROL VARIABLES =====
+// Change these variables to control win generation behavior
+var (
+	// WinTierMode controls the type of wins to generate
+	// Options: "low", "medium", "huge", "random"
+	WinTierMode = "low"
+
+	// WinTierProbabilities for random mode (should sum to 1.0)
+	LowWinProbability    = 0.7  // 70% chance for low wins
+	MediumWinProbability = 0.25 // 25% chance for medium wins
+	HugeWinProbability   = 0.05 // 5% chance for huge wins
+)
+
 // GenerateReelsWithWin generates a 5x3 grid with a guaranteed win
 func GenerateReelsWithWin() [][]string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var reels [][]string
 
-	// Keep generating until a win is found
+	// Determine win tier based on control variables
+	winTier := determineWinTier(r)
+	log.Printf("Generating win with tier: %s", winTier)
+
+	// Keep generating until a win in the target tier is found
 	for {
 		reels = make([][]string, Reels)
-		for reel := 0; reel < Reels; reel++ {
-			reels[reel] = make([]string, Rows)
-			for row := 0; row < Rows; row++ {
+
+		// Generate reels with controlled win placement
+		generateControlledReels(reels, winTier, r)
+
+		// Check for a win in the target tier
+		totalWinnings, _ := CalculateWins(reels, 1, 1, false)
+		if totalWinnings > 0 && isWinInTargetTier(totalWinnings, winTier) {
+			log.Printf("Generated controlled win: tier=%s, payout=%.2f, reels=%v", winTier, totalWinnings, reels)
+			break
+		}
+	}
+
+	return reels
+}
+
+// determineWinTier selects the win tier based on control variables
+func determineWinTier(r *rand.Rand) string {
+	if WinTierMode == "random" {
+		roll := r.Float64()
+		if roll < LowWinProbability {
+			return "low"
+		} else if roll < LowWinProbability+MediumWinProbability {
+			return "medium"
+		} else {
+			return "huge"
+		}
+	}
+	return WinTierMode
+}
+
+// generateControlledReels generates reels with controlled win placement
+func generateControlledReels(reels [][]string, winTier string, r *rand.Rand) {
+	// First, try to place a winning combination based on tier
+	placeWinningSymbols(reels, winTier, r)
+
+	// Fill remaining positions with random symbols
+	for reel := 0; reel < Reels; reel++ {
+		for row := 0; row < Rows; row++ {
+			if reels[reel][row] == "" {
 				symbol := WeightedRandomSymbol(r)
 				// Wilds only on reels 2-5 (indices 1-4)
 				if reel == 0 && symbol == SymbolWild {
@@ -124,16 +177,61 @@ func GenerateReelsWithWin() [][]string {
 				reels[reel][row] = string(symbol)
 			}
 		}
+	}
+}
 
-		// Check for a win (base game, so isFreeSpin=false)
-		totalWinnings, _ := CalculateWins(reels, 1, 1, false)
-		if totalWinnings > 0 {
-			log.Printf("Generated reels with win: %v", reels)
-			break
-		}
+// placeWinningSymbols places winning symbols based on the target tier
+func placeWinningSymbols(reels [][]string, winTier string, r *rand.Rand) {
+	var targetSymbols []Symbol
+	var symbolCount int
+
+	switch winTier {
+	case "low":
+		// Low wins: J, Q, K, A (3-4 symbols)
+		targetSymbols = []Symbol{SymbolJ, SymbolQ, SymbolK, SymbolA}
+		symbolCount = 3 + r.Intn(2) // 3 or 4 symbols
+	case "medium":
+		// Medium wins: Motorcycle, Car (3-4 symbols)
+		targetSymbols = []Symbol{SymbolMotorcycle, SymbolCar}
+		symbolCount = 3 + r.Intn(2) // 3 or 4 symbols
+	case "huge":
+		// Huge wins: Yacht, Airplane (4-5 symbols)
+		targetSymbols = []Symbol{SymbolYacht, SymbolAirplane}
+		symbolCount = 4 + r.Intn(2) // 4 or 5 symbols
+	default:
+		// Fallback to random
+		targetSymbols = []Symbol{SymbolJ, SymbolQ, SymbolK, SymbolA}
+		symbolCount = 3
 	}
 
-	return reels
+	// Select a random symbol from the tier
+	targetSymbol := targetSymbols[r.Intn(len(targetSymbols))]
+
+	// Choose a random payline to place the symbols
+	payline := WaysToWin[r.Intn(len(WaysToWin))]
+
+	// Place the winning symbols
+	for i := 0; i < symbolCount && i < len(payline); i++ {
+		reel := i         // Use reel index directly
+		row := payline[i] // Use the payline row
+		if reel < Reels && row < Rows {
+			reels[reel][row] = string(targetSymbol)
+		}
+	}
+}
+
+// isWinInTargetTier checks if the win amount fits the target tier
+func isWinInTargetTier(totalWinnings float64, winTier string) bool {
+	switch winTier {
+	case "low":
+		return totalWinnings >= 15.0 && totalWinnings <= 50.0
+	case "medium":
+		return totalWinnings >= 50.0 && totalWinnings <= 150.0
+	case "huge":
+		return totalWinnings >= 150.0 && totalWinnings <= 500.0
+	default:
+		return totalWinnings > 0
+	}
 }
 
 // GenerateLossReels generates a 5x3 grid with no wins but allows Free Spin Bonus triggers

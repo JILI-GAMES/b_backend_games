@@ -159,6 +159,11 @@ func determineWinTier(r *rand.Rand) string {
 
 // generateControlledReels generates reels with controlled win placement
 func generateControlledReels(reels [][]string, winTier string, r *rand.Rand) {
+	// Initialize the reels structure
+	for reel := 0; reel < Reels; reel++ {
+		reels[reel] = make([]string, Rows)
+	}
+
 	// First, try to place a winning combination based on tier
 	placeWinningSymbols(reels, winTier, r)
 
@@ -208,7 +213,17 @@ func placeWinningSymbols(reels [][]string, winTier string, r *rand.Rand) {
 	targetSymbol := targetSymbols[r.Intn(len(targetSymbols))]
 
 	// Choose a random payline to place the symbols
+	if len(WaysToWin) == 0 {
+		log.Printf("WaysToWin is empty, using fallback payline")
+		// Fallback: place symbols on first row
+		for i := 0; i < symbolCount && i < Reels; i++ {
+			reels[i][0] = string(targetSymbol)
+		}
+		return
+	}
+
 	payline := WaysToWin[r.Intn(len(WaysToWin))]
+	log.Printf("Selected payline: %v, symbolCount: %d", payline, symbolCount)
 
 	// Place the winning symbols
 	for i := 0; i < symbolCount && i < len(payline); i++ {

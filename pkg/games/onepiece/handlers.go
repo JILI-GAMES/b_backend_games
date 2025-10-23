@@ -371,6 +371,15 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 	// if its a win we update the win in mosomis endpoint https://admin-api.ibibe.africa/api/v1/update_bet
 	var walletBalance float64 = 0
+	var stakeAmount float64 = 0
+	if req.IsFreeSpin {
+		stakeAmount = 0 // Free spin always has 0 stake amount
+		log.Printf("Free spin detected - stake_amount set to 0")
+	} else {
+		stakeAmount = req.BetAmount * 5 // Normal game: bet amount * 5
+		log.Printf("Normal game - stake_amount calculated as bet_amount * 5 = %v * 5 = %v", req.BetAmount, stakeAmount)
+	}
+
 	if totalWinnings > 0 {
 		origin := c.Get("Origin")
 		log.Printf("🫠🫠Origin received: %v", origin)
@@ -380,9 +389,10 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 
 		winPayload := map[string]interface{}{
-			"bet_id":     req.BetID,
-			"amount_won": totalWinnings,
-			"client_id":  req.ClientID,
+			"bet_id":       req.BetID,
+			"amount_won":   totalWinnings,
+			"client_id":    req.ClientID,
+			"stake_amount": stakeAmount,
 		}
 		jsonData, err := json.Marshal(winPayload)
 		if err != nil {
@@ -428,6 +438,7 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 					AmountWon        float64 `json:"amount_won"`
 					NewWalletBalance float64 `json:"new_wallet_balance"`
 					Status           string  `json:"status"`
+					Error            string  `json:"error"`
 				}
 
 				if err := json.Unmarshal(bodyBytes, &betUpdateResponse); err != nil {
@@ -437,8 +448,46 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 					}
 					log.Printf("Error decoding bet update response: %v. Body: %s", err, preview)
 				} else {
-					walletBalance = betUpdateResponse.NewWalletBalance
-					log.Printf("Bet update successful. New wallet balance: %v", walletBalance)
+					// Check for "Invalid Bet amount" error and force loss
+					if betUpdateResponse.Error != "" && strings.Contains(betUpdateResponse.Error, "Invalid Bet amount") {
+						log.Printf("❌❌❌ Invalid Bet amount error received: %s - Forcing loss outcome", betUpdateResponse.Error)
+
+						// Force loss by regenerating loss reels and setting winnings to 0
+						reels = GenerateLossReels()
+						totalWinnings = 0
+						winDetails = nil
+
+						// Send loss update to Mosomi's endpoint
+						go func() {
+							lossPayload := map[string]interface{}{
+								"bet_id":     req.BetID,
+								"bet_status": "lost",
+								"client_id":  req.ClientID,
+							}
+							lossJsonData, err := json.Marshal(lossPayload)
+							if err != nil {
+								log.Printf("Error marshaling loss payload: %v", err)
+								return
+							}
+
+							client := &http.Client{Timeout: 10 * time.Second}
+							resp, err := client.Post(mosomiEndpoint, "application/json", bytes.NewBuffer(lossJsonData))
+							if err != nil {
+								log.Printf("Error sending loss update to Mosomi's endpoint: %v", err)
+								return
+							}
+							defer resp.Body.Close()
+
+							if resp.StatusCode != http.StatusOK {
+								log.Printf("Mosomi's endpoint returned non-200 status: %d", resp.StatusCode)
+							} else {
+								log.Printf("Successfully sent loss update to Mosomi's endpoint")
+							}
+						}()
+					} else {
+						walletBalance = betUpdateResponse.NewWalletBalance
+						log.Printf("Bet update successful. New wallet balance: %v", walletBalance)
+					}
 				}
 			}
 		}

@@ -57,6 +57,19 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		})
 	}
 
+	// get ip and user agent
+	ip := c.Get("X-Real-IP")
+	if ip == "" {
+		ip = strings.Split(c.Get("X-Forwarded-For"), ",")[0]
+	}
+	if ip == "" {
+		ip = c.IP()
+	}
+	userAgent := c.Get("User-Agent")
+
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
+
 	betAmount := req.BetAmount
 	reels := GenerateReelsWithWin()
 	effectiveMultiplier := req.FreeSpinMultiplier
@@ -143,11 +156,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 <b>Player ID:</b> %s
 <b>Bet ID:</b> %s
 <b>Timestamp:</b> %s
+<b>IP:</b> %s
+<b>User-Agent:</b> %s
 
 <b>Error:</b> Settings(RTP) API failed: %v
 
 <b>Action Taken:</b> Using default RTP (0.9) and forcing loss outcome
-			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), settingsErr)
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), ip, userAgent, settingsErr)
 
 			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
 				log.Printf("Failed to send Telegram notification: %v", telegramErr)
@@ -157,11 +172,6 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 		}
 	}
 
-	ip := c.IP()
-	userAgent := c.Get("User-Agent")
-
-	log.Printf("✅IP: %v", ip)
-	log.Printf("✅User-Agent: %v", userAgent)
 
 	var rngResp rng.Response
 	var rngErr error
@@ -231,11 +241,13 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 <b>Player ID:</b> %s
 <b>Bet ID:</b> %s
 <b>Timestamp:</b> %s
+<b>IP:</b> %s
 
+<b>User-Agent:</b> %s
 <b>Error:</b> RNG(Outcome) API failed: %v
 
 <b>Action Taken:</b> Forcing loss outcome to continue game
-			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), rngErr)
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), ip, userAgent, rngErr)
 
 			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
 				log.Printf("Failed to send Telegram notification: %v", telegramErr)

@@ -47,7 +47,7 @@ func main() {
 	// Set up logging with lumberjack for daily rotation and 1 day retention (use prod config for log file)
 	log.SetOutput(&lumberjack.Logger{
 		Filename:  prodCfg.LogFile,
-		MaxAge:    1,    // days to keep
+		MaxAge:    30,    // days to keep
 		LocalTime: true, // use local time for file names
 	})
 

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-    Denomination = 0.01
+    Denomination = 1
     Reels       = 5
     Rows        = 3
     MinBet      = 20 // Minimum bet multiplier
@@ -47,9 +47,9 @@ var Paytable = map[Symbol]map[int]float64{
 // BetAmountToMultiplier maps bet amounts to multipliers
 var BetAmountToMultiplier = map[float64]int{
     10:  1,
-    15:  2,
-    20:  3,
-    250:  5,
+    15:  1,
+    20:  1,
+    250:  1,
 }
 
 // Range for Gold Flower bonus multipliers

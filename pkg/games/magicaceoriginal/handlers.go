@@ -499,14 +499,14 @@ func validateRequest(clientID, gameID, playerID, betID string, betAmount float64
 		return fmt.Errorf("bet_id is required")
 	}
 	if !isValidBetAmount(betAmount) {
-		return fmt.Errorf("invalid bet amount, allowed values are 0.2, 0.4, 0.6, 1.0, 2.0")
+		return fmt.Errorf("invalid bet amount, allowed values are 10,15,20,250")
 	}
 	return nil
 }
 
 // isValidBetAmount checks if the bet amount is valid
 func isValidBetAmount(amount float64) bool {
-	validAmounts := []float64{0.2, 0.4, 0.6, 1.0, 2.0}
+	validAmounts := []float64{10,15,20,250}
 	for _, valid := range validAmounts {
 		if amount == valid {
 			return true

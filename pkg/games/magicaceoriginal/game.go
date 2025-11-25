@@ -10,7 +10,7 @@ import (
 
 // Constants
 const (
-	Denomination          = 0.01
+	Denomination          = 1
 	GoldenCardProbability = 0.05
 	Reels                 = 5
 	Rows                  = 4
@@ -50,11 +50,10 @@ var BoomingMultipliersFreeSpins = []int{2, 4, 6, 10}
 
 // BetAmountToMultiplier maps bet amounts to multipliers
 var BetAmountToMultiplier = map[float64]int{
-	0.2: 1,
-	0.4: 2,
-	0.6: 3,
-	1.0: 5,
-	2.0: 10,
+	10: 1,
+	15: 2,
+	20: 3,
+	250: 5,
 }
 
 // WaysToWin generates all possible 1024 ways to win (4^5)

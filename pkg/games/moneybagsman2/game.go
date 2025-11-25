@@ -11,7 +11,7 @@ import (
 )
 
 const (
-    Denomination = 0.01
+    Denomination = 1
     Reels       = 5
     Rows        = 3
 )
@@ -44,11 +44,10 @@ var Paytable = map[Symbol]map[int]float64{
 
 // BetAmountToMultiplier maps bet amounts to multipliers
 var BetAmountToMultiplier = map[float64]int{
-    0.6: 1,
-    1.2: 2,
-    1.8: 3,
-    3.0: 5,
-    6.0: 10,
+    10: 1,
+    15: 2,
+    20: 3,
+    250: 5,
 }
 
 // FreeSpinOptions defines the Free Spin Bonus options

@@ -35,6 +35,7 @@ func (rg *RouteGroup) StartGameHandler(c *fiber.Ctx) error {
 		})
 	}
 
+
 	// Round bet amount to 2 decimal places
 	req.BetAmount = RoundToTwo(req.BetAmount)
 

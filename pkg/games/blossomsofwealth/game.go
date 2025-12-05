@@ -46,10 +46,10 @@ var Paytable = map[Symbol]map[int]float64{
 
 // BetAmountToMultiplier maps bet amounts to multipliers
 var BetAmountToMultiplier = map[float64]int{
-    10:  1,
-    15:  1,
-    20:  1,
-    250:  1,
+    5:  1,
+    10:  2,
+    50:  3,
+    100:  4,
 }
 
 // Range for Gold Flower bonus multipliers

@@ -446,7 +446,7 @@ func validateRequest(clientID, gameID, playerID, betID string, betAmount float64
 		return fmt.Errorf("bet_id is required")
 	}
 	if !isFreeSpin && !isValidBetAmount(betAmount) {
-		return fmt.Errorf("invalid bet amount, allowed values are 10,15,20,250")
+		return fmt.Errorf("invalid bet amount, allowed values are 5,10,50,100")
 	}
 	if isFreeSpin {
 		if freeSpinOption < 0 || freeSpinOption > 5 {
@@ -490,7 +490,7 @@ func validateSelectFreeSpinOptionRequest(clientID, gameID, playerID string, opti
 
 // isValidBetAmount checks if the bet amount is valid
 func isValidBetAmount(amount float64) bool {
-	validAmounts := []float64{10,15,20,250}
+	validAmounts := []float64{5,10,50,100}
 	for _, valid := range validAmounts {
 		if amount == valid {
 			return true

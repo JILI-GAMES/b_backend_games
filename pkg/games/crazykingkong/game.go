@@ -26,7 +26,7 @@ var StoneMultipliers = map[StoneType]struct {
 }
 
 // Valid bet amounts
-var ValidBetAmounts = []float64{10,15,20,250}
+var ValidBetAmounts = []float64{5,10,50,100}
 
 // GenerateBoulderMultiplier generates a random multiplier for a given boulder type
 func GenerateBoulderMultiplier(boulderType BoulderType) float64 {

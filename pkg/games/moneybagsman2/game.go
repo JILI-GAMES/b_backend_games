@@ -44,10 +44,10 @@ var Paytable = map[Symbol]map[int]float64{
 
 // BetAmountToMultiplier maps bet amounts to multipliers
 var BetAmountToMultiplier = map[float64]int{
-    10: 1,
-    15: 2,
-    20: 3,
-    250: 5,
+    5: 1,
+    10: 2,
+    50: 3,
+    100: 4,
 }
 
 // FreeSpinOptions defines the Free Spin Bonus options

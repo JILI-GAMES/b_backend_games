@@ -59,10 +59,11 @@ var Paytable = map[Symbol]map[int]int{
 
 // BetAmountMap maps bet amounts to multipliers
 var BetAmountMap = map[float64]int{
-	10: 1,
-	15: 2,
-	20: 3,
-	250: 5,
+	5: 1,
+	10: 2,
+	50: 3,
+	100: 4,
+	
 }
 
 // WaysToWin generates all possible 1024 ways to win (4^5)

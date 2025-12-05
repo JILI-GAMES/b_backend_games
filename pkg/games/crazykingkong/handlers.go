@@ -31,7 +31,7 @@ func (rg *RouteGroup) CrushHandler(c *fiber.Ctx) error {
 		log.Printf("Validation error: Invalid bet amount %f", req.BetAmount)
 		return c.Status(fiber.StatusBadRequest).JSON(CrushResponse{
 			Status:  "error",
-			Message: "Invalid bet amount, allowed values are 10,15,20,250",
+			Message: "Invalid bet amount, allowed values are 5,10,50,100",
 		})
 	}
 
@@ -156,7 +156,7 @@ func (rg *RouteGroup) BonusGameHandler(c *fiber.Ctx) error {
 		log.Printf("Validation error: Invalid bet amount %f", req.BetAmount)
 		return c.Status(fiber.StatusBadRequest).JSON(BonusGameResponse{
 			Status:  "error",
-			Message: "Invalid bet amount, allowed values are 10,15,20,250",
+			Message: "Invalid bet amount, allowed values are 5,10,50,100",
 		})
 	}
 

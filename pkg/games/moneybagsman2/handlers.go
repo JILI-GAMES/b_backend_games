@@ -245,9 +245,9 @@ func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
 
 		// Send loss update to Mosomi's endpoint with environment-aware URL
 		go func() {
-			mosomiEndpoint := "https://admin-api.ibibe.africa/api/v1/update_loss"
+			mosomiEndpoint := "http://127.0.0.1:8000/api/v1/update_loss"
 			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
-				mosomiEndpoint = "https://admin-api3.ibibe.africa/api/v1/update_loss"
+				mosomiEndpoint = "http://127.0.0.1:8000/api/v1/update_loss"
 			}
 
 			log.Printf("Mosomi endpoint: %v", mosomiEndpoint)

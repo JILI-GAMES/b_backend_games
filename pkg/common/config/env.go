@@ -25,8 +25,8 @@ func Load() Config {
 	}
 
 	return Config{
-		RNGServiceURL:      getEnv("RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
-		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
+		RNGServiceURL:      getEnv("RNG_API_URL", "http://127.0.0.1:17004/api/proxy/rng/1"),
+		SettingsServiceURL: getEnv("SETTINGS_API_URL", "http://127.0.0.1:4040/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
@@ -51,16 +51,16 @@ func LoadAll() (prod Config, test Config) {
 	}
 
 	prod = Config{
-		RNGServiceURL:      getEnv("PROD_RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
-		SettingsServiceURL: getEnv("PROD_SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
+		RNGServiceURL:      getEnv("PROD_RNG_API_URL", "http://127.0.0.1:17004/api/proxy/rng/1"),
+		SettingsServiceURL: getEnv("PROD_SETTINGS_API_URL", "http://127.0.0.1:4040/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
 	}
 	test = Config{
-		RNGServiceURL:      getEnv("TEST_RNG_API_URL", "http://test-rng-url"),
-		SettingsServiceURL: getEnv("TEST_SETTINGS_API_URL", "https://test-settings-url"),
+		RNGServiceURL:      getEnv("TEST_RNG_API_URL", "http://127.0.0.1:17004/api/proxy/rng/1"),
+		SettingsServiceURL: getEnv("TEST_SETTINGS_API_URL", "http://127.0.0.1:4040/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),

@@ -28,6 +28,7 @@ type SpinRequest struct {
     BetAmount       float64    `json:"betAmount"`
     ClientID        string     `json:"clientId"`
     PlayerID        string     `json:"playerId"`
+    BetID           string     `json:"betId"`
     Action          string     `json:"action"` // "SPIN" or "TRANSFORM"
     Cards           [5][4]Card `json:"cards,omitempty"`
     ComboMultiplier int        `json:"comboMultiplier,omitempty"`
@@ -46,6 +47,7 @@ type RNGRequest struct {
     ClientID        string  `json:"client_id"`
     GameID          string  `json:"game_id"`
     PlayerID        string  `json:"player_id"`
+    BetID           string  `json:"bet_id"`
     RTP             float64 `json:"rtp"`
     PayoutMultiplier float64 `json:"payout_multiplier"`
     RequestSalt     string  `json:"request_salt"`
@@ -96,6 +98,7 @@ type RowBasedSpinRequest struct {
     BetAmount       float64         `json:"betAmount"`
     ClientID        string          `json:"clientId"`
     PlayerID        string          `json:"playerId"`
+    BetID           string          `json:"betId"`  
     Action          string          `json:"action"` // "SPIN" or "TRANSFORM"
     Cards           [4][5]RowBasedCard `json:"cards,omitempty"`
     ComboMultiplier int             `json:"comboMultiplier,omitempty"`

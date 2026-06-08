@@ -1,0 +1,500 @@
+package moneybagsman2
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
+	"github.com/gofiber/fiber/v2"
+)
+
+// / SpinHandler handles the /spin/moneybagsman2 endpoint
+func (rg *RouteGroup) SpinHandler(c *fiber.Ctx) error {
+	var req SpinRequest
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("Failed to parse request body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid request body",
+		})
+	}
+
+	// Validate request
+	if err := validateRequest(req.ClientID, req.GameID, req.PlayerID, req.BetID, req.BetAmount, req.IsFreeSpin, req.FreeSpinOption, req.CurrentFreeSpinIndex, req.RemainingFreeSpins, req.FreeSpinMultiplier, req.ExtraBonusMultiplier); err != nil {
+		log.Printf("Request validation failed: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": err.Error(),
+		})
+	}
+
+	// Map bet amount to multiplier
+	betMultiplier := BetAmountToMultiplier[req.BetAmount]
+
+	// Generate reels with a guaranteed win
+	reels := GenerateReelsWithWin()
+
+	// Calculate multiplier for free spins, including the extra bonus multiplier effect
+	effectiveMultiplier := req.FreeSpinMultiplier
+	if req.IsFreeSpin && req.ExtraBonusMultiplier > 0 {
+		// Apply the extra bonus multiplier to the free spin multiplier
+		effectiveMultiplier *= (req.ExtraBonusMultiplier)
+		log.Printf("Applied extra bonus multiplier: base=%d, extra=%d, effective=%d",
+			req.FreeSpinMultiplier, req.ExtraBonusMultiplier, effectiveMultiplier)
+	}
+
+	// Calculate winnings using the effective multiplier
+	totalWinnings, winDetails := CalculateWins(reels, betMultiplier, effectiveMultiplier, req.IsFreeSpin)
+	log.Printf("Initial calculation: totalWinnings=%v, winDetails=%v", totalWinnings, winDetails)
+
+	// Select correct clients for this request
+	rngClient, settingsClient := rg.getClientsForRequest(c)
+
+	// Calculate payout multiplier (corrected formula: total_win / bet_amount)
+	payoutMultiplier := totalWinnings / req.BetAmount
+	if math.IsNaN(payoutMultiplier) || math.IsInf(payoutMultiplier, 0) {
+		payoutMultiplier = 0
+		log.Printf("Payout multiplier is NaN or Inf, setting to 0")
+	}
+	log.Printf("Payout multiplier: %v", payoutMultiplier)
+
+	// Get RTP
+	rtp, settingsErr := settingsClient.GetRTP(req.ClientID, req.GameID, req.PlayerID)
+	if settingsErr != nil {
+		log.Printf("Failed to get RTP: %v", settingsErr)
+		rtp = 0.9
+		log.Printf("Using default RTP: %v", rtp)
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
+		// Send to Joe's endpoint with environment-aware label
+		go func() {
+			label := "rng"
+			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
+				label = "rng-test"
+			}
+
+			joePayload := map[string]interface{}{
+				"endpoint":     "https://t2.ibibe.africa/get-game-settings",
+				"label":        label,
+				"status":       "fail",
+				"other_status": "settings api fail",
+				"source":       "moneybagsman2",
+				"time":         time.Now().Format("2006-01-02T15:04"),
+			}
+
+			jsonData, err := json.Marshal(joePayload)
+			if err != nil {
+				log.Printf("Error marshaling Joe notification payload: %v", err)
+				return
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending notification to Joe's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent notification to Joe's endpoint")
+			}
+		}()
+
+		if rg.Telegram != nil {
+			notificationText := fmt.Sprintf(`
+🚨 <b>Settings API Failure Alert Money Bags Man 2</b> 🚨
+
+<b>Game:</b> %s
+<b>Client ID:</b> %s
+<b>Player ID:</b> %s
+<b>Bet ID:</b> %s
+<b>Timestamp:</b> %s
+
+<b>Error:</b> Settings(RTP) API failed: %v
+
+<b>Action Taken:</b> Using default RTP (0.9) and forcing loss outcome
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), settingsErr)
+
+			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
+				log.Printf("Failed to send Telegram notification: %v", telegramErr)
+			}
+		} else {
+			log.Printf("Telegram client not configured - cannot send notification")
+		}
+	}
+
+	// Get IP address and user agent from request
+	ip := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	log.Printf("✅IP: %v", ip)
+	log.Printf("✅User-Agent: %v", userAgent)
+
+	// Call RNG
+	var rngResp rng.Response
+	var rngErr error
+	if settingsErr == nil {
+		rngResp, rngErr = rngClient.GetOutcome(req.ClientID, req.GameID, req.PlayerID, req.BetID, rtp, payoutMultiplier, req.BetAmount, ip, userAgent, false)
+		if rngErr != nil {
+			log.Printf("Failed to call RNG API: %v", rngErr)
+		}
+	} else {
+		rngResp = rng.Response{PrefOutcome: "loss"}
+		rngErr = nil
+		log.Printf("‼️‼️‼️Forcing loss outcome due to settings API failure")
+	}
+
+	if rngErr != nil {
+		log.Printf("RNG API failed - sending Joe notification")
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
+		// Send to Joe's endpoint with environment-aware label
+		go func() {
+			label := "rng"
+			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
+				label = "rng-test"
+			}
+
+			log.Printf("Joe endpoint: %v", label)
+
+			joePayload := map[string]interface{}{
+				"endpoint":     "http://159.89.235.166:17003/api/proxy/rng/1",
+				"label":        label,
+				"status":       "fail",
+				"other_status": "rng api fail",
+				"source":       "moneybagsman2",
+				"time":         time.Now().Format("2006-01-02T15:04"),
+			}
+
+			jsonData, err := json.Marshal(joePayload)
+			if err != nil {
+				log.Printf("Error marshaling Joe notification payload: %v", err)
+				return
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Post("https://queue.ibibe.africa/proxy/queue/manageFails", "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending notification to Joe's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Joe's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent notification to Joe's endpoint")
+			}
+		}()
+
+		if rg.Telegram != nil {
+			notificationText := fmt.Sprintf(`
+🚨 <b>RNG API Failure Alert Money Bags Man 2</b> 🚨
+
+<b>Game:</b> %s
+<b>Client ID:</b> %s
+<b>Player ID:</b> %s
+<b>Bet ID:</b> %s
+<b>Timestamp:</b> %s
+
+<b>Error:</b> RNG(Outcome) API failed: %v
+
+<b>Action Taken:</b> Forcing loss outcome to continue game
+			`, req.GameID, req.ClientID, req.PlayerID, req.BetID, time.Now().Format("2006-01-02 15:04:05 UTC"), rngErr)
+
+			if telegramErr := rg.Telegram.SendMessage(notificationText); telegramErr != nil {
+				log.Printf("Failed to send Telegram notification: %v", telegramErr)
+			}
+		} else {
+			log.Printf("Telegram client not configured - cannot send notification")
+		}
+
+		rngResp = rng.Response{PrefOutcome: "loss"}
+		rngErr = nil
+		log.Printf("‼️‼️‼️Forcing loss outcome due to RNG API failure")
+	}
+
+	log.Printf("RTP retrieved: %v", rtp)
+	log.Printf("RNG response: %v", rngResp)
+
+	// Adjust outcome based on RNG
+	if rngResp.PrefOutcome == "loss" {
+		log.Printf("RNG determined a loss outcome")
+		reels = GenerateLossReels()
+		totalWinnings = 0
+		winDetails = nil
+
+		// Capture values from context before starting goroutine
+		origin := c.Get("Origin")
+		log.Printf("🫠🫠Origin received: %v", origin)
+
+		// Send loss update to Mosomi's endpoint with environment-aware URL
+		go func() {
+			mosomiEndpoint := "https://admin-api.ibibe.africa/api/v1/update_loss"
+			if len(origin) > 0 && (strings.Contains(strings.ToLower(origin), "test") || origin == "") {
+				mosomiEndpoint = "https://admin-api3.ibibe.africa/api/v1/update_loss"
+			}
+
+			log.Printf("Mosomi endpoint: %v", mosomiEndpoint)
+
+			lossPayload := map[string]interface{}{
+				"bet_id":     req.BetID,
+				"bet_status": "lost",
+				"client_id":  req.ClientID,
+			}
+			jsonData, err := json.Marshal(lossPayload)
+			if err != nil {
+				log.Printf("Error marshaling loss payload: %v", err)
+				return
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Post(mosomiEndpoint, "application/json", bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Printf("Error sending loss update to Mosomi's endpoint: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				log.Printf("Mosomi's endpoint returned non-200 status: %d", resp.StatusCode)
+			} else {
+				log.Printf("Successfully sent loss update to Mosomi's endpoint")
+			}
+		}()
+	}
+
+	// Count Scatters and check for Free Spin Bonus trigger/retrigger
+	scatterCount := CountScatters(reels)
+
+	// Collect scatter positions
+	var scatterPositions []Position
+	for reel := 0; reel < Reels; reel++ {
+		for row := 0; row < Rows; row++ {
+			if reels[reel][row] == string(SymbolScatter) {
+				scatterPositions = append(scatterPositions, Position{
+					Reel: reel,
+					Row:  row,
+				})
+			}
+		}
+	}
+
+	freeSpinTriggered := false
+	freeSpinRetriggered := false
+	extraBonusMultiplier := 0
+	if HasScatterOnEachReel(reels) {
+		extraBonusMultiplier = CalculateExtraBonusMultiplier(scatterCount)
+		if !req.IsFreeSpin {
+			freeSpinTriggered = true
+			log.Printf("Free Spin Bonus triggered: %d scatters", scatterCount)
+		} else {
+			freeSpinRetriggered = true
+			log.Printf("Free Spin Bonus retriggered: %d scatters", scatterCount)
+		}
+	}
+
+	// Update Free Spin state
+	remainingFreeSpins := req.RemainingFreeSpins
+	totalFreeSpinsAwarded := req.TotalFreeSpinsAwarded
+	if freeSpinTriggered {
+		// Will be set after the player selects an option
+		remainingFreeSpins = 0
+		totalFreeSpinsAwarded = 0
+	} else if freeSpinRetriggered {
+		option := FreeSpinOptions[req.FreeSpinOption]
+		remainingFreeSpins += option.TotalSpins
+		totalFreeSpinsAwarded += option.TotalSpins
+		if remainingFreeSpins > option.MaxSpins {
+			remainingFreeSpins = option.MaxSpins
+			totalFreeSpinsAwarded = option.MaxSpins
+		}
+	}
+
+	// Update free spin index and remaining spins
+	currentFreeSpinIndex := req.CurrentFreeSpinIndex
+	freeSpinMultiplier := req.FreeSpinMultiplier
+	if req.IsFreeSpin {
+		currentFreeSpinIndex++
+		remainingFreeSpins--
+
+		// Update multiplier based on option
+		if req.FreeSpinOption > 0 {
+			option := FreeSpinOptions[req.FreeSpinOption]
+
+			// For option 5, multiplier is fixed at the initial value (50)
+			if req.FreeSpinOption == 5 {
+				freeSpinMultiplier = option.InitialMultiplier
+			} else {
+				// For options 1-4, calculate the multiplier based on the current spin index
+				freeSpinMultiplier = option.InitialMultiplier + (currentFreeSpinIndex)*option.MultiplierIncrease
+			}
+		}
+	}
+	log.Printf("Free Spin state updated: remainingFreeSpins=%d, totalFreeSpinsAwarded=%d, currentFreeSpinIndex=%d, freeSpinMultiplier=%d", remainingFreeSpins, totalFreeSpinsAwarded, currentFreeSpinIndex, freeSpinMultiplier)
+
+	// Check if Free Spin Bonus has ended
+	isFreeSpin := req.IsFreeSpin
+	if req.IsFreeSpin && remainingFreeSpins <= 0 {
+		isFreeSpin = false
+		currentFreeSpinIndex = 0
+		freeSpinMultiplier = 0
+		remainingFreeSpins = 0
+		totalFreeSpinsAwarded = 0
+		log.Printf("Free Spin Bonus ended")
+	}
+
+	log.Printf("Spin completed: totalWin=%v, freeSpinTriggered=%v, freeSpinRetriggered=%v, isFreeSpin=%v", totalWinnings, freeSpinTriggered, freeSpinRetriggered, isFreeSpin)
+
+	return c.JSON(SpinResponse{
+		Reels:                 reels,
+		WinAmount:             totalWinnings,
+		WinDetails:            winDetails,
+		ScatterCount:          scatterCount,
+		ScatterPositions:      scatterPositions,
+		FreeSpinTriggered:     freeSpinTriggered,
+		FreeSpinRetriggered:   freeSpinRetriggered,
+		ExtraBonusMultiplier:  extraBonusMultiplier,
+		IsFreeSpin:            isFreeSpin,
+		RemainingFreeSpins:    remainingFreeSpins,
+		CurrentFreeSpinIndex:  currentFreeSpinIndex,
+		FreeSpinMultiplier:    freeSpinMultiplier,
+		TotalFreeSpinsAwarded: totalFreeSpinsAwarded,
+		FreeSpinOption:        req.FreeSpinOption,
+	})
+}
+
+// SelectFreeSpinOptionHandler handles the /select-free-spin-option/moneybagsman2 endpoint
+func (rg *RouteGroup) SelectFreeSpinOptionHandler(c *fiber.Ctx) error {
+	var req SelectFreeSpinOptionRequest
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("Failed to parse request body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid request body",
+		})
+	}
+
+	// Validate request
+	if err := validateSelectFreeSpinOptionRequest(req.ClientID, req.GameID, req.PlayerID, req.Option, req.ExtraBonusMultiplier); err != nil {
+		log.Printf("Request validation failed: %v", err)
+		// If option is invalid, default to Option 1 (as per paytable rules)
+		if req.Option < 1 || req.Option > 5 {
+			log.Printf("Invalid option %d, defaulting to Option 1", req.Option)
+			req.Option = 1
+		} else {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "error",
+				"message": err.Error(),
+			})
+		}
+	}
+
+	// Get the Free Spin Bonus option
+	option, exists := FreeSpinOptions[req.Option]
+	if !exists {
+		log.Printf("Invalid Free Spin Bonus option: %d", req.Option)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid Free Spin Bonus option",
+		})
+	}
+
+	// No longer apply extra bonus multiplier to the number of spins
+	totalSpins := option.TotalSpins
+
+	initialMultiplier := option.InitialMultiplier
+
+	log.Printf("Free Spin Bonus option selected: option=%d, totalSpins=%d, initialMultiplier=%d, extraBonusMultiplier=%d",
+		req.Option, totalSpins, initialMultiplier, req.ExtraBonusMultiplier)
+
+	return c.JSON(SelectFreeSpinOptionResponse{
+		TotalFreeSpins:       totalSpins,
+		InitialMultiplier:    initialMultiplier,
+		MaxFreeSpins:         option.MaxSpins,
+		ExtraBonusMultiplier: req.ExtraBonusMultiplier, // Send this back to be used in free spins
+	})
+}
+
+// validateRequest validates the /spin request fields
+func validateRequest(clientID, gameID, playerID, betID string, betAmount float64, isFreeSpin bool, freeSpinOption, currentFreeSpinIndex, remainingFreeSpins, freeSpinMultiplier, extraBonusMultiplier int) error {
+	if clientID == "" {
+		return fmt.Errorf("client_id is required")
+	}
+	if gameID == "" {
+		return fmt.Errorf("game_id is required")
+	}
+	if playerID == "" {
+		return fmt.Errorf("player_id is required")
+	}
+	if betID == "" {
+		return fmt.Errorf("bet_id is required")
+	}
+	if !isFreeSpin && !isValidBetAmount(betAmount) {
+		return fmt.Errorf("invalid bet amount, allowed values are 5,10,50,100")
+	}
+	if isFreeSpin {
+		if freeSpinOption < 0 || freeSpinOption > 5 {
+			return fmt.Errorf("invalid free spin option, allowed values are 0-5")
+		}
+		if currentFreeSpinIndex < 0 {
+			return fmt.Errorf("current_free_spin_index must be non-negative")
+		}
+		if remainingFreeSpins < 0 {
+			return fmt.Errorf("remaining_free_spins must be non-negative")
+		}
+		if freeSpinMultiplier < 0 {
+			return fmt.Errorf("free_spin_multiplier must be non-negative")
+		}
+		if extraBonusMultiplier < 0 {
+			return fmt.Errorf("extra_bonus_multiplier must be non-negative")
+		}
+	}
+	return nil
+}
+
+// validateSelectFreeSpinOptionRequest validates the /select-free-spin-option request fields
+func validateSelectFreeSpinOptionRequest(clientID, gameID, playerID string, option, extraBonusMultiplier int) error {
+	if clientID == "" {
+		return fmt.Errorf("client_id is required")
+	}
+	if gameID == "" {
+		return fmt.Errorf("game_id is required")
+	}
+	if playerID == "" {
+		return fmt.Errorf("player_id is required")
+	}
+	if option < 1 || option > 5 {
+		return fmt.Errorf("invalid option, allowed values are 1-5")
+	}
+	if extraBonusMultiplier < 0 || extraBonusMultiplier > 3 {
+		return fmt.Errorf("invalid extra_bonus_multiplier, allowed values are 0-3")
+	}
+	return nil
+}
+
+// isValidBetAmount checks if the bet amount is valid
+func isValidBetAmount(amount float64) bool {
+	validAmounts := []float64{5,10,50,100}
+	for _, valid := range validAmounts {
+		if amount == valid {
+			return true
+		}
+	}
+	return false
+}

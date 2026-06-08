@@ -3,7 +3,6 @@ package config
 import (
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +13,8 @@ type Config struct {
 	SettingsServiceURL string
 	ServerPort         string
 	LogFile            string
+	TelegramBotToken   string
+	TelegramChatID     string
 }
 
 // Load loads configuration from environment variables
@@ -25,9 +26,11 @@ func Load() Config {
 
 	return Config{
 		RNGServiceURL:      getEnv("RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
-		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t2.ibibe.africa/get-game-settings"),
+		SettingsServiceURL: getEnv("SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
 		ServerPort:         getEnv("PORT", "11400"),
 		LogFile:            getEnv("LOG_FILE", "app.log"),
+		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
 	}
 }
 
@@ -40,11 +43,28 @@ func getEnv(key, defaultValue string) string {
 	return value
 }
 
-// Function to get an environment variable as an integer or a default value
-func getEnvAsInt(key string, defaultValue int) int {
-	valueStr := getEnv(key, "")
-	if value, err := strconv.Atoi(valueStr); err == nil {
-		return value
+// LoadAll loads both production and test configurations from environment variables
+func LoadAll() (prod Config, test Config) {
+	// Try to load .env file, but don't fail if it doesn't exist
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found or error loading it")
 	}
-	return defaultValue
+
+	prod = Config{
+		RNGServiceURL:      getEnv("PROD_RNG_API_URL", "http://159.89.235.166:17003/api/proxy/rng/1"),
+		SettingsServiceURL: getEnv("PROD_SETTINGS_API_URL", "https://t3.ibibe.africa/get-game-settings"),
+		ServerPort:         getEnv("PORT", "11400"),
+		LogFile:            getEnv("LOG_FILE", "app.log"),
+		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
+	}
+	test = Config{
+		RNGServiceURL:      getEnv("TEST_RNG_API_URL", "http://test-rng-url"),
+		SettingsServiceURL: getEnv("TEST_SETTINGS_API_URL", "https://test-settings-url"),
+		ServerPort:         getEnv("PORT", "11400"),
+		LogFile:            getEnv("LOG_FILE", "app.log"),
+		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:     getEnv("TELEGRAM_CHAT_ID", ""),
+	}
+	return
 }

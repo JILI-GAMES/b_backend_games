@@ -37,40 +37,40 @@ type Response struct {
 
 // GetRTP retrieves the RTP settings for a player
 func (c *Client) GetRTP(clientID, gameID, playerID string) (float64, error) {
-    reqBody, err := json.Marshal(Request{
-        ClientID: clientID,
-        GameID:   gameID,
-        PlayerID: playerID,
-    })
-    if err != nil {
-        log.Printf("Error marshaling settings request: %v", err)
-        return 0, err
-    }
+	reqBody, err := json.Marshal(Request{
+		ClientID: clientID,
+		GameID:   gameID,
+		PlayerID: playerID,
+	})
+	if err != nil {
+		log.Printf("Error marshaling settings request: %v", err)
+		return 0, err
+	}
 
-    log.Printf("Settings request: %s", string(reqBody))
+	log.Printf("Settings request: %s", string(reqBody))
 
-    resp, err := http.Post(c.ServiceURL, "application/json", bytes.NewBuffer(reqBody))
-    if err != nil {
-        log.Printf("Error calling settings API: %v", err)
-        return 0, err
-    }
-    defer resp.Body.Close()
+	resp, err := http.Post(c.ServiceURL, "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Printf("Error calling settings API: %v", err)
+		return 0, err
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != http.StatusOK {
-        log.Printf("Settings API returned non-200 status: %d", resp.StatusCode)
-        return 0, errors.New("Settings API call failed")
-    }
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Settings API returned non-200 status: %d", resp.StatusCode)
+		return 0, errors.New("Settings API call failed")
+	}
 
-    var settingsResp Response
-    if err := json.NewDecoder(resp.Body).Decode(&settingsResp); err != nil {
-        log.Printf("Error decoding settings response: %v", err)
-        return 0, err
-    }
+	var settingsResp Response
+	if err := json.NewDecoder(resp.Body).Decode(&settingsResp); err != nil {
+		log.Printf("Error decoding settings response: %v", err)
+		return 0, err
+	}
 
-    rtp, err := strconv.ParseFloat(settingsResp.Data.GameRTP, 64)
-    if err != nil {
-        log.Printf("Error parsing RTP value: %v", err)
-        return 0, err
-    }
-    return rtp, nil
+	rtp, err := strconv.ParseFloat(settingsResp.Data.GameRTP, 64)
+	if err != nil {
+		log.Printf("Error parsing RTP value: %v", err)
+		return 0, err
+	}
+	return rtp, nil
 }

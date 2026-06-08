@@ -6,31 +6,60 @@ import (
 
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/config"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/rng"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/security"
 	"github.com/JILI-GAMES/b_backend_games/pkg/common/settings"
+	"github.com/JILI-GAMES/b_backend_games/pkg/common/telegram"
+
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdsparty"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/birdspartydeluxe"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/blossomsofwealth"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/crazykingkong"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/funkykingkong"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/hilo"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/kong"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicace"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/magicaceoriginal"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/moneybagsman2"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/onepiece"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame1"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/opensesame2"
 	"github.com/JILI-GAMES/b_backend_games/pkg/games/superace_deluxe"
+	"github.com/JILI-GAMES/b_backend_games/pkg/games/winningmask"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
-	// Load configuration
-	cfg := config.Load()
+	// Load both production and test configs
+	prodCfg, testCfg := config.LoadAll()
 
-	// Set up logging
-	logFile, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatalf("Error opening log file: %v", err)
+	// Initialize encryption keys
+	if err := security.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize encryption: %v", err)
 	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
 
-	// Create shared clients
-	rngClient := rng.NewClient(cfg.RNGServiceURL)
-	settingsClient := settings.NewClient(cfg.SettingsServiceURL)
+	// Set up logging with lumberjack for daily rotation and 1 day retention (use prod config for log file)
+	log.SetOutput(&lumberjack.Logger{
+		Filename:  prodCfg.LogFile,
+		MaxAge:    30,    // days to keep
+		LocalTime: true, // use local time for file names
+	})
+
+	// Create both prod and test clients
+	rngClientProd := rng.NewClient(prodCfg.RNGServiceURL)
+	settingsClientProd := settings.NewClient(prodCfg.SettingsServiceURL)
+
+	rngClientTest := rng.NewClient(testCfg.RNGServiceURL)
+	settingsClientTest := settings.NewClient(testCfg.SettingsServiceURL)
+
+	// Create Telegram client (use prod config for credentials)
+	telegramClient := telegram.NewClient(prodCfg.TelegramBotToken, prodCfg.TelegramChatID)
 
 	// Create fiber app
 	app := fiber.New(fiber.Config{
@@ -42,26 +71,68 @@ func main() {
 
 	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*", 
+		AllowOrigins:     "*",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowHeaders:     "*",
 		ExposeHeaders:    "Content-Length",
 		AllowCredentials: false,
-		MaxAge:           86400, 
+		MaxAge:           86400,
 	}))
 
 	app.Use(logger.New(logger.Config{
 		Format:     "[${time}] ${status} - ${method} ${path}\n",
 		TimeFormat: "2006-01-02 15:04:05",
-		Output:     logFile,
+		Output:     os.Stdout,
 	}))
 
-	// Register routes for individual games
-	superaceRoutes := superace_deluxe.NewRouteGroup(rngClient, settingsClient)
+	// Register routes for individual games, passing both sets of clients
+	superaceRoutes := superace_deluxe.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	superaceRoutes.Register(app)
 
-	kongRoutes := kong.NewRouteGroup(rngClient, settingsClient)
+	kongRoutes := kong.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
 	kongRoutes.Register(app)
+
+	magicAceRoutes := magicace.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	magicAceRoutes.Register(app)
+
+	moneyBagsMan2Routes := moneybagsman2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest, telegramClient)
+	moneyBagsMan2Routes.Register(app)
+
+	moneyBagsManRoutes := moneybagsman.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	moneyBagsManRoutes.Register(app)
+
+	openSesame1Routes := opensesame1.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	openSesame1Routes.Register(app)
+
+	blossomsofwealthRoutes := blossomsofwealth.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest, telegramClient)
+	blossomsofwealthRoutes.Register(app)
+
+	openSesame2Routes := opensesame2.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	openSesame2Routes.Register(app)
+
+	winningmaskRoutes := winningmask.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	winningmaskRoutes.Register(app)
+
+	birdspartyRoutes := birdsparty.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	birdspartyRoutes.Register(app)
+
+	magicAceOriginalRoutes := magicaceoriginal.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	magicAceOriginalRoutes.Register(app)
+
+	hiloRoutes := hilo.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	hiloRoutes.Register(app)
+
+	crazyKingKongRoutes := crazykingkong.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	crazyKingKongRoutes.Register(app)
+
+	funkyKingKongRoutes := funkykingkong.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	funkyKingKongRoutes.Register(app)
+
+	birdsPartyDeluxeRoutes := birdspartydeluxe.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest)
+	birdsPartyDeluxeRoutes.Register(app)
+
+	onepieceRoutes := onepiece.NewRouteGroup(rngClientProd, settingsClientProd, rngClientTest, settingsClientTest, telegramClient)
+	onepieceRoutes.Register(app)
 
 	// Add a simple status endpoint
 	app.Get("/status", func(c *fiber.Ctx) error {
@@ -70,12 +141,26 @@ func main() {
 			"games": []string{
 				"superace_deluxe",
 				"kong",
+				"magicAce",
+				"moneyBagsMan2",
+				"moneyBagsMan",
+				"openSesame1",
+				"blossomsofwealth",
+				"openSesame2",
+				"winningmask",
+				"birdsparty",
+				"magicAceOriginal",
+				"hilo",
+				"crazykingkong",
+				"funkykingkong",
+				"birdspartydeluxe",
+				"onepiece",
 			},
 		})
 	})
 
 	// Start the server
-	port := cfg.ServerPort
+	port := prodCfg.ServerPort
 	log.Printf("Starting server on port %s", port)
 	log.Fatal(app.Listen(":" + port))
 }
